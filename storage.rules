@@ -1,0 +1,53 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSuperAdminEmail() {
+      return isAuthenticated()
+        && request.auth.token.email == 'joydas.21071997@gmail.com'
+        && request.auth.token.email != 'joyfulfilms21@gmail.com';
+    }
+
+    function isAdmin() {
+      return isSuperAdminEmail()
+        || (isAuthenticated() && request.auth.token.role == 'admin' && request.auth.token.email == 'joydas.21071997@gmail.com');
+    }
+
+    // Audio stories: stories/audio/*
+    match /stories/audio/{allPaths=**} {
+      // Anyone can stream and listen to audio stories
+      allow read: if true;
+      // Only authenticated Admins can upload, modify, or delete audio files
+      allow write: if isAdmin();
+    }
+
+    // Cover images: stories/covers/*
+    match /stories/covers/{allPaths=**} {
+      // Anyone can view cover images
+      allow read: if true;
+      // Only authenticated Admins can upload, modify, or delete cover images
+      allow write: if isAdmin();
+    }
+
+    // Life story audio & images: lifestories/*
+    match /lifestories/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // User profile uploads: users/{userId}/*
+    match /users/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Default deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "8th sep 5 Goppo Kahini - অডিও গল্প",
+  "description": "Goppo Kahini Entertainment - বাংলার রোমাঞ্চকর অডিও গল্প, রহস্য, ভৌতিক কাহিনি ও আবহ সঙ্গীত শুনুন মাত্র ₹২০/মাস সাবস্ক্রিপশনে।",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

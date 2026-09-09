@@ -1,0 +1,321 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile document stored at users/{uid}",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The unique Firebase Auth UID"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User email address"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "User verified international phone number"
+        },
+        "emailVerified": {
+          "type": "boolean",
+          "description": "Whether user email has been verified via Firebase Auth"
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "URL to user avatar or photo"
+        },
+        "provider": {
+          "type": "string",
+          "description": "Authentication provider (google, password)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Server timestamp of account creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Server timestamp of last update"
+        },
+        "subscriptionStatus": {
+          "type": "string",
+          "enum": ["inactive", "active"],
+          "description": "User monthly pass/subscription status"
+        },
+        "subscriptionExpiry": {
+          "type": "string",
+          "description": "Expiry timestamp for subscription or null if inactive"
+        }
+      },
+      "required": ["uid", "email", "subscriptionStatus"]
+    },
+    "AudioStory": {
+      "title": "AudioStory",
+      "description": "Audio story document containing story metadata, streaming audio URL, narrator, and category",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique story identifier"
+        },
+        "title": {
+          "type": "string",
+          "description": "Bengali story title"
+        },
+        "tagline": {
+          "type": "string",
+          "description": "Short catchy tagline"
+        },
+        "description": {
+          "type": "string",
+          "description": "Story plot summary or description"
+        },
+        "author": {
+          "type": "string",
+          "description": "Writer or story author name"
+        },
+        "narrator": {
+          "type": "string",
+          "description": "Voice artist or narrator name"
+        },
+        "voiceStyle": {
+          "type": "string",
+          "description": "Voice delivery style (warm, whisper, deep, mysterious)"
+        },
+        "genre": {
+          "type": "string",
+          "description": "Story genre (ভৌতিক, রহস্য, রোমাঞ্চ, etc.)"
+        },
+        "lengthCategory": {
+          "type": "string",
+          "enum": ["mini", "medium", "mega"],
+          "description": "Length tier based on duration"
+        },
+        "duration": {
+          "type": "number",
+          "description": "Audio duration in seconds"
+        },
+        "isLittlePassOnly": {
+          "type": "boolean",
+          "description": "Whether Little Pass (₹20/mo) is required to listen"
+        },
+        "pricingType": {
+          "type": "string",
+          "description": "Pricing category (free, pass_included, single_pay, mega_exclusive)"
+        },
+        "singlePurchasePrice": {
+          "type": "number",
+          "description": "Price in INR if single pay"
+        },
+        "audioUrl": {
+          "type": "string",
+          "description": "Public streaming MP3 audio URL (Cloud Storage or external CDN)"
+        },
+        "audioFileName": {
+          "type": "string",
+          "description": "Original file name of the audio track"
+        },
+        "coverImage": {
+          "type": "string",
+          "description": "URL to high-resolution cover artwork"
+        },
+        "colorGradient": {
+          "type": "string",
+          "description": "Tailwind color gradient classes for UI styling"
+        },
+        "releaseDate": {
+          "type": "string",
+          "description": "Date string of release"
+        },
+        "rating": {
+          "type": "number",
+          "description": "Average listener rating from 1 to 5"
+        },
+        "listenCount": {
+          "type": "number",
+          "description": "Total plays / listen count"
+        },
+        "fullStoryText": {
+          "type": "string",
+          "description": "Full Bengali story script or transcript text"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp of creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp of last update"
+        }
+      },
+      "required": ["id", "title", "author", "narrator", "genre", "duration"]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized administrator profile with delegated role",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Administrator email address"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of administrator"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["super_admin", "editor", "moderator"],
+          "description": "Permission level"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "suspended"],
+          "description": "Status of access"
+        },
+        "grantedBy": {
+          "type": "string",
+          "description": "Email of super admin who granted permission"
+        },
+        "grantedAt": {
+          "type": "string",
+          "description": "Timestamp when admin permission was granted"
+        }
+      },
+      "required": ["email", "role", "status"]
+    },
+    "StoryEpisode": {
+      "title": "StoryEpisode",
+      "description": "Episode or chapter within a multi-part audio story",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Episode unique identifier"
+        },
+        "storyId": {
+          "type": "string",
+          "description": "Parent story id"
+        },
+        "episodeNumber": {
+          "type": "number",
+          "description": "Order of the episode (1, 2, 3...)"
+        },
+        "title": {
+          "type": "string",
+          "description": "Episode Bengali title"
+        },
+        "duration": {
+          "type": "number",
+          "description": "Audio duration in seconds"
+        },
+        "audioUrl": {
+          "type": "string",
+          "description": "Firebase Storage or CDN public MP3 URL"
+        },
+        "isFreePreview": {
+          "type": "boolean",
+          "description": "Whether this episode is unlocked for free preview"
+        }
+      },
+      "required": ["id", "storyId", "episodeNumber", "title", "audioUrl"]
+    },
+    "PaymentTransaction": {
+      "title": "PaymentTransaction",
+      "description": "Record of listener subscription or pass payment",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Transaction identifier"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of customer"
+        },
+        "userName": {
+          "type": "string",
+          "description": "Customer name"
+        },
+        "userEmail": {
+          "type": "string",
+          "description": "Customer email"
+        },
+        "userPhone": {
+          "type": "string",
+          "description": "Customer phone"
+        },
+        "planId": {
+          "type": "string",
+          "description": "Plan key e.g. little_monthly, little_annual"
+        },
+        "planName": {
+          "type": "string",
+          "description": "Plan title e.g. গপ্পো কাহিনী ২০ টাকার মাসিক পাস"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Amount in INR (e.g. 20)"
+        },
+        "currency": {
+          "type": "string",
+          "description": "Currency code e.g. INR"
+        },
+        "utrTransactionId": {
+          "type": "string",
+          "description": "UPI 12-digit UTR or gateway payment ID"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "paid", "rejected"],
+          "description": "Verification status of payment"
+        },
+        "paymentDate": {
+          "type": "string",
+          "description": "Date of transaction YYYY-MM-DD"
+        },
+        "paymentTime": {
+          "type": "string",
+          "description": "Time of transaction"
+        },
+        "subscriptionStartDate": {
+          "type": "string",
+          "description": "Start date of access"
+        },
+        "subscriptionExpiryDate": {
+          "type": "string",
+          "description": "End date of pass validity"
+        }
+      },
+      "required": ["userId", "amount", "status", "utrTransactionId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile document storing registration and account state"
+    },
+    "/stories/{storyId}": {
+      "schema": "AudioStory",
+      "description": "Public audio story documents accessible to audience for playback and managed by Admin"
+    },
+    "/stories/{storyId}/episodes/{episodeId}": {
+      "schema": "StoryEpisode",
+      "description": "Episodes belonging to a story"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "PaymentTransaction",
+      "description": "Payment logs and subscription purchases"
+    },
+    "/admin_users/{adminId}": {
+      "schema": "AdminUser",
+      "description": "List of administrators with authorized access"
+    }
+  }
+}

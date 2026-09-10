@@ -34,7 +34,7 @@ import {
 let cachedAuth: ReturnType<typeof getAuth> | null = null;
 let fallbackAuthInstance: ReturnType<typeof getAuth> | null = null;
 
-function getOfficialFallbackAuth(): ReturnType<typeof getAuth> | null {
+export function getOfficialFallbackAuth(): ReturnType<typeof getAuth> | null {
   if (!fallbackAuthInstance) {
     try {
       const existing = getApps().find((a) => a.name === 'officialGoppoAuthApp');

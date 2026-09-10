@@ -46,7 +46,8 @@ export interface Story {
   coverImage: string;
   colorGradient: string;
   releaseDate: string;
-  rating: number;
+  rating: number; // 0 if unrated, or 1.0 to 5.0
+  reviewsCount?: number;
   listenCount: number;
   chapters: Chapter[];
   transcript: TranscriptLine[];
@@ -54,6 +55,9 @@ export interface Story {
   createdAt?: number | string;
   storageAudioPath?: string;
   storageCoverPath?: string;
+  accessSetting?: string;
+  podcastAccessSetting?: string;
+  storyType?: string;
 }
 
 export interface UserContactMessage {
@@ -307,10 +311,14 @@ export interface ItemReview {
   itemId: string; // story id or life story episode id
   itemTitle: string;
   itemType: 'story' | 'life_story';
+  userId?: string;
   userName: string;
+  userEmail?: string;
+  userPhotoURL?: string;
   rating: number; // 1 to 5
   comment: string;
   createdAt: string;
+  updatedAt?: string;
   likes: number;
 }
 

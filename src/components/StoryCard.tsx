@@ -227,16 +227,27 @@ export const StoryCard: React.FC<StoryCardProps> = ({
             type="button"
             onClick={handleReviewsClick}
             className="flex items-center gap-1.5 bg-black/60 hover:bg-purple-950/40 border border-purple-500/30 hover:border-pink-400 px-2.5 py-1 rounded-xl text-zinc-300 transition-all"
-            title="রেটিং ও মন্তব্য দেখুন বা যোগ করুন"
+            title={story.rating && story.rating > 0 ? `গড় রেটিং: ${story.rating.toFixed(1)} ★` : 'এখনো রেটিং নেই - আপনার রেটিং ও মন্তব্য যোগ করুন'}
           >
-            <div className="flex items-center gap-0.5 text-pink-400 font-bold font-mono">
-              <Star className="h-3 w-3 fill-pink-400 text-pink-400" />
-              <span>{story.rating || '4.9'}</span>
+            <div className="flex items-center gap-1 text-xs">
+              {story.rating && story.rating > 0 ? (
+                <>
+                  <Star className="h-3 w-3 fill-pink-400 text-pink-400" />
+                  <span className="font-bold font-mono text-pink-400">{story.rating.toFixed(1)}</span>
+                </>
+              ) : (
+                <>
+                  <Star className="h-3 w-3 text-zinc-500" />
+                  <span className="text-[10px] text-zinc-400">নতুন</span>
+                </>
+              )}
             </div>
             <span className="text-zinc-600">•</span>
             <div className="flex items-center gap-1 text-[10px] text-purple-300">
               <MessageSquare className="h-2.5 w-2.5" />
-              <span>মন্তব্য</span>
+              <span>
+                {story.reviewsCount && story.reviewsCount > 0 ? `রিভিউ (${story.reviewsCount})` : 'মন্তব্য'}
+              </span>
             </div>
           </button>
         </div>

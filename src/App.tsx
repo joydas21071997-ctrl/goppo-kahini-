@@ -1980,6 +1980,8 @@ export default function App() {
                     onPause={handlePauseStory}
                     onOpenPaywall={() => handleOpenSubscriptionFlow(story)}
                     onPromptSubscription={() => handleOpenSubscriptionFlow(story)}
+                    onOpenReviews={handleOpenReviews}
+                    reviewsCount={story.reviewsCount || 0}
                   />
                 ))}
               </div>
@@ -2096,6 +2098,9 @@ export default function App() {
         onToggleBookmark={handleToggleBookmark}
         onOpenAmbientMixer={() => setIsAmbientMixerOpen(true)}
         subscription={subscription}
+        currentUser={currentUser}
+        onRequireLogin={(msg) => handleOpenUserAuth('general', msg)}
+        onOpenReviews={handleOpenReviews}
       />
 
       {/* Direct Bank UPI Subscription & Pass Modal */}
@@ -2244,6 +2249,31 @@ export default function App() {
           }));
         }}
       />
+
+      {/* Item Reviews & Rating Modal */}
+      {activeReviewTarget && (
+        <ItemReviewsModal
+          isOpen={isReviewsModalOpen}
+          onClose={() => {
+            setIsReviewsModalOpen(false);
+            setActiveReviewTarget(null);
+          }}
+          itemId={activeReviewTarget.id}
+          itemTitle={activeReviewTarget.title}
+          itemType={activeReviewTarget.type}
+          currentUser={currentUser}
+          onRequireLogin={(msg) => handleOpenUserAuth('general', msg)}
+          onStoryStatsUpdated={({ rating, reviewsCount }) => {
+            setStories((prev) =>
+              prev.map((s) =>
+                s.id === activeReviewTarget.id
+                  ? { ...s, rating, reviewsCount }
+                  : s
+              )
+            );
+          }}
+        />
+      )}
 
       {/* Audience User Auth Modal (লগইন ও রেজিস্ট্রেশন) */}
       <UserAuthModal

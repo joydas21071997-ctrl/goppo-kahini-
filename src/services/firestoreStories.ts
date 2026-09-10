@@ -77,7 +77,8 @@ export function subscribeStoriesFromFirestore(
               coverImage: data.coverImage || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
               colorGradient: data.colorGradient || 'from-purple-900 to-indigo-950',
               releaseDate: data.releaseDate || new Date().toISOString().split('T')[0],
-              rating: Number(data.rating) || 5.0,
+              rating: typeof data.rating === 'number' ? Number(data.rating) : 0,
+              reviewsCount: typeof data.reviewsCount === 'number' ? Number(data.reviewsCount) : 0,
               listenCount: Number(data.listenCount) || 0,
               chapters: Array.isArray(data.chapters) ? data.chapters : [],
               transcript: Array.isArray(data.transcript) ? data.transcript : [],
@@ -141,7 +142,8 @@ export async function fetchStoriesFromFirestore(): Promise<Story[]> {
         coverImage: data.coverImage || '',
         colorGradient: data.colorGradient || '',
         releaseDate: data.releaseDate || '',
-        rating: Number(data.rating) || 5,
+        rating: typeof data.rating === 'number' ? Number(data.rating) : 0,
+        reviewsCount: typeof data.reviewsCount === 'number' ? Number(data.reviewsCount) : 0,
         listenCount: Number(data.listenCount) || 0,
         chapters: Array.isArray(data.chapters) ? data.chapters : [],
         transcript: Array.isArray(data.transcript) ? data.transcript : [],
@@ -178,7 +180,7 @@ export async function saveStoryToFirestore(story: Story): Promise<{ success: boo
 
   const storyDocRef = doc(db, 'stories', story.id);
   try {
-    const payload = {
+    const payload: Record<string, any> = {
       id: story.id,
       title: story.title.trim(),
       tagline: (story.tagline || '').trim(),
@@ -190,14 +192,22 @@ export async function saveStoryToFirestore(story: Story): Promise<{ success: boo
       lengthCategory: story.lengthCategory || 'standard',
       duration: Math.round(Number(story.duration) || 0),
       isLittlePassOnly: Boolean(story.isLittlePassOnly),
-      pricingType: story.pricingType || (story.isLittlePassOnly ? 'paid' : 'free'),
-      singlePurchasePrice: story.singlePurchasePrice ? Number(story.singlePurchasePrice) : (story.isLittlePassOnly ? 20 : 0),
+      pricingType: story.pricingType || (story.isLittlePassOnly ? 'pass_included' : 'free'),
+      singlePurchasePrice:
+        story.singlePurchasePrice !== undefined && story.singlePurchasePrice !== null
+          ? Number(story.singlePurchasePrice)
+          : story.isLittlePassOnly
+          ? 20
+          : 0,
       audioUrl: story.audioUrl,
       audioFileName: story.audioFileName || '',
-      coverImage: story.coverImage || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
+      coverImage:
+        story.coverImage ||
+        'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
       colorGradient: story.colorGradient || 'from-purple-900 to-indigo-950',
       releaseDate: story.releaseDate || new Date().toISOString().split('T')[0],
-      rating: Number(story.rating) || 5.0,
+      rating: typeof story.rating === 'number' ? Number(story.rating) : 0,
+      reviewsCount: typeof (story as any).reviewsCount === 'number' ? Number((story as any).reviewsCount) : 0,
       listenCount: Number(story.listenCount) || 0,
       chapters: Array.isArray(story.chapters) ? story.chapters : [],
       transcript: Array.isArray(story.transcript) ? story.transcript : [],
@@ -205,7 +215,31 @@ export async function saveStoryToFirestore(story: Story): Promise<{ success: boo
       createdAt: story.createdAt || new Date().toISOString(),
       updatedAt: serverTimestamp(),
     };
-    await setDoc(storyDocRef, payload, { merge: true });
+
+    if (story.accessSetting) payload.accessSetting = story.accessSetting;
+    if (story.podcastAccessSetting) payload.podcastAccessSetting = story.podcastAccessSetting;
+    if (story.storyType) payload.storyType = story.storyType;
+    if (story.storageAudioPath) payload.storageAudioPath = story.storageAudioPath;
+    if (story.storageCoverPath) payload.storageCoverPath = story.storageCoverPath;
+
+    // Enforce 15-second write timeout to prevent indefinite UI hang
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(
+        () =>
+          reject(
+            new Error(
+              'ফায়ারস্টোরে সংরক্ষণের সময়সীমা অতিক্রম করেছে (১৫ সেকেন্ড)। ইন্টারনেট সংযোগ বা ফায়ারবেস অথেন্টিকেশন পরীক্ষা করুন।'
+            )
+          ),
+        15000
+      )
+    );
+
+    await Promise.race([
+      setDoc(storyDocRef, payload, { merge: true }),
+      timeoutPromise,
+    ]);
+
     return { success: true, id: story.id };
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `stories/${story.id}`);

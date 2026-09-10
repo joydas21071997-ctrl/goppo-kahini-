@@ -22,10 +22,16 @@ import {
   ThumbsUp,
   Send,
   User,
-  CheckCircle2
+  CheckCircle2,
+  Edit3,
+  AlertCircle
 } from 'lucide-react';
-import { Story, UserSubscription, ItemReview } from '../types';
-import { getStoredReviews, saveReview, calculateAverageRating } from '../data/reviews';
+import { Story, UserSubscription, ItemReview, AudienceUser } from '../types';
+import {
+  subscribeStoryReviews,
+  submitOrUpdateStoryReview,
+  calculateReviewStats
+} from '../services/firestoreReviews';
 
 interface FullPlayerModalProps {
   isOpen: boolean;
@@ -50,6 +56,9 @@ interface FullPlayerModalProps {
   onOpenAmbientMixer: () => void;
   subscription: UserSubscription;
   onOpenReviews?: (itemId: string, itemTitle: string, itemType: 'story' | 'life_story') => void;
+  currentUser?: AudienceUser | null;
+  onRequireLogin?: (reason?: string) => void;
+  onStoryRatingUpdated?: (storyId: string, newAvg: number, newCount: number) => void;
 }
 
 export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
@@ -72,6 +81,9 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
   onToggleBookmark,
   onOpenAmbientMixer,
   onOpenReviews,
+  currentUser,
+  onRequireLogin,
+  onStoryRatingUpdated,
 }) => {
   // Mobile mode: 'player' (artwork + big controls), 'script' (justified reading view), 'chapters', 'reviews'
   const [mobileMode, setMobileMode] = useState<'player' | 'script' | 'chapters' | 'reviews'>('player');
@@ -83,25 +95,67 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
   const [bookmarkNote, setBookmarkNote] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // Review & Rating State
+  // Review & Rating State from Firestore
   const [reviewsList, setReviewsList] = useState<ItemReview[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState<boolean>(true);
   const [userRating, setUserRating] = useState<number>(5);
   const [hoverRating, setHoverRating] = useState<number>(0);
-  const [reviewAuthor, setReviewAuthor] = useState('');
-  const [reviewComment, setReviewComment] = useState('');
-  const [reviewSuccess, setReviewSuccess] = useState(false);
+  const [reviewComment, setReviewComment] = useState<string>('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState<boolean>(false);
+  const [reviewSuccess, setReviewSuccess] = useState<boolean>(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const [likedReviews, setLikedReviews] = useState<Set<string>>(new Set());
 
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
   const activeLineRef = useRef<HTMLDivElement>(null);
 
-  // Load reviews whenever story changes
+  // Real-time Firestore reviews listener for the active story
   useEffect(() => {
-    if (story) {
-      const all = getStoredReviews();
-      setReviewsList(all.filter((r) => r.itemId === story.id));
+    if (!story?.id) {
+      setReviewsList([]);
+      setReviewsLoading(false);
+      return;
     }
-  }, [story]);
+
+    setReviewsLoading(true);
+    setReviewError(null);
+
+    const unsubscribe = subscribeStoryReviews(
+      story.id,
+      (revs) => {
+        setReviewsList(revs);
+        setReviewsLoading(false);
+        const { averageRating: avg, totalCount: cnt } = calculateReviewStats(revs);
+        if (onStoryRatingUpdated) {
+          onStoryRatingUpdated(story.id, avg, cnt);
+        }
+      },
+      (err) => {
+        console.warn('Reviews subscription warning for story:', story.id, err);
+        setReviewsLoading(false);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [story?.id]);
+
+  // Check if current authenticated user already reviewed this story
+  const userExistingReview = currentUser?.uid
+    ? reviewsList.find((r) => r.userId === currentUser.uid || r.id === currentUser.uid)
+    : null;
+
+  // Prefill form with user's existing review if present, or reset when user changes
+  useEffect(() => {
+    if (userExistingReview) {
+      setUserRating(userExistingReview.rating);
+      setReviewComment(userExistingReview.comment);
+    } else {
+      setUserRating(5);
+      setReviewComment('');
+    }
+  }, [userExistingReview?.id, userExistingReview?.updatedAt, currentUser?.uid]);
 
   // Auto-scroll transcript to active line if in sync mode
   useEffect(() => {
@@ -123,7 +177,11 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
   };
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const { avg: averageRating, count: reviewCount } = calculateAverageRating(reviewsList, Number(story.rating || '4.9'));
+
+  // Real calculation from Firestore reviews
+  const { averageRating: rawAvg, totalCount: reviewCount } = calculateReviewStats(reviewsList);
+  const hasRating = reviewCount > 0;
+  const averageRating = hasRating ? rawAvg.toFixed(1) : '০.০';
 
   const handleSaveBookmark = (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,27 +200,52 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
     } catch {}
   };
 
-  const handleAddReview = (e: React.FormEvent) => {
+  // Submit or update real rating and review in Firestore
+  const handleAddReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reviewAuthor.trim() || !reviewComment.trim()) return;
+    if (!story) return;
 
-    const newRev: ItemReview = {
-      id: `rev-${Date.now()}`,
-      itemId: story.id,
-      itemTitle: story.title,
-      itemType: 'story',
-      userName: reviewAuthor.trim(),
-      rating: userRating,
-      comment: reviewComment.trim(),
-      createdAt: 'এইমাত্র',
-      likes: 0,
-    };
+    if (!currentUser) {
+      if (onRequireLogin) {
+        onRequireLogin('গল্পে রেটিং ও মন্তব্য প্রকাশ করার জন্য অনুগ্রহ করে লগইন করুন');
+      }
+      return;
+    }
 
-    saveReview(newRev);
-    setReviewsList((prev) => [newRev, ...prev]);
-    setReviewComment('');
-    setReviewSuccess(true);
-    setTimeout(() => setReviewSuccess(false), 3000);
+    const trimmedComment = reviewComment.trim();
+    if (!trimmedComment) {
+      setReviewError('অনুগ্রহ করে আপনার মূল্যবান মন্তব্য লিখুন।');
+      return;
+    }
+
+    setIsSubmittingReview(true);
+    setReviewError(null);
+
+    try {
+      const updatedReview = await submitOrUpdateStoryReview(
+        story.id,
+        {
+          rating: userRating,
+          comment: trimmedComment,
+          itemTitle: story.title,
+        },
+        currentUser
+      );
+
+      // Optimistically update list in state
+      setReviewsList((prev) => {
+        const withoutOld = prev.filter((r) => r.id !== updatedReview.id && r.userId !== updatedReview.userId);
+        return [updatedReview, ...withoutOld];
+      });
+
+      setIsSubmittingReview(false);
+      setReviewSuccess(true);
+      setTimeout(() => setReviewSuccess(false), 4000);
+    } catch (err: any) {
+      console.error('Failed to submit review:', err);
+      setIsSubmittingReview(false);
+      setReviewError(err?.message || 'রিভিউ সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
+    }
   };
 
   const handleToggleLike = (id: string) => {
@@ -230,8 +313,8 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
             className="flex items-center gap-1 h-8 sm:h-9 px-2 sm:px-2.5 rounded-xl bg-black/60 border border-purple-900/40 text-pink-300 hover:text-white hover:border-pink-400 transition-colors text-xs font-bold"
             title="রেটিং ও মন্তব্য"
           >
-            <Star className="h-3.5 w-3.5 fill-pink-400 text-pink-400" />
-            <span className="font-mono">{averageRating}</span>
+            <Star className={`h-3.5 w-3.5 ${hasRating ? 'fill-pink-400 text-pink-400' : 'text-zinc-500'}`} />
+            <span className="font-mono">{hasRating ? averageRating : '০.০'}</span>
           </button>
 
           <button
@@ -414,7 +497,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
               </p>
             </div>
 
-            {/* Quick 5-Star Rating Pill */}
+            {/* Quick Rating Pill */}
             <button
               type="button"
               onClick={() => setScriptViewType('reviews')}
@@ -425,15 +508,17 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                   <Star
                     key={s}
                     className={`h-3 w-3 ${
-                      s <= Math.round(Number(averageRating))
+                      hasRating && s <= Math.round(Number(averageRating))
                         ? 'fill-pink-400 text-pink-400'
                         : 'text-zinc-600'
                     }`}
                   />
                 ))}
               </div>
-              <span className="font-mono font-bold text-white">{averageRating}</span>
-              <span className="text-zinc-400">• ({reviewsList.length} রিভিউ)</span>
+              <span className="font-mono font-bold text-white">{hasRating ? averageRating : '০.০'}</span>
+              <span className="text-zinc-400">
+                • {hasRating ? `(${reviewCount} রিভিউ)` : 'এখনো রেটিং নেই (মতামত দিন)'}
+              </span>
             </button>
 
             {/* Progress Slider */}
@@ -657,129 +742,202 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                   {/* Rating Header */}
                   <div className="rounded-2xl bg-black/60 border border-purple-900/40 p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="text-3xl font-black text-pink-300 font-mono">{averageRating}</span>
+                      <span className="text-3xl font-black text-pink-300 font-mono">
+                        {hasRating ? averageRating : '০.০'}
+                      </span>
                       <div>
                         <div className="flex items-center gap-1 text-pink-400">
                           {[1, 2, 3, 4, 5].map((s) => (
                             <Star
                               key={s}
                               className={`h-4 w-4 ${
-                                s <= Math.round(Number(averageRating))
+                                hasRating && s <= Math.round(Number(averageRating))
                                   ? 'fill-pink-400 text-pink-400'
                                   : 'text-zinc-700'
                               }`}
                             />
                           ))}
                         </div>
-                        <span className="text-xs text-zinc-400 mt-0.5 block">মোট {reviewsList.length} জন শ্রোতার রেটিং</span>
+                        <span className="text-xs text-zinc-400 mt-0.5 block">
+                          {hasRating
+                            ? `মোট ${reviewCount} জন শ্রোতার রেটিং`
+                            : 'এখনো কোনো রেটিং নেই • প্রথম রেটিংটি আপনিই দিন!'}
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Add Rating Form */}
-                  <form onSubmit={handleAddReview} className="rounded-2xl bg-black/40 border border-purple-900/40 p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-pink-300 flex items-center gap-1.5">
-                        <MessageSquare className="h-3.5 w-3.5" />
-                        রেটিং ও মন্তব্য দিন
-                      </span>
-                      {reviewSuccess && (
-                        <span className="text-xs text-pink-400 flex items-center gap-1 font-semibold animate-pulse">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          মন্তব্য সংরক্ষিত হয়েছে!
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-3 bg-zinc-950/70 p-2.5 rounded-xl border border-purple-900/30">
-                      <span className="text-xs text-zinc-400">রেটিং নির্বাচন করুন:</span>
-                      <div className="flex items-center gap-1">
-                        {[1, 2, 3, 4, 5].map((starVal) => (
-                          <button
-                            key={starVal}
-                            type="button"
-                            onMouseEnter={() => setHoverRating(starVal)}
-                            onMouseLeave={() => setHoverRating(0)}
-                            onClick={() => setUserRating(starVal)}
-                            className="p-1 hover:scale-125 transition-transform"
-                          >
-                            <Star
-                              className={`h-4 w-4 ${
-                                (hoverRating || userRating) >= starVal
-                                  ? 'fill-pink-400 text-pink-400'
-                                  : 'text-zinc-600'
-                              }`}
-                            />
-                          </button>
-                        ))}
+                  {/* Add / Edit Rating Form */}
+                  {!currentUser ? (
+                    <div className="rounded-2xl bg-black/40 border border-purple-900/40 p-5 text-center space-y-3">
+                      <div className="flex justify-center text-pink-400">
+                        <Star className="h-8 w-8 text-pink-400/80" />
                       </div>
-                      <span className="text-xs font-mono font-bold text-pink-300 ml-auto">
-                        {hoverRating || userRating} / ৫
-                      </span>
-                    </div>
-
-                    <input
-                      type="text"
-                      required
-                      placeholder="আপনার নাম..."
-                      value={reviewAuthor}
-                      onChange={(e) => setReviewAuthor(e.target.value)}
-                      className="w-full rounded-xl border border-purple-900/30 bg-black/70 px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none"
-                    />
-
-                    <textarea
-                      required
-                      rows={2}
-                      placeholder="গল্পের অনুভূতি, আবহের মান বা সাউন্ড কোয়ালিটি নিয়ে আপনার মতামত লিখুন..."
-                      value={reviewComment}
-                      onChange={(e) => setReviewComment(e.target.value)}
-                      className="w-full rounded-xl border border-purple-900/30 bg-black/70 p-3 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none resize-none"
-                    />
-
-                    <div className="flex justify-end">
+                      <div>
+                        <h4 className="text-sm font-bold text-white">গল্পটি শুনে কেমন লাগল?</h4>
+                        <p className="text-xs text-zinc-400 mt-1">
+                          রেটিং ও আপনার মূল্যবান মন্তব্য জানাতে অনুগ্রহ করে আপনার অ্যাকাউন্টে লগইন করুন।
+                        </p>
+                      </div>
                       <button
-                        type="submit"
-                        className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-pink-500 px-4 py-1.5 text-xs font-bold text-white hover:opacity-90 transition-all shadow-md"
+                        type="button"
+                        onClick={() => onRequireLogin?.('গল্পে রেটিং ও মন্তব্য দেওয়ার জন্য অনুগ্রহ করে লগইন করুন')}
+                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-pink-500 px-5 py-2 text-xs font-bold text-white hover:opacity-95 transition-all shadow-md shadow-pink-950/40"
                       >
-                        <Send className="h-3 w-3" />
-                        <span>মন্তব্য প্রকাশ করুন</span>
+                        <User className="h-3.5 w-3.5" />
+                        <span>লগইন করে রেটিং দিন</span>
                       </button>
                     </div>
-                  </form>
+                  ) : (
+                    <form onSubmit={handleAddReview} className="rounded-2xl bg-black/40 border border-purple-900/40 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-pink-300 flex items-center gap-1.5">
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          {userExistingReview ? 'আপনার রিভিউ আপডেট করুন' : 'রেটিং ও মন্তব্য দিন'}
+                        </span>
+                        {userExistingReview && (
+                          <span className="text-[10px] text-pink-400 bg-pink-500/10 border border-pink-500/20 px-2 py-0.5 rounded-full font-medium">
+                            পূর্বের রেটিং: {userExistingReview.rating}★
+                          </span>
+                        )}
+                      </div>
+
+                      {reviewSuccess && (
+                        <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                          <span>আপনার রেটিং ও মন্তব্য সফলভাবে সংরক্ষিত হয়েছে!</span>
+                        </div>
+                      )}
+
+                      {reviewError && (
+                        <div className="p-2.5 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
+                          <span>{reviewError}</span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-3 bg-zinc-950/70 p-2.5 rounded-xl border border-purple-900/30">
+                        <span className="text-xs text-zinc-400">রেটিং নির্বাচন করুন:</span>
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((starVal) => (
+                            <button
+                              key={starVal}
+                              type="button"
+                              onMouseEnter={() => setHoverRating(starVal)}
+                              onMouseLeave={() => setHoverRating(0)}
+                              onClick={() => setUserRating(starVal)}
+                              className="p-1 hover:scale-125 transition-transform"
+                            >
+                              <Star
+                                className={`h-4 w-4 ${
+                                  (hoverRating || userRating) >= starVal
+                                    ? 'fill-pink-400 text-pink-400'
+                                    : 'text-zinc-600'
+                                }`}
+                              />
+                            </button>
+                          ))}
+                        </div>
+                        <span className="text-xs font-mono font-bold text-pink-300 ml-auto">
+                          {hoverRating || userRating} / ৫
+                        </span>
+                      </div>
+
+                      <textarea
+                        required
+                        rows={2}
+                        placeholder="গল্পের অনুভূতি, আবহের মান বা সাউন্ড কোয়ালিটি নিয়ে আপনার মতামত লিখুন..."
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        className="w-full rounded-xl border border-purple-900/30 bg-black/70 p-3 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none resize-none"
+                      />
+
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-[11px] text-zinc-400">
+                          মন্তব্যকারী: <strong className="text-zinc-200">{currentUser.displayName || currentUser.email?.split('@')[0]}</strong>
+                        </span>
+                        <button
+                          type="submit"
+                          disabled={isSubmittingReview}
+                          className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-pink-500 px-4 py-1.5 text-xs font-bold text-white hover:opacity-90 transition-all shadow-md disabled:opacity-50"
+                        >
+                          <Send className="h-3 w-3" />
+                          <span>
+                            {isSubmittingReview
+                              ? 'সংরক্ষণ করা হচ্ছে...'
+                              : userExistingReview
+                              ? 'রিভিউ আপডেট করুন'
+                              : 'মন্তব্য প্রকাশ করুন'}
+                          </span>
+                        </button>
+                      </div>
+                    </form>
+                  )}
 
                   {/* List of Reviews */}
                   <div className="space-y-2.5">
                     <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">
-                      শ্রোতাদের মন্তব্য ({reviewsList.length})
+                      শ্রোতাদের মন্তব্য ({reviewCount})
                     </span>
 
-                    {reviewsList.length === 0 ? (
+                    {reviewsLoading ? (
+                      <div className="text-center py-6 border border-dashed border-purple-900/30 rounded-2xl text-xs text-zinc-500 animate-pulse">
+                        মন্তব্য লোড হচ্ছে...
+                      </div>
+                    ) : reviewsList.length === 0 ? (
                       <div className="text-center py-6 border border-dashed border-purple-900/30 rounded-2xl text-xs text-zinc-500">
                         এখনো কোনো মন্তব্য নেই। প্রথম রিভিউটি আপনিই দিন!
                       </div>
                     ) : (
                       reviewsList.map((rev) => {
                         const isLiked = likedReviews.has(rev.id);
+                        const isMyReview = Boolean(
+                          currentUser?.uid && (rev.userId === currentUser.uid || rev.id === currentUser.uid)
+                        );
                         return (
                           <div
                             key={rev.id}
-                            className="rounded-2xl border border-purple-900/30 bg-black/40 p-3.5 space-y-1.5"
+                            className={`rounded-2xl border p-3.5 space-y-1.5 transition-colors ${
+                              isMyReview
+                                ? 'border-pink-500/40 bg-pink-950/10'
+                                : 'border-purple-900/30 bg-black/40'
+                            }`}
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <div className="h-6 w-6 rounded-full bg-purple-500/20 text-pink-300 border border-purple-500/30 flex items-center justify-center text-[10px] font-bold">
-                                  {rev.userName.slice(0, 1)}
+                                  {rev.userName ? rev.userName.slice(0, 1) : 'U'}
                                 </div>
                                 <span className="text-xs font-bold text-white">{rev.userName}</span>
+                                {isMyReview && (
+                                  <span className="text-[10px] font-bold text-pink-300 bg-pink-500/20 border border-pink-500/30 px-2 py-0.5 rounded-full">
+                                    আপনার রিভিউ
+                                  </span>
+                                )}
                                 <span className="text-[10px] text-zinc-500 font-mono">{rev.createdAt}</span>
                               </div>
-                              <div className="flex items-center gap-0.5 bg-black/60 px-2 py-0.5 rounded-md border border-purple-900/30">
-                                <Star className="h-3 w-3 fill-pink-400 text-pink-400" />
-                                <span className="text-[10px] font-bold text-pink-300 font-mono">{rev.rating}</span>
+                              <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-0.5 bg-black/60 px-2 py-0.5 rounded-md border border-purple-900/30">
+                                  <Star className="h-3 w-3 fill-pink-400 text-pink-400" />
+                                  <span className="text-[10px] font-bold text-pink-300 font-mono">{rev.rating}</span>
+                                </div>
+                                {isMyReview && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setUserRating(rev.rating);
+                                      setReviewComment(rev.comment);
+                                    }}
+                                    className="p-1 rounded text-zinc-400 hover:text-pink-300 transition-colors ml-1"
+                                    title="আপনার রিভিউ এডিট করুন"
+                                  >
+                                    <Edit3 className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
                               </div>
                             </div>
                             <p className="text-xs text-zinc-300 leading-relaxed pl-8">{rev.comment}</p>
-                            <div className="pl-8 pt-1">
+                            <div className="pl-8 pt-1 flex items-center gap-3">
                               <button
                                 type="button"
                                 onClick={() => handleToggleLike(rev.id)}
@@ -856,15 +1014,17 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                 <p className="text-xs text-zinc-400 mt-1">
                   রচনা: <span className="text-zinc-200">{story.author}</span> • কণ্ঠে: <span className="text-pink-400">{story.narrator}</span>
                 </p>
-                {/* 5-Star Rating Pill on Mobile */}
+                {/* Rating Pill on Mobile */}
                 <button
                   type="button"
                   onClick={() => setMobileMode('reviews')}
                   className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950/60 border border-purple-500/30 text-pink-300 text-xs"
                 >
-                  <Star className="h-3 w-3 fill-pink-400 text-pink-400" />
-                  <span className="font-mono font-bold text-white">{averageRating}</span>
-                  <span className="text-zinc-400 font-normal">({reviewsList.length} রিভিউ ও মন্তব্য)</span>
+                  <Star className={`h-3 w-3 ${hasRating ? 'fill-pink-400 text-pink-400' : 'text-zinc-500'}`} />
+                  <span className="font-mono font-bold text-white">{hasRating ? averageRating : '০.০'}</span>
+                  <span className="text-zinc-400 font-normal">
+                    {hasRating ? `(${reviewCount} রিভিউ)` : '(এখনো রেটিং নেই • মতামত দিন)'}
+                  </span>
                 </button>
               </div>
 
@@ -1114,121 +1274,194 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
               {/* Summary Card */}
               <div className="rounded-2xl bg-[#160e22] border border-purple-900/40 p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="text-3xl font-black text-pink-300 font-mono">{averageRating}</span>
+                  <span className="text-3xl font-black text-pink-300 font-mono">
+                    {hasRating ? averageRating : '০.০'}
+                  </span>
                   <div>
                     <div className="flex items-center gap-1 text-pink-400">
                       {[1, 2, 3, 4, 5].map((s) => (
                         <Star
                           key={s}
                           className={`h-4 w-4 ${
-                            s <= Math.round(Number(averageRating))
+                            hasRating && s <= Math.round(Number(averageRating))
                               ? 'fill-pink-400 text-pink-400'
                               : 'text-zinc-700'
                           }`}
                         />
                       ))}
                     </div>
-                    <span className="text-xs text-zinc-400 mt-0.5 block">মোট {reviewsList.length} জন শ্রোতার রেটিং</span>
+                    <span className="text-xs text-zinc-400 mt-0.5 block">
+                      {hasRating
+                        ? `মোট ${reviewCount} জন শ্রোতার রেটিং`
+                        : 'এখনো কোনো রেটিং নেই • প্রথম রেটিংটি আপনিই দিন!'}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Add Review Form */}
-              <form onSubmit={handleAddReview} className="rounded-2xl bg-[#160e22] border border-purple-900/40 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-pink-300 flex items-center gap-1.5">
-                    <MessageSquare className="h-3.5 w-3.5" />
-                    ৫-স্টার রেটিং ও মন্তব্য লিখুন
-                  </span>
-                  {reviewSuccess && (
-                    <span className="text-xs text-pink-400 flex items-center gap-1 font-semibold animate-pulse">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      যুক্ত হয়েছে!
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 bg-black/60 p-2.5 rounded-xl border border-purple-900/30">
-                  <span className="text-xs text-zinc-400">রেটিং:</span>
-                  <div className="flex items-center gap-1">
-                    {[1, 2, 3, 4, 5].map((starVal) => (
-                      <button
-                        key={starVal}
-                        type="button"
-                        onClick={() => setUserRating(starVal)}
-                        className="p-1"
-                      >
-                        <Star
-                          className={`h-5 w-5 ${
-                            userRating >= starVal ? 'fill-pink-400 text-pink-400' : 'text-zinc-700'
-                          }`}
-                        />
-                      </button>
-                    ))}
+              {/* Add / Edit Review Form */}
+              {!currentUser ? (
+                <div className="rounded-2xl bg-[#160e22] border border-purple-900/40 p-5 text-center space-y-3">
+                  <div className="flex justify-center text-pink-400">
+                    <Star className="h-8 w-8 text-pink-400/80" />
                   </div>
-                  <span className="text-xs font-mono font-bold text-pink-300 ml-auto">
-                    {userRating} / ৫
-                  </span>
-                </div>
-
-                <input
-                  type="text"
-                  required
-                  placeholder="আপনার নাম..."
-                  value={reviewAuthor}
-                  onChange={(e) => setReviewAuthor(e.target.value)}
-                  className="w-full rounded-xl border border-purple-900/30 bg-black/60 px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none"
-                />
-
-                <textarea
-                  required
-                  rows={2}
-                  placeholder="গল্পের অনুভূতি বা অডিও অভিজ্ঞতা সম্পর্কে আপনার মতামত লিখুন..."
-                  value={reviewComment}
-                  onChange={(e) => setReviewComment(e.target.value)}
-                  className="w-full rounded-xl border border-purple-900/30 bg-black/60 p-3 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none resize-none"
-                />
-
-                <div className="flex justify-end">
+                  <div>
+                    <h4 className="text-sm font-bold text-white">গল্পটি শুনে কেমন লাগল?</h4>
+                    <p className="text-xs text-zinc-400 mt-1">
+                      রেটিং ও আপনার অনুভূতি জানাতে অনুগ্রহ করে লগইন করুন।
+                    </p>
+                  </div>
                   <button
-                    type="submit"
-                    className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-pink-500 px-4 py-1.5 text-xs font-bold text-white hover:opacity-90 transition-all shadow-md"
+                    type="button"
+                    onClick={() => onRequireLogin?.('গল্পে রেটিং ও মন্তব্য দেওয়ার জন্য অনুগ্রহ করে লগইন করুন')}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-pink-500 px-5 py-2 text-xs font-bold text-white hover:opacity-95 transition-all shadow-md shadow-pink-950/40"
                   >
-                    <Send className="h-3 w-3" />
-                    <span>মন্তব্য প্রকাশ করুন</span>
+                    <User className="h-3.5 w-3.5" />
+                    <span>লগইন করে রেটিং দিন</span>
                   </button>
                 </div>
-              </form>
+              ) : (
+                <form onSubmit={handleAddReview} className="rounded-2xl bg-[#160e22] border border-purple-900/40 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-pink-300 flex items-center gap-1.5">
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      {userExistingReview ? 'আপনার রিভিউ আপডেট করুন' : 'রেটিং ও মন্তব্য দিন'}
+                    </span>
+                    {userExistingReview && (
+                      <span className="text-[10px] text-pink-400 bg-pink-500/10 border border-pink-500/20 px-2 py-0.5 rounded-full font-medium">
+                        পূর্বের রেটিং: {userExistingReview.rating}★
+                      </span>
+                    )}
+                  </div>
+
+                  {reviewSuccess && (
+                    <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                      <span>আপনার রেটিং ও মন্তব্য সফলভাবে সংরক্ষিত হয়েছে!</span>
+                    </div>
+                  )}
+
+                  {reviewError && (
+                    <div className="p-2.5 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
+                      <span>{reviewError}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 bg-black/60 p-2.5 rounded-xl border border-purple-900/30">
+                    <span className="text-xs text-zinc-400">রেটিং:</span>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((starVal) => (
+                        <button
+                          key={starVal}
+                          type="button"
+                          onClick={() => setUserRating(starVal)}
+                          className="p-1"
+                        >
+                          <Star
+                            className={`h-5 w-5 ${
+                              userRating >= starVal ? 'fill-pink-400 text-pink-400' : 'text-zinc-700'
+                            }`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                    <span className="text-xs font-mono font-bold text-pink-300 ml-auto">
+                      {userRating} / ৫
+                    </span>
+                  </div>
+
+                  <textarea
+                    required
+                    rows={2}
+                    placeholder="গল্পের অনুভূতি বা অডিও অভিজ্ঞতা সম্পর্কে আপনার মতামত লিখুন..."
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    className="w-full rounded-xl border border-purple-900/30 bg-black/60 p-3 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none resize-none"
+                  />
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[11px] text-zinc-400">
+                      শ্রোতা: <strong className="text-zinc-200">{currentUser.displayName || currentUser.email?.split('@')[0]}</strong>
+                    </span>
+                    <button
+                      type="submit"
+                      disabled={isSubmittingReview}
+                      className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-pink-500 px-4 py-1.5 text-xs font-bold text-white hover:opacity-90 transition-all shadow-md disabled:opacity-50"
+                    >
+                      <Send className="h-3 w-3" />
+                      <span>
+                        {isSubmittingReview
+                          ? 'সংরক্ষণ হচ্ছে...'
+                          : userExistingReview
+                          ? 'রিভিউ আপডেট করুন'
+                          : 'মন্তব্য প্রকাশ করুন'}
+                      </span>
+                    </button>
+                  </div>
+                </form>
+              )}
 
               {/* Reviews List */}
               <div className="space-y-2.5">
                 <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">
-                  সকল মন্তব্য ({reviewsList.length})
+                  সকল মন্তব্য ({reviewCount})
                 </span>
 
-                {reviewsList.length === 0 ? (
+                {reviewsLoading ? (
+                  <div className="text-center py-6 border border-dashed border-purple-900/30 rounded-2xl text-xs text-zinc-500 animate-pulse">
+                    মন্তব্য লোড হচ্ছে...
+                  </div>
+                ) : reviewsList.length === 0 ? (
                   <div className="text-center py-6 border border-dashed border-purple-900/30 rounded-2xl text-xs text-zinc-500">
                     এখনো কোনো মন্তব্য নেই। প্রথম মন্তব্যটি আপনিই দিন!
                   </div>
                 ) : (
                   reviewsList.map((rev) => {
                     const isLiked = likedReviews.has(rev.id);
+                    const isMyReview = Boolean(
+                      currentUser?.uid && (rev.userId === currentUser.uid || rev.id === currentUser.uid)
+                    );
                     return (
                       <div
                         key={rev.id}
-                        className="rounded-2xl border border-purple-900/30 bg-[#160e22]/70 p-3.5 space-y-1.5"
+                        className={`rounded-2xl border p-3.5 space-y-1.5 ${
+                          isMyReview
+                            ? 'border-pink-500/40 bg-pink-950/20'
+                            : 'border-purple-900/30 bg-[#160e22]/70'
+                        }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <div className="h-6 w-6 rounded-full bg-purple-500/20 text-pink-300 border border-purple-500/30 flex items-center justify-center text-[10px] font-bold">
-                              {rev.userName.slice(0, 1)}
+                              {rev.userName ? rev.userName.slice(0, 1) : 'U'}
                             </div>
                             <span className="text-xs font-bold text-white">{rev.userName}</span>
+                            {isMyReview && (
+                              <span className="text-[10px] font-bold text-pink-300 bg-pink-500/20 border border-pink-500/30 px-2 py-0.5 rounded-full">
+                                আপনার রিভিউ
+                              </span>
+                            )}
                             <span className="text-[10px] text-zinc-500 font-mono">{rev.createdAt}</span>
                           </div>
-                          <div className="flex items-center gap-0.5 bg-black/60 px-2 py-0.5 rounded-md border border-purple-900/30">
-                            <Star className="h-3 w-3 fill-pink-400 text-pink-400" />
-                            <span className="text-[10px] font-bold text-pink-300 font-mono">{rev.rating}</span>
+                          <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-0.5 bg-black/60 px-2 py-0.5 rounded-md border border-purple-900/30">
+                              <Star className="h-3 w-3 fill-pink-400 text-pink-400" />
+                              <span className="text-[10px] font-bold text-pink-300 font-mono">{rev.rating}</span>
+                            </div>
+                            {isMyReview && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setUserRating(rev.rating);
+                                  setReviewComment(rev.comment);
+                                }}
+                                className="p-1 rounded text-zinc-400 hover:text-pink-300 transition-colors ml-1"
+                                title="আপনার রিভিউ এডিট করুন"
+                              >
+                                <Edit3 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                           </div>
                         </div>
                         <p className="text-xs text-zinc-300 leading-relaxed pl-8">{rev.comment}</p>

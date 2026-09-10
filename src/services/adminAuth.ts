@@ -1,13 +1,14 @@
 import { AudienceUser, CreatorSession, AuthorizedAdminUser } from '../types';
 import { getGoppoFirestore } from './firestoreUser';
 import { doc, getDoc, setDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
-import { getGoppoAuth } from './firebaseAuth';
+import { getGoppoAuth, getOfficialFallbackAuth } from './firebaseAuth';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
 /**
- * List of founding Super Administrator email addresses.
  * SOLE AUTHORIZED ADMIN: joydas.21071997@gmail.com
+ * Verified Firebase Auth UID: hwvu4siXbGhcpbreCQfca6b1P0h1
  */
+export const SOLE_AUTHORIZED_ADMIN_UID = 'hwvu4siXbGhcpbreCQfca6b1P0h1';
 export const VERIFIED_ADMIN_EMAILS = [
   'joydas.21071997@gmail.com',
 ];
@@ -138,21 +139,15 @@ export function isAuthorizedAdmin(
     return true;
   }
 
-  // 2. Verified Super Admin email
+  // 2. Verified Super Admin email or admin role
   if (currentUser?.email) {
     const cleanEmail = currentUser.email.trim().toLowerCase();
     if (isPrimarySuperAdminEmail(cleanEmail)) {
       return true;
     }
-
-    // 3. Check dynamically delegated admin list
-    const delegated = getDelegatedAdmins();
-    if (delegated.some((a) => a.email.toLowerCase() === cleanEmail)) {
-      return true;
-    }
   }
 
-  // 4. Custom Firebase token role claim
+  // 3. Custom Firebase token role claim
   if (currentUser?.role === 'admin') {
     return true;
   }
@@ -161,37 +156,67 @@ export function isAuthorizedAdmin(
 }
 
 /**
- * Ensures Firebase Auth is actively authenticated as an authorized Admin (joydas.21071997@gmail.com)
- * so that Firebase Storage and Firestore security rules permit audio/cover uploads and document writes.
+ * Ensures Firebase Auth is actively authenticated as the authorized Admin:
+ * joydas.21071997@gmail.com (UID: hwvu4siXbGhcpbreCQfca6b1P0h1)
+ * Refreshes the ID token so Firebase Storage and Firestore security rules permit audio/cover uploads.
  */
 export async function ensureAdminFirebaseAuth(): Promise<boolean> {
   const auth = getGoppoAuth();
-  if (!auth) return false;
-
-  if (auth.currentUser && isPrimarySuperAdminEmail(auth.currentUser.email)) {
-    return true;
-  }
+  const fallbackAuth = getOfficialFallbackAuth();
 
   const adminEmail = 'joydas.21071997@gmail.com';
   const adminPass = localStorage.getItem('goppo_admin_secure_password') || 'JoyGoppo@2026';
 
-  try {
-    await signInWithEmailAndPassword(auth, adminEmail, adminPass);
-    return true;
-  } catch (err: unknown) {
-    const error = err as { code?: string; message?: string };
-    if (error?.code === 'auth/user-not-found' || error?.code === 'auth/invalid-credential') {
+  let authenticated = false;
+
+  // 1. Check/authenticate on primary auth
+  if (auth) {
+    if (auth.currentUser && (auth.currentUser.uid === SOLE_AUTHORIZED_ADMIN_UID || isPrimarySuperAdminEmail(auth.currentUser.email))) {
       try {
-        await createUserWithEmailAndPassword(auth, adminEmail, adminPass);
-        return true;
-      } catch (createErr) {
-        console.warn('Admin user creation notice:', createErr);
-      }
+        await auth.currentUser.getIdToken(true);
+        authenticated = true;
+      } catch {}
     } else {
-      console.warn('Admin sign-in notice:', error?.message);
+      try {
+        const cred = await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+        if (cred.user) {
+          await cred.user.getIdToken(true);
+          authenticated = true;
+        }
+      } catch (err: unknown) {
+        const error = err as { code?: string; message?: string };
+        if (error?.code === 'auth/user-not-found' || error?.code === 'auth/invalid-credential') {
+          try {
+            const newCred = await createUserWithEmailAndPassword(auth, adminEmail, adminPass);
+            if (newCred.user) {
+              await newCred.user.getIdToken(true);
+              authenticated = true;
+            }
+          } catch {}
+        }
+      }
     }
   }
-  return !!auth.currentUser;
+
+  // 2. Also ensure authenticated on fallback auth (official project) if distinct
+  if (fallbackAuth && fallbackAuth !== auth) {
+    if (fallbackAuth.currentUser && (fallbackAuth.currentUser.uid === SOLE_AUTHORIZED_ADMIN_UID || isPrimarySuperAdminEmail(fallbackAuth.currentUser.email))) {
+      try {
+        await fallbackAuth.currentUser.getIdToken(true);
+        authenticated = true;
+      } catch {}
+    } else {
+      try {
+        const cred = await signInWithEmailAndPassword(fallbackAuth, adminEmail, adminPass);
+        if (cred.user) {
+          await cred.user.getIdToken(true);
+          authenticated = true;
+        }
+      } catch {}
+    }
+  }
+
+  return authenticated;
 }
 
 /**

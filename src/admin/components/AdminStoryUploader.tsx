@@ -95,6 +95,8 @@ export const AdminStoryUploader: React.FC<AdminStoryUploaderProps> = ({
   const [coverImage, setCoverImage] = useState('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80');
   const [coverImageFileName, setCoverImageFileName] = useState('');
   const [coverPreviewUrl, setCoverPreviewUrl] = useState('');
+  const [storageAudioPath, setStorageAudioPath] = useState('');
+  const [storageCoverPath, setStorageCoverPath] = useState('');
   const [isCoverUploading, setIsCoverUploading] = useState(false);
   const [coverUploadProgress, setCoverUploadProgress] = useState(0);
   const [isCoverFirebaseStored, setIsCoverFirebaseStored] = useState(false);
@@ -162,6 +164,7 @@ export const AdminStoryUploader: React.FC<AdminStoryUploaderProps> = ({
 
       if (result.downloadUrl) {
         setAudioUrl(result.downloadUrl);
+        if (result.storagePath) setStorageAudioPath(result.storagePath);
         setIsAudioFirebaseStored(true);
         setAudioUploadStatusMessage('Firebase Storage-এ অডিও সংরক্ষিত হয়েছে');
       } else {
@@ -196,6 +199,7 @@ export const AdminStoryUploader: React.FC<AdminStoryUploaderProps> = ({
       });
       if (result.downloadUrl) {
         setCoverImage(result.downloadUrl);
+        if (result.storagePath) setStorageCoverPath(result.storagePath);
         setIsCoverFirebaseStored(true);
       }
     } catch (err: unknown) {
@@ -277,8 +281,9 @@ export const AdminStoryUploader: React.FC<AdminStoryUploaderProps> = ({
       coverImage: coverImage.trim() || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80',
       colorGradient: genre === 'প্রেম ও রোমান্স (রোমান্টিক গল্প)' ? 'from-rose-950 via-zinc-950 to-black' : 'from-emerald-950 via-zinc-950 to-black',
       releaseDate: new Date().toISOString().split('T')[0],
-      rating: 5.0,
-      listenCount: 1,
+      rating: 0,
+      reviewsCount: 0,
+      listenCount: 0,
       chapters: [
         { id: 'c1', title: '১. সূচনা পর্ব', timestamp: 0, duration: quarter },
         { id: 'c2', title: '২. রহস্যের উন্মোচন', timestamp: quarter, duration: quarter },
@@ -292,6 +297,11 @@ export const AdminStoryUploader: React.FC<AdminStoryUploaderProps> = ({
       ],
       fullStoryText: fullStoryText.trim() || `${title} এর পূর্ণ কাহিনি...`,
       createdAt: new Date().toISOString(),
+      storageAudioPath: storageAudioPath || undefined,
+      storageCoverPath: storageCoverPath || undefined,
+      accessSetting,
+      podcastAccessSetting,
+      storyType,
     };
 
     try {
@@ -317,6 +327,8 @@ export const AdminStoryUploader: React.FC<AdminStoryUploaderProps> = ({
       setAudioDurationSec(0);
       setCoverImageFileName('');
       setCoverPreviewUrl('');
+      setStorageAudioPath('');
+      setStorageCoverPath('');
       setLengthCategory('');
       setStoryType('');
       setStoryPrice('');

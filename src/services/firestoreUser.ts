@@ -14,6 +14,10 @@ import { AudienceUser } from '../types';
 
 let cachedFirestore: Firestore | null = null;
 
+export function resetCachedFirestore(): void {
+  cachedFirestore = null;
+}
+
 /**
  * Returns the Cloud Firestore instance for the configured database in goppo-kahini-app.
  */
@@ -22,7 +26,11 @@ export function getGoppoFirestore(): Firestore | null {
     try {
       const app = getGoppoFirebaseApp();
       const config = getFirebaseConfig();
-      if (config.firestoreDatabaseId && config.firestoreDatabaseId !== '(default)') {
+      if (
+        config.firestoreDatabaseId &&
+        config.firestoreDatabaseId !== '(default)' &&
+        config.projectId !== 'jd-productions-app'
+      ) {
         cachedFirestore = getFirestore(app, config.firestoreDatabaseId);
       } else {
         cachedFirestore = getFirestore(app);

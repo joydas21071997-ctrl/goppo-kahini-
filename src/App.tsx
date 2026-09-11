@@ -74,6 +74,9 @@ import {
 } from './services/firebaseAuth';
 import { isAuthorizedAdmin } from './services/adminAuth';
 import { AdminPortalApp, StandaloneAdminPortal } from './admin';
+import { LegalSupportPage } from './components/legal/LegalSupportPage';
+import { LegalSupportDropdown } from './components/legal/LegalSupportDropdown';
+import { LegalPolicySlug } from './data/legalPolicies';
 import {
   subscribeStoriesFromFirestore,
   saveStoryToFirestore,
@@ -399,6 +402,62 @@ export default function App() {
   const [isNarratorAppModalOpen, setIsNarratorAppModalOpen] = useState(false);
   const [isCreatorLoginModalOpen, setIsCreatorLoginModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+
+  // --- Legal & Support Public Page Routing State ---
+  const getPolicySlugFromUrl = (): LegalPolicySlug | null => {
+    if (typeof window === 'undefined') return null;
+    const path = window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase();
+    const search = new URLSearchParams(window.location.search);
+    const pageParam = (search.get('page') || search.get('policy') || search.get('legal') || '').toLowerCase();
+    const hash = window.location.hash.replace(/^#/, '').toLowerCase();
+
+    const validSlugs: LegalPolicySlug[] = ['privacy-policy', 'terms', 'refund-policy', 'disclaimer', 'contact'];
+
+    if (validSlugs.includes(path as LegalPolicySlug)) return path as LegalPolicySlug;
+    if (validSlugs.includes(pageParam as LegalPolicySlug)) return pageParam as LegalPolicySlug;
+    if (validSlugs.includes(hash as LegalPolicySlug)) return hash as LegalPolicySlug;
+
+    // Friendly aliases
+    if (path === 'privacy' || hash === 'privacy') return 'privacy-policy';
+    if (path === 'refund' || hash === 'refund') return 'refund-policy';
+    if (path === 'terms-and-conditions' || hash === 'terms-and-conditions') return 'terms';
+    if (path === 'support' || hash === 'support' || path === 'contact-us' || hash === 'contact-us') return 'contact';
+
+    return null;
+  };
+
+  const [currentPolicyPage, setCurrentPolicyPage] = useState<LegalPolicySlug | null>(() => getPolicySlugFromUrl());
+
+  const handleSelectPolicy = (slug: LegalPolicySlug) => {
+    setCurrentPolicyPage(slug);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ policy: slug }, '', `/${slug}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleNavigateHomeFromPolicy = () => {
+    setCurrentPolicyPage(null);
+    if (typeof window !== 'undefined') {
+      window.history.pushState(null, '', '/');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Sync route on popstate and hashchange (Browser back/forward navigation)
+  useEffect(() => {
+    const handlePopState = () => {
+      const slug = getPolicySlugFromUrl();
+      setCurrentPolicyPage(slug);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
+    };
+  }, []);
 
   // --- Audience User & Authentication State (শ্রোতা একাউন্ট ও লগইন স্টেট) ---
   const [currentUser, setCurrentUser] = useState<AudienceUser | null>(null);
@@ -1497,9 +1556,11 @@ export default function App() {
         handleOpenSubscriptionFlow(null);
       }
     } else if (tab === 'lifestories') {
+      if (currentPolicyPage) handleNavigateHomeFromPolicy();
       setActiveMainView('lifestories');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (tab === 'stories') {
+      if (currentPolicyPage) handleNavigateHomeFromPolicy();
       setActiveMainView('stories');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -1649,15 +1710,19 @@ export default function App() {
         onOpenUserAuth={handleOpenUserAuth}
         onOpenUserAccount={() => setIsUserAccountOpen(true)}
         onLogoutUser={handleLogoutUser}
+        onSelectPolicy={handleSelectPolicy}
       />
 
       {/* Main View Switcher Banner on Mobile/Tablet */}
       <div className="lg:hidden border-b border-purple-950/60 bg-[#120a1c]/95 px-3 py-2">
         <div className="grid grid-cols-2 gap-2">
           <button
-            onClick={() => setActiveMainView('stories')}
+            onClick={() => {
+              if (currentPolicyPage) handleNavigateHomeFromPolicy();
+              setActiveMainView('stories');
+            }}
             className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeMainView === 'stories'
+              !currentPolicyPage && activeMainView === 'stories'
                 ? 'bg-purple-600 text-white shadow-sm'
                 : 'bg-[#1a1426] text-zinc-400'
             }`}
@@ -1667,9 +1732,12 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => setActiveMainView('lifestories')}
+            onClick={() => {
+              if (currentPolicyPage) handleNavigateHomeFromPolicy();
+              setActiveMainView('lifestories');
+            }}
             className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all relative ${
-              activeMainView === 'lifestories'
+              !currentPolicyPage && activeMainView === 'lifestories'
                 ? 'bg-pink-500 text-white font-black shadow-sm'
                 : 'bg-[#1a1426] text-zinc-400'
             }`}
@@ -1681,8 +1749,14 @@ export default function App() {
         </div>
       </div>
 
-      {/* CONDITIONAL MAIN VIEW: 1. STORIES OR 2. LIFE STORIES */}
-      {activeMainView === 'lifestories' ? (
+      {/* CONDITIONAL MAIN VIEW: 1. LEGAL & SUPPORT PAGE OR 2. LIFE STORIES OR 3. STORIES */}
+      {currentPolicyPage ? (
+        <LegalSupportPage
+          initialSlug={currentPolicyPage}
+          onNavigateHome={handleNavigateHomeFromPolicy}
+          onSelectPolicy={handleSelectPolicy}
+        />
+      ) : activeMainView === 'lifestories' ? (
         <main className="mx-auto max-w-7xl w-full flex-1 px-3 sm:px-6 lg:px-8 py-5 sm:py-7">
           <LifeStoriesSection
             episodes={lifeStories}
@@ -2002,14 +2076,20 @@ export default function App() {
 
           <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-[11px]">
             <button
-              onClick={() => setActiveMainView('stories')}
+              onClick={() => {
+                if (currentPolicyPage) handleNavigateHomeFromPolicy();
+                setActiveMainView('stories');
+              }}
               className="text-zinc-400 hover:text-white transition-colors"
             >
               গল্পঘর
             </button>
 
             <button
-              onClick={() => setActiveMainView('lifestories')}
+              onClick={() => {
+                if (currentPolicyPage) handleNavigateHomeFromPolicy();
+                setActiveMainView('lifestories');
+              }}
               className="text-pink-400 hover:text-pink-300 font-semibold transition-colors"
             >
               🎙️ মানুষের জীবন কথা
@@ -2021,6 +2101,12 @@ export default function App() {
             >
               কথক অডিশন
             </button>
+
+            {/* Mobile-First Compact Legal & Support Dropdown */}
+            <LegalSupportDropdown
+              variant="footer-dropdown"
+              onSelectPolicy={handleSelectPolicy}
+            />
 
             {creatorSession?.isLoggedIn && (
               <div className="flex items-center gap-2 bg-[#1a1426] px-2.5 py-1 rounded-full border border-purple-900/40">

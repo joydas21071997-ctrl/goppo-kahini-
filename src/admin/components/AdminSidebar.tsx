@@ -11,7 +11,8 @@ import {
   Settings,
   ShieldCheck,
   Building,
-  ChevronRight
+  ChevronRight,
+  Scale
 } from 'lucide-react';
 import { AdminTab } from '../types';
 
@@ -90,6 +91,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       id: 'about_mission',
       label: 'আমাদের লক্ষ্য ও টিম',
       icon: <Building className="w-4 h-4" />,
+    },
+    {
+      id: 'legal_support',
+      label: 'আইন, পলিসি ও সহায়তা',
+      icon: <Scale className="w-4 h-4 text-purple-300" />,
     },
     {
       id: 'settings',

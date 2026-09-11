@@ -28,6 +28,8 @@ import {
 import { GoppoKahiniLogo } from './GoppoKahiniLogo';
 import { ThemeMode, CreatorSession, AudienceUser } from '../types';
 import { isAuthorizedAdmin } from '../services/adminAuth';
+import { LegalSupportDropdown } from './legal/LegalSupportDropdown';
+import { LegalPolicySlug } from '../data/legalPolicies';
 
 interface NavbarProps {
   isSubscribed: boolean;
@@ -55,6 +57,7 @@ interface NavbarProps {
   onOpenUserAuth: (reason?: 'play_story' | 'take_pass' | 'library' | 'general', message?: string) => void;
   onOpenUserAccount: () => void;
   onLogoutUser: () => void;
+  onSelectPolicy?: (slug: LegalPolicySlug) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -83,6 +86,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenUserAuth,
   onOpenUserAccount,
   onLogoutUser,
+  onSelectPolicy,
 }) => {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -639,26 +643,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <ChevronRight className="h-3.5 w-3.5 text-zinc-600 group-hover:text-zinc-300" />
                     </button>
 
-                    {/* Rules, Privacy & Terms (চিন্তা, নিয়ম, গোপনীয়তা ও নীতি) */}
-                    <button
-                      onClick={() => {
-                        closeDrawer();
-                        onOpenAbout();
-                      }}
-                      className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs text-zinc-200 hover:bg-[#221634] hover:text-white transition-all group"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-purple-500/15 text-purple-300">
-                          <FileText className="h-3.5 w-3.5" />
-                        </div>
-                        <span className="font-medium">চিন্তা, নিয়ম, গোপনীয়তা ও নীতি</span>
-                      </div>
-                      <ChevronRight className="h-3.5 w-3.5 text-zinc-600 group-hover:text-zinc-300" />
-                    </button>
-
                   </div>
                 )}
               </div>
+
+              {/* 6. EXPANDABLE ACCORDION: আইন ও সহায়তা (Legal & Support) */}
+              {onSelectPolicy && (
+                <LegalSupportDropdown
+                  variant="drawer-accordion"
+                  onSelectPolicy={(slug) => {
+                    closeDrawer();
+                    onSelectPolicy(slug);
+                  }}
+                />
+              )}
 
               {/* Authorized Admin Panel Subtle Access Option (Strictly hidden for normal users & visitors) */}
               {isAdmin && (

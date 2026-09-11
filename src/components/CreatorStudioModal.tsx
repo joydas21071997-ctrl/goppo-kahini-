@@ -42,8 +42,10 @@ import {
   FileText,
   CheckCheck,
   Loader2,
-  HardDrive
+  HardDrive,
+  Scale
 } from 'lucide-react';
+import { AdminLegalSupportManager } from '../admin/components/AdminLegalSupportManager';
 import { uploadAudioToFirebaseStorage, uploadCoverToFirebaseStorage } from '../services/firebaseStorage';
 import { getFirebaseConfig } from '../services/firebaseConfig';
 import {
@@ -124,7 +126,7 @@ export const CreatorStudioModal: React.FC<CreatorStudioModalProps> = ({
   onOpenStandaloneAdmin,
 }) => {
   const isSuperAdmin = creatorSession?.role === 'super_admin';
-  const [activeTab, setActiveTab] = useState<'payments' | 'upload' | 'crm' | 'lifestories' | 'inbox' | 'approvals' | 'settings' | 'guidelines' | 'about_mission'>('payments');
+  const [activeTab, setActiveTab] = useState<'payments' | 'upload' | 'crm' | 'lifestories' | 'inbox' | 'approvals' | 'settings' | 'guidelines' | 'about_mission' | 'legal_support'>('payments');
 
   // About Us & Mission data management state (Saved to localStorage)
   const [aboutMissionData, setAboutMissionData] = useState<AboutMissionData>(() => {
@@ -823,6 +825,22 @@ export const CreatorStudioModal: React.FC<CreatorStudioModalProps> = ({
                 <span className="rounded-full bg-zinc-800 px-1.5 py-0.2 text-[10px] text-green-300 font-mono">
                   {aboutMissionData.teamMembers.length}
                 </span>
+              </button>
+            )}
+
+            {/* Legal & Support Policies (Super Admin) */}
+            {isSuperAdmin && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('legal_support')}
+                className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-all relative ${
+                  activeTab === 'legal_support'
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-950/40'
+                    : 'text-zinc-400 hover:text-white bg-zinc-900/60 border border-zinc-800/60'
+                }`}
+              >
+                <Scale className="h-3.5 w-3.5 text-purple-300" />
+                <span>আইন, পলিসি ও সহায়তা</span>
               </button>
             )}
 
@@ -2857,6 +2875,13 @@ export const CreatorStudioModal: React.FC<CreatorStudioModalProps> = ({
                   শ্রোতাদের সর্বোচ্চ মানের শ্রুতিসুখ দেওয়ার জন্য গল্প আপলোডের সময় নয়েজবিহীন ও স্পষ্ট অডিও আপলোড করুন।
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* TAB: LEGAL & POLICIES MANAGEMENT */}
+          {activeTab === 'legal_support' && isSuperAdmin && (
+            <div className="mt-5">
+              <AdminLegalSupportManager />
             </div>
           )}
 

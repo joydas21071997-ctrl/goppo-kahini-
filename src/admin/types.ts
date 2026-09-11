@@ -28,7 +28,8 @@ export type AdminTab =
   | 'lifestories'
   | 'inbox'
   | 'settings'
-  | 'about_mission';
+  | 'about_mission'
+  | 'legal_support';
 
 export interface AdminPortalProps {
   // Navigation & session

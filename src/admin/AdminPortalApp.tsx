@@ -15,6 +15,7 @@ import { AdminInboxManager } from './components/AdminInboxManager';
 import { AdminSettingsManager } from './components/AdminSettingsManager';
 import { AdminAboutMissionManager } from './components/AdminAboutMissionManager';
 import { AdminTeamPermissionsManager } from './components/AdminTeamPermissionsManager';
+import { AdminLegalSupportManager } from './components/AdminLegalSupportManager';
 import { AdminPaymentManagement } from '../components/AdminPaymentManagement';
 import { seedInitialStoriesToFirestore } from '../services/firestoreStories';
 import { INITIAL_STORIES } from '../data/stories';
@@ -230,6 +231,7 @@ export const AdminPortalApp: React.FC<AdminPortalProps> = ({
           )}
 
           {activeTab === 'about_mission' && <AdminAboutMissionManager />}
+          {activeTab === 'legal_support' && <AdminLegalSupportManager />}
         </section>
       </main>
     </div>

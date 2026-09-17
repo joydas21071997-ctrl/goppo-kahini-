@@ -294,6 +294,58 @@
         }
       },
       "required": ["userId", "amount", "status", "utrTransactionId"]
+    },
+    "StoryReview": {
+      "title": "StoryReview",
+      "description": "User listener review and rating for an audio story",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Review document identifier (userId)"
+        },
+        "storyId": {
+          "type": "string",
+          "description": "Story id"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Review author UID"
+        },
+        "userName": {
+          "type": "string",
+          "description": "Review author name"
+        },
+        "userEmail": {
+          "type": "string",
+          "description": "Review author email"
+        },
+        "userPhotoURL": {
+          "type": "string",
+          "description": "Review author profile image"
+        },
+        "rating": {
+          "type": "number",
+          "description": "Numeric rating 1 to 5"
+        },
+        "comment": {
+          "type": "string",
+          "description": "Text review / comment content"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation ISO timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update ISO timestamp"
+        },
+        "likes": {
+          "type": "number",
+          "description": "Number of upvotes / likes"
+        }
+      },
+      "required": ["storyId", "userId", "userName", "rating", "comment"]
     }
   },
   "firestore": {
@@ -304,6 +356,10 @@
     "/stories/{storyId}": {
       "schema": "AudioStory",
       "description": "Public audio story documents accessible to audience for playback and managed by Admin"
+    },
+    "/stories/{storyId}/reviews/{userId}": {
+      "schema": "StoryReview",
+      "description": "Listener reviews and ratings on a story"
     },
     "/stories/{storyId}/episodes/{episodeId}": {
       "schema": "StoryEpisode",

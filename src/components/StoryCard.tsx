@@ -9,9 +9,10 @@ import {
   Headphones,
   Crown,
   Star,
-  MessageSquare
+  MessageSquare,
+  Flame
 } from 'lucide-react';
-import { Story, UserSubscription } from '../types';
+import { Story, UserSubscription, ThemeMode } from '../types';
 
 interface StoryCardProps {
   story: Story;
@@ -30,6 +31,9 @@ interface StoryCardProps {
   onOpenPaywall?: (story: Story) => void;
   reviewsCount?: number;
   onOpenReviews?: (itemId: string, itemTitle: string, itemType: 'story' | 'life_story') => void;
+  theme?: ThemeMode;
+  compact?: boolean;
+  rankingNumber?: number;
 }
 
 export const StoryCard: React.FC<StoryCardProps> = ({
@@ -49,7 +53,11 @@ export const StoryCard: React.FC<StoryCardProps> = ({
   onOpenPaywall,
   reviewsCount = 12,
   onOpenReviews,
+  theme = 'purple-light',
+  compact = false,
+  rankingNumber,
 }) => {
+  const isLight = theme === 'purple-light' || theme === 'calm-green';
   const isCurrentlyPlaying = Boolean(isPlayingThis ?? isPlaying);
   const isSubscribed = Boolean(isSubscribedProp ?? (subscription?.status === 'active'));
   const isUnlockedIndividually = Boolean(
@@ -67,7 +75,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
-    return `${mins} মিনিট`;
+    return `${mins} মি.`;
   };
 
   const handleActionClick = (e: React.MouseEvent) => {
@@ -106,41 +114,57 @@ export const StoryCard: React.FC<StoryCardProps> = ({
     <div
       id={`story-card-${story.id}`}
       onClick={handleCardClick}
-      className={`group relative flex flex-col overflow-hidden rounded-3xl border transition-all duration-300 cursor-pointer ${
+      className={`group relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-200 cursor-pointer ${
         isCurrentlyPlaying
-          ? 'border-pink-400 bg-[#171022] shadow-xl shadow-pink-950/50 ring-1 ring-pink-400/40'
-          : 'border-purple-900/40 bg-[#120a1c]/90 hover:border-pink-400/50 hover:bg-[#191024] hover:shadow-xl hover:shadow-purple-950/30'
+          ? isLight
+            ? 'border-purple-600 bg-purple-50/80 shadow-md ring-1 ring-purple-500/40'
+            : 'border-pink-400 bg-[#171022] shadow-lg shadow-pink-950/40 ring-1 ring-pink-400/40'
+          : isLight
+            ? 'border-purple-200/90 bg-white hover:border-purple-400 hover:shadow-md hover:shadow-purple-100/60'
+            : 'border-purple-900/40 bg-[#120a1c]/90 hover:border-pink-400/40 hover:bg-[#170e24] hover:shadow-md'
       }`}
     >
-      {/* Cover Image Container */}
-      <div className="relative aspect-[16/10] w-full overflow-hidden bg-black">
+      {/* Compact Proportional Cover Image Container */}
+      <div className="relative aspect-[16/11] w-full overflow-hidden bg-black">
         <img
           src={story.coverImage}
           alt={story.title}
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-90"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
 
-        {/* Top Badges: Light Purple & Pink on Black */}
-        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none">
-          {story.isLittlePassOnly ? (
-            story.lengthCategory === 'mega' ? (
-              <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-md">
-                <Crown className="h-3 w-3 fill-white" />
-                <span>মেগা গল্প • ₹১০ বা পাস</span>
+        {/* Top Badges: Free vs Pass + Ranking + Bookmark */}
+        <div className="absolute top-2 left-2 right-2 flex items-center justify-between pointer-events-none z-10">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {rankingNumber !== undefined && (
+              <span className="flex items-center gap-1 rounded-md bg-amber-400 text-zinc-950 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black shadow-sm border border-amber-300">
+                <Flame className="h-2.5 w-2.5 fill-current text-zinc-950" />
+                <span>#{rankingNumber}</span>
               </span>
+            )}
+            {story.isLittlePassOnly ? (
+              story.lengthCategory === 'mega' ? (
+                <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-white shadow-sm">
+                  <Crown className="h-2.5 w-2.5 fill-white" />
+                  <span>মেগা পাস</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-white shadow-sm">
+                  <Sparkles className="h-2.5 w-2.5 fill-white" />
+                  <span>₹২০ পাস</span>
+                </span>
+              )
             ) : (
-              <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-md">
-                <Sparkles className="h-3 w-3 fill-white" />
-                <span>₹২০ পাস</span>
+              <span className={`flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[9px] sm:text-[10px] font-bold shadow-xs ${
+                isLight
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
+                  : 'bg-emerald-500/20 backdrop-blur-md text-emerald-300 border border-emerald-500/40'
+              }`}>
+                ✓ ফ্রি গল্প
               </span>
-            )
-          ) : (
-            <span className="flex items-center gap-1 rounded-full bg-purple-500/20 backdrop-blur-md px-2.5 py-0.5 text-[10px] font-bold text-purple-300 border border-purple-500/40">
-              ফ্রি গল্প
-            </span>
-          )}
+            )}
+          </div>
 
           {/* Bookmark Button */}
           {onToggleBookmark && (
@@ -150,105 +174,120 @@ export const StoryCard: React.FC<StoryCardProps> = ({
                 e.stopPropagation();
                 onToggleBookmark(story);
               }}
-              className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-black/70 backdrop-blur-md text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-pink-300"
+              className={`pointer-events-auto flex h-7 w-7 items-center justify-center rounded-full backdrop-blur-md transition-colors ${
+                isLight
+                  ? 'bg-white/90 text-zinc-600 hover:bg-white hover:text-purple-700 shadow-xs'
+                  : 'bg-black/70 text-zinc-300 hover:bg-zinc-800 hover:text-pink-300'
+              }`}
               title="বুকমার্ক করুন"
             >
               <Bookmark
-                className={`h-4 w-4 ${
-                  isBookmarked ? 'fill-pink-400 text-pink-400' : ''
+                className={`h-3.5 w-3.5 ${
+                  isBookmarked ? (isLight ? 'fill-purple-600 text-purple-600' : 'fill-pink-400 text-pink-400') : ''
                 }`}
               />
             </button>
           )}
         </div>
 
-        {/* Play/Pause Button Overlay */}
+        {/* Play/Pause Button Overlay (Sleeker & Proportional) */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button
             type="button"
             onClick={handleActionClick}
-            className={`pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-transform duration-300 ${
+            className={`pointer-events-auto flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full shadow-md transition-transform duration-300 ${
               isCurrentlyPlaying
-                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white scale-105 ring-4 ring-pink-400/30'
-                : 'bg-black/80 backdrop-blur-md text-white hover:scale-110 hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white border border-purple-500/30'
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white scale-105 ring-2 ring-pink-400/40'
+                : 'bg-black/75 backdrop-blur-md text-white hover:scale-105 hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 border border-white/20'
             }`}
           >
             {isLocked ? (
-              <Lock className="h-5 w-5 text-purple-300" />
+              <Lock className="h-4 w-4 text-purple-200" />
             ) : isCurrentlyPlaying ? (
-              <Pause className="h-5 w-5 fill-current" />
+              <Pause className="h-4 w-4 fill-current" />
             ) : (
-              <Play className="h-5 w-5 fill-current ml-0.5" />
+              <Play className="h-4 w-4 fill-current ml-0.5" />
             )}
           </button>
         </div>
 
-        {/* Bottom Time & Category Indicator inside cover */}
-        <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between text-[11px] text-zinc-300 pointer-events-none">
-          <span className="flex items-center gap-1 bg-black/80 backdrop-blur-sm px-2.5 py-0.5 rounded-full border border-purple-900/40">
-            <Clock className="h-3 w-3 text-pink-400" />
+        {/* Bottom Duration Tag inside cover */}
+        <div className="absolute bottom-1.5 left-2 right-2 flex items-center justify-between text-[10px] text-zinc-200 pointer-events-none">
+          <span className="flex items-center gap-1 bg-black/80 backdrop-blur-xs px-2 py-0.5 rounded-md border border-white/10 font-medium">
+            <Clock className="h-2.5 w-2.5 text-pink-400" />
             <span>{formatDuration(story.duration)}</span>
           </span>
 
-          <span className="rounded-full bg-black/80 backdrop-blur-sm px-2.5 py-0.5 text-[10px] font-medium text-purple-300 border border-purple-500/30">
-            {story.lengthCategory === 'mini' ? 'মিনি গল্প' : story.lengthCategory === 'medium' ? 'মাঝারি গল্প' : 'মেগা গল্প'}
+          <span className="rounded-md bg-black/80 backdrop-blur-xs px-1.5 py-0.5 text-[9px] font-medium text-purple-200 border border-white/10">
+            {story.lengthCategory === 'mini' ? 'মিনি' : story.lengthCategory === 'medium' ? 'মাঝারি' : 'মেগা'}
           </span>
         </div>
       </div>
 
-      {/* Content Meta */}
-      <div className="flex flex-1 flex-col p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="rounded-md bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 text-[10px] font-semibold text-purple-300">
-            {story.genre}
-          </span>
-          <span className="text-[10px] text-zinc-400">
-            • {story.chapters.length} টি অধ্যায়
-          </span>
+      {/* Content Meta - Compact & High-Contrast Typography */}
+      <div className="flex flex-1 flex-col p-2.5 sm:p-3 space-y-1.5 justify-between">
+        <div>
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className={`rounded px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold ${
+              isLight
+                ? 'bg-purple-100 border border-purple-200 text-purple-900'
+                : 'bg-purple-500/15 border border-purple-500/30 text-purple-300'
+            }`}>
+              {story.genre}
+            </span>
+            <span className={`text-[9px] ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>
+              • {story.chapters.length} পর্ব
+            </span>
+          </div>
+
+          <h3 className={`font-serif-story text-xs sm:text-sm font-bold transition-colors line-clamp-1 ${
+            isLight
+              ? 'text-zinc-950 group-hover:text-purple-700'
+              : 'text-white group-hover:text-pink-300'
+          }`}>
+            {story.title}
+          </h3>
+
+          <p className={`text-[10px] sm:text-[11px] line-clamp-1 leading-snug mt-0.5 ${
+            isLight ? 'text-zinc-600 font-medium' : 'text-zinc-400'
+          }`}>
+            {story.tagline}
+          </p>
         </div>
 
-        <h3 className="font-serif-story text-base font-bold text-white group-hover:text-pink-300 transition-colors line-clamp-1">
-          {story.title}
-        </h3>
-
-        <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed flex-1">
-          {story.tagline}
-        </p>
-
-        {/* Footer info: Narrator & Interactive 5-Star Rating / Reviews Button */}
-        <div className="pt-3 border-t border-purple-900/30 flex items-center justify-between text-[11px]">
-          <div className="flex items-center gap-1.5 truncate max-w-[150px] text-zinc-400">
-            <Headphones className="h-3 w-3 text-pink-400 shrink-0" />
-            <span className="truncate">{story.narrator}</span>
+        {/* Footer info: Narrator & Interactive Rating / Reviews Button */}
+        <div className={`pt-2 border-t flex items-center justify-between text-[10px] gap-1 ${
+          isLight ? 'border-purple-100' : 'border-purple-900/30'
+        }`}>
+          <div className={`flex items-center gap-1 truncate max-w-[90px] sm:max-w-[110px] ${
+            isLight ? 'text-zinc-700 font-semibold' : 'text-zinc-300'
+          }`}>
+            <Headphones className="h-3 w-3 text-purple-600 shrink-0" />
+            <span className="truncate text-[10px]">{story.narrator}</span>
           </div>
 
           {/* Interactive Rating & Comments trigger */}
           <button
             type="button"
             onClick={handleReviewsClick}
-            className="flex items-center gap-1.5 bg-black/60 hover:bg-purple-950/40 border border-purple-500/30 hover:border-pink-400 px-2.5 py-1 rounded-xl text-zinc-300 transition-all"
-            title={story.rating && story.rating > 0 ? `গড় রেটিং: ${story.rating.toFixed(1)} ★` : 'এখনো রেটিং নেই - আপনার রেটিং ও মন্তব্য যোগ করুন'}
+            className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-lg transition-all border shrink-0 ${
+              isLight
+                ? 'bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-900'
+                : 'bg-black/60 hover:bg-purple-950/40 border-purple-500/30 hover:border-pink-400 text-zinc-200'
+            }`}
+            title="রেটিং ও মন্তব্য"
           >
-            <div className="flex items-center gap-1 text-xs">
-              {story.rating && story.rating > 0 ? (
-                <>
-                  <Star className="h-3 w-3 fill-pink-400 text-pink-400" />
-                  <span className="font-bold font-mono text-pink-400">{story.rating.toFixed(1)}</span>
-                </>
-              ) : (
-                <>
-                  <Star className="h-3 w-3 text-zinc-500" />
-                  <span className="text-[10px] text-zinc-400">নতুন</span>
-                </>
-              )}
-            </div>
-            <span className="text-zinc-600">•</span>
-            <div className="flex items-center gap-1 text-[10px] text-purple-300">
-              <MessageSquare className="h-2.5 w-2.5" />
-              <span>
-                {story.reviewsCount && story.reviewsCount > 0 ? `রিভিউ (${story.reviewsCount})` : 'মন্তব্য'}
-              </span>
-            </div>
+            <Star className={`h-2.5 w-2.5 ${
+              story.rating && story.rating > 0 
+                ? (isLight ? 'fill-purple-600 text-purple-600' : 'fill-pink-400 text-pink-400')
+                : (isLight ? 'text-zinc-400' : 'text-zinc-500')
+            }`} />
+            <span className="font-bold text-[10px] font-mono">
+              {story.rating && story.rating > 0 ? story.rating.toFixed(1) : 'নতুন'}
+            </span>
+            <span className="text-[9px] opacity-70">
+              ({story.reviewsCount || 0})
+            </span>
           </button>
         </div>
       </div>

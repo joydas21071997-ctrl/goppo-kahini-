@@ -9,48 +9,55 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated()
-        && request.auth.uid == 'hwvu4siXbGhcpbreCQfca6b1P0h1';
+        && (
+          request.auth.uid == 'hwvu4siXbGhcpbreCQfca6b1P0h1'
+          || (
+            request.auth.token.email != null 
+            && request.auth.token.email == 'joydas.21071997@gmail.com'
+            && request.auth.token.email_verified == true
+          )
+        );
     }
 
     function isOwner(userId) {
-      return isAuthenticated()
-        && request.auth.uid == userId;
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
     function isValidId(id) {
-      return id is string
-        && id.size() <= 128
-        && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return id is string && id.size() > 0 && id.size() <= 128;
     }
 
+    // ১. গল্পের কালেকশন (Stories)
     match /stories/{storyId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow create, update: if isAdmin()
+                            || (!isAuthenticated() && isValidId(storyId) && request.resource.data.title is string);
+      allow delete: if isAdmin() || !isAuthenticated();
+
+      // ২. গল্পের রিভিউ সাব-কালেকশন (Story Reviews)
+      match /reviews/{reviewId} {
+        allow read: if true;
+        
+        allow create, update: if (isAuthenticated() && (request.auth.uid == reviewId || isAdmin()))
+                              || (!isAuthenticated() && isValidId(reviewId));
+                              
+        allow delete: if isAuthenticated() && (request.auth.uid == reviewId || isAdmin());
+      }
     }
 
+    // ৩. ব্যবহারকারীদের প্রোফাইল (Users)
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-
+      
       allow create: if isOwner(userId)
                     && isValidId(userId)
-                    && request.resource.data.uid == userId
-                    && request.resource.data.email == request.auth.token.email;
-
-      allow update: if (
-        isOwner(userId)
-        && request.resource.data.uid == resource.data.uid
-        && request.resource.data.email == resource.data.email
-        && (!('createdAt' in resource.data)
-            || request.resource.data.createdAt == resource.data.createdAt)
-        && request.resource.data.subscriptionStatus
-            == resource.data.subscriptionStatus
-        && request.resource.data.subscriptionExpiry
-            == resource.data.subscriptionExpiry
-      ) || isAdmin();
-
+                    && request.resource.data.uid == userId;
+                    
+      allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
     }
 
+    // ৪. অ্যাডমিন ইউজার
     match /admin_users/{adminId} {
       allow read, write: if isAdmin();
     }
@@ -60,4 +67,3 @@ service cloud.firestore {
     }
   }
 }
-

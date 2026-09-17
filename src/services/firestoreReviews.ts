@@ -9,6 +9,8 @@ import {
   Firestore
 } from 'firebase/firestore';
 import { getGoppoFirestore } from './firestoreUser';
+import { getGoppoAuth } from './firebaseAuth';
+import { ensureAdminFirebaseAuth } from './adminAuth';
 import { ItemReview, AudienceUser } from '../types';
 
 /**
@@ -149,14 +151,32 @@ export async function getStoryReviewsOnce(storyId: string): Promise<ItemReview[]
  * If user already reviewed, updating overwrites/merges their existing review.
  */
 export async function submitOrUpdateStoryReview(
-  storyId: string,
-  reviewData: {
+  storyIdOrParams: string | { storyId: string; storyTitle?: string; rating: number; comment: string; user: AudienceUser },
+  maybeReviewData?: {
     rating: number;
     comment: string;
     itemTitle?: string;
   },
-  user: AudienceUser
+  maybeUser?: AudienceUser
 ): Promise<ItemReview> {
+  let storyId: string;
+  let reviewData: { rating: number; comment: string; itemTitle?: string };
+  let user: AudienceUser;
+
+  if (typeof storyIdOrParams === 'object') {
+    storyId = storyIdOrParams.storyId;
+    reviewData = {
+      rating: storyIdOrParams.rating,
+      comment: storyIdOrParams.comment,
+      itemTitle: storyIdOrParams.storyTitle,
+    };
+    user = storyIdOrParams.user;
+  } else {
+    storyId = storyIdOrParams;
+    reviewData = maybeReviewData || { rating: 5, comment: '' };
+    user = maybeUser!;
+  }
+
   if (!user || !user.uid) {
     throw new Error('রেটিং দেওয়ার জন্য আপনাকে অবশ্যই লগইন করতে হবে।');
   }
@@ -177,7 +197,18 @@ export async function submitOrUpdateStoryReview(
     throw new Error('Firestore ডেটাবেজ সংযোগ সক্রিয় নয়।');
   }
 
-  const reviewDocRef = doc(db, 'stories', storyId, 'reviews', user.uid);
+  // Ensure Firebase Auth session is active; auto-authenticate admin if Admin Joy is submitting
+  const auth = getGoppoAuth();
+  if (auth && !auth.currentUser && user.email && user.email.toLowerCase() === 'joydas.21071997@gmail.com') {
+    try {
+      await ensureAdminFirebaseAuth();
+    } catch (authErr) {
+      console.warn('Could not auto-ensure admin auth for review submission:', authErr);
+    }
+  }
+
+  const reviewAuthorUid = auth?.currentUser?.uid || user.uid;
+  const reviewDocRef = doc(db, 'stories', storyId, 'reviews', reviewAuthorUid);
 
   // Check if previous document exists to preserve original createdAt and likes
   let prevCreatedAt: string | null = null;
@@ -198,12 +229,12 @@ export async function submitOrUpdateStoryReview(
   const displayName = user.displayName?.trim() || user.email?.split('@')[0] || 'শ্রোতা';
 
   const payload = {
-    id: user.uid,
+    id: reviewAuthorUid,
     storyId,
     itemId: storyId,
     itemTitle: reviewData.itemTitle || '',
     itemType: 'story',
-    userId: user.uid,
+    userId: reviewAuthorUid,
     userName: displayName,
     userEmail: user.email || '',
     userPhotoURL: user.photoURL || '',
@@ -214,7 +245,17 @@ export async function submitOrUpdateStoryReview(
     likes: prevLikes,
   };
 
-  await setDoc(reviewDocRef, payload, { merge: true });
+  // Write to Firestore with proper error feedback
+  try {
+    const writePromise = setDoc(reviewDocRef, payload, { merge: true });
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('নেটওয়ার্ক ধীরগতির কারণে টাইমআউট হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।')), 10000)
+    );
+    await Promise.race([writePromise, timeoutPromise]);
+  } catch (writeErr: any) {
+    console.error('Firestore setDoc error:', writeErr);
+    throw new Error(writeErr?.message || 'রিভিউ ফায়ারবেসে সংরক্ষণ করা যায়নি।');
+  }
 
   return {
     id: user.uid,
@@ -269,14 +310,16 @@ export async function deleteStoryReview(
 export function calculateReviewStats(reviews: ItemReview[]): {
   averageRating: number;
   totalCount: number;
+  rating: number;
+  reviewsCount: number;
 } {
   if (!reviews || reviews.length === 0) {
-    return { averageRating: 0, totalCount: 0 };
+    return { averageRating: 0, totalCount: 0, rating: 0, reviewsCount: 0 };
   }
 
   const validRatings = reviews.filter((r) => typeof r.rating === 'number' && r.rating >= 1 && r.rating <= 5);
   if (validRatings.length === 0) {
-    return { averageRating: 0, totalCount: 0 };
+    return { averageRating: 0, totalCount: 0, rating: 0, reviewsCount: 0 };
   }
 
   const sum = validRatings.reduce((acc, r) => acc + r.rating, 0);
@@ -285,5 +328,7 @@ export function calculateReviewStats(reviews: ItemReview[]): {
   return {
     averageRating: avg,
     totalCount: validRatings.length,
+    rating: avg,
+    reviewsCount: validRatings.length,
   };
 }

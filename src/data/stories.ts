@@ -82,6 +82,71 @@ export const INITIAL_STORIES: Story[] = [
     ],
     fullStoryText: `একবার গভীর করে শ্বাস নিন। সারা দিনের সব ক্লান্তি এবার ধীরে ধীরে ছেড়ে দিন...`
   },
+  {
+    id: 'story-folklore-rupkatha',
+    title: 'সোনার হরিণ ও রূপোলি নদীর মায়া',
+    tagline: 'বাংলার লোকগাথা: রূপোলি নদীর ধারে এক অচেনা মায়াবী হরিণের পদচিহ্ন।',
+    description: 'পল্লীগ্রামের প্রাচীন রূপকথা আর লোকগাথার রোমাঞ্চকর মিশ্রণ। মায়াবী বাঁশির সুরে নদীর জল কেন থমকে দাঁড়িয়ে যেত?',
+    author: 'জয় (Joy)',
+    narrator: 'জয় (Joy)',
+    voiceStyle: 'warm',
+    genre: 'বাস্তব ও রূপকথা',
+    lengthCategory: 'mini', // < 10 mins
+    duration: 360, // 6 mins
+    isLittlePassOnly: false, // FREE STORY!
+    audioUrl: 'https://actions.google.com/sounds/v1/water/lapping_waves.ogg',
+    coverImage: 'https://images.unsplash.com/photo-1549366021-9f761d450615?auto=format&fit=crop&w=800&q=80',
+    colorGradient: 'from-amber-950 via-zinc-950 to-black',
+    releaseDate: '2026-09-02',
+    rating: 4.97,
+    listenCount: 28900,
+    chapters: [
+      { id: 'c1', title: '১. রূপোলি নদীর বাঁক', timestamp: 0, duration: 90 },
+      { id: 'c2', title: '২. মায়াবী বাঁশির সুর', timestamp: 90, duration: 90 },
+      { id: 'c3', title: '৩. সোনার হরিণ', timestamp: 180, duration: 90 },
+      { id: 'c4', title: '৪. সত্যের সন্ধান', timestamp: 270, duration: 90 },
+    ],
+    transcript: [
+      { id: 't1', time: 0, text: 'বাংলার শ্যামল প্রান্তরে রূপোলি নদী বয়ে চলেছে শান্ত ছন্দে।' },
+      { id: 't2', time: 30, text: 'সন্ধ্যা নামলেই বটবৃক্ষের ছায়ায় শোনা যায় এক অদ্ভুত মিষ্টি বাঁশির তান।' },
+      { id: 't3', time: 90, text: 'অধ্যায় দুই: মায়াবী সুর ও আলো।' },
+      { id: 't4', time: 180, text: 'অধ্যায় তিন: সোনার হরিণের আত্মপ্রকাশ।' },
+      { id: 't5', time: 270, text: 'অধ্যায় চার: লোকগাথার অমর চিরন্তন সত্য।' },
+    ],
+    fullStoryText: `বাংলার শ্যামল প্রান্তরে রূপোলি নদী বয়ে চলেছে শান্ত ছন্দে...`
+  },
+  {
+    id: 'story-detective-tea-mystery',
+    title: 'বাগবাজারের প্রাচীন সিন্দুকে রক্তপদ্ম',
+    tagline: 'রহস্য ও গোয়েন্দা: শতাব্দী প্রাচীন বাড়ির বন্ধ কুঠুরিতে এক অবিশ্বাস্য জট।',
+    description: 'উত্তর কলকাতার বনেদি পরিবারের উত্তরাধিকার নিয়ে শুরু হওয়া এক রহস্যময় টানাপোড়েন ও রহস্যভেদ।',
+    author: 'জয় (Joy)',
+    narrator: 'জয় (Joy)',
+    voiceStyle: 'mysterious',
+    genre: 'রহস্য ও গোয়েন্দা',
+    lengthCategory: 'mini',
+    duration: 380, // ~6.3 mins
+    isLittlePassOnly: false, // FREE STORY!
+    audioUrl: 'https://actions.google.com/sounds/v1/foley/footsteps_on_wood.ogg',
+    coverImage: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=800&q=80',
+    colorGradient: 'from-purple-950 via-zinc-950 to-black',
+    releaseDate: '2026-09-05',
+    rating: 4.93,
+    listenCount: 26400,
+    chapters: [
+      { id: 'c1', title: '১. বনেদি বাড়ির বৈঠকখানা', timestamp: 0, duration: 95 },
+      { id: 'c2', title: '২. বন্ধ সিন্দুকের চাবি', timestamp: 95, duration: 95 },
+      { id: 'c3', title: '৩. রক্তপদ্মের সংকেত', timestamp: 190, duration: 95 },
+      { id: 'c4', title: '৪. রহস্যভেদ', timestamp: 285, duration: 95 },
+    ],
+    transcript: [
+      { id: 't1', time: 0, text: 'বাগবাজারের প্রাচীন বনেদি বাড়ির বৈঠকখানায় টিকটিক করছে শতাব্দী প্রাচীন দেওয়াল ঘড়ি।' },
+      { id: 't2', time: 40, text: 'হঠাৎ ভেতরের বন্ধ কুঠুরি থেকে খুলে পড়ল ভারি সিন্দুকের পিতলের তালা।' },
+      { id: 't3', time: 190, text: 'ভেতরে রাখা ছিল একটি রক্তবর্ণ পদ্ম আর দুর্লভ মোহরের মানচিত্র।' },
+      { id: 't4', time: 285, text: 'গোয়েন্দা প্রমথ মিত্র এক নিমিষে সমাধান করলেন শতবর্ষের এই দুর্লভ জট।' },
+    ],
+    fullStoryText: `বাগবাজারের প্রাচীন বনেদি বাড়ির বৈঠকখানায় টিকটিক করছে শতাব্দী প্রাচীন দেওয়াল ঘড়ি...`
+  },
 
   // --- MEDIUM STORIES (10 - 25 MINUTES) ---
   {

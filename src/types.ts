@@ -278,7 +278,7 @@ export interface AmbientTrack {
   isPlaying: boolean;
 }
 
-export type ThemeMode = 'calm-green' | 'midnight-dark';
+export type ThemeMode = 'purple-light' | 'purple-dark' | 'calm-green' | 'midnight-dark';
 
 export interface NarratorApplication {
   id: string;

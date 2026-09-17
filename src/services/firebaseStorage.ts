@@ -46,8 +46,8 @@ export async function uploadAudioToFirebaseStorage(
   file: File,
   onProgress?: (info: UploadProgressInfo) => void
 ): Promise<{ downloadUrl: string; fileName: string; isFirebaseStored: boolean; storagePath: string }> {
-  // Ensure admin session is ready for Firebase rules
-  await ensureAdminFirebaseAuth();
+  // Ensure admin session is ready for Firebase rules if available
+  await ensureAdminFirebaseAuth().catch(() => {});
 
   const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
   const storagePath = `stories/audio/${Date.now()}_${cleanName}`;
@@ -139,8 +139,8 @@ export async function uploadCoverToFirebaseStorage(
   file: File,
   onProgress?: (pct: number) => void
 ): Promise<{ downloadUrl: string; isFirebaseStored: boolean; storagePath: string }> {
-  // Ensure admin session is ready for Firebase rules
-  await ensureAdminFirebaseAuth();
+  // Ensure admin session is ready for Firebase rules if available
+  await ensureAdminFirebaseAuth().catch(() => {});
 
   const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
   const storagePath = `stories/covers/${Date.now()}_${cleanName}`;

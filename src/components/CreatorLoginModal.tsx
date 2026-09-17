@@ -10,9 +10,11 @@ import {
   Eye,
   EyeOff,
   Sparkles,
-  Key
+  Key,
+  Loader2
 } from 'lucide-react';
 import { CreatorSession, NarratorApplication } from '../types';
+import { ensureAdminFirebaseAuth, signInAdminWithGoogle } from '../services/adminAuth';
 
 interface CreatorLoginModalProps {
   isOpen: boolean;
@@ -46,6 +48,8 @@ export const CreatorLoginModal: React.FC<CreatorLoginModalProps> = ({
 
   if (!isOpen) return null;
 
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
   const handleSecretPinLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -66,6 +70,9 @@ export const CreatorLoginModal: React.FC<CreatorLoginModalProps> = ({
       return;
     }
 
+    // Auto-authenticate with Firebase in background
+    ensureAdminFirebaseAuth().catch(() => {});
+
     const session: CreatorSession = {
       isLoggedIn: true,
       role: 'super_admin',
@@ -74,6 +81,30 @@ export const CreatorLoginModal: React.FC<CreatorLoginModalProps> = ({
     };
     onLoginSuccess(session);
     onClose();
+  };
+
+  const handleGoogleAdminLogin = async () => {
+    setIsGoogleLoading(true);
+    setError('');
+    try {
+      const res = await signInAdminWithGoogle();
+      if (res.success) {
+        const session: CreatorSession = {
+          isLoggedIn: true,
+          role: 'super_admin',
+          name: 'জয় (Joy - প্রতিষ্ঠাতা)',
+          email: res.email || 'joydas.21071997@gmail.com',
+        };
+        onLoginSuccess(session);
+        onClose();
+      } else {
+        setError(res.error || 'Google সাইন-ইন সম্পন্ন হয়নি। শুধুমাত্র joydas.21071997@gmail.com অনুমোদিত।');
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Google লগইন ব্যর্থ হয়েছে।');
+    } finally {
+      setIsGoogleLoading(false);
+    }
   };
 
   const handleAdminLogin = (e: React.FormEvent) => {
@@ -378,6 +409,30 @@ export const CreatorLoginModal: React.FC<CreatorLoginModalProps> = ({
                 <span>কথক হিসেবে স্টুডিওতে যান</span>
               </button>
             </form>
+          )}
+
+          {/* Quick Direct Google Login for Admin Joy */}
+          {mode !== 'narrator' && (
+            <div className="mt-4 pt-4 border-t border-purple-900/30">
+              <button
+                type="button"
+                onClick={handleGoogleAdminLogin}
+                disabled={isGoogleLoading}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-purple-950/70 hover:bg-purple-900/60 border border-purple-700/50 py-2.5 text-xs font-semibold text-purple-200 hover:text-white transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                {isGoogleLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-pink-400" />
+                    <span>Google দিয়ে কানেক্ট হচ্ছে...</span>
+                  </>
+                ) : (
+                  <>
+                    <Crown className="h-4 w-4 text-amber-400" />
+                    <span>Google দিয়ে সরাসরি অ্যাডমিন জয় লগইন (ফায়ারবেস সিঙ্কড)</span>
+                  </>
+                )}
+              </button>
+            </div>
           )}
 
         </div>

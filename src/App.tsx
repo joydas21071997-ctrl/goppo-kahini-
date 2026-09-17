@@ -16,7 +16,18 @@ import {
   Mic,
   Radio,
   Share2,
-  Users
+  Users,
+  Flame,
+  Gift,
+  LayoutGrid,
+  Layers,
+  ChevronRight,
+  Grid3X3,
+  Moon,
+  Compass,
+  Ghost,
+  Eye,
+  RotateCcw
 } from 'lucide-react';
 import {
   Story,
@@ -220,11 +231,20 @@ export default function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Merge with any missing initial stories so new defaults aren't lost
+          const existingIds = new Set(parsed.map((s: Story) => s.id));
+          const missing = INITIAL_STORIES.filter((s) => !existingIds.has(s.id));
+          return [...parsed, ...missing];
+        }
       } catch {}
     }
     return INITIAL_STORIES;
   });
+
+  // --- Story Catalog View & Density Customization ---
+  const [catalogViewMode, setCatalogViewMode] = useState<'sectors' | 'grid'>('sectors');
+  const [gridDensity, setGridDensity] = useState<'compact' | 'normal'>('compact');
 
   const [subscribers, setSubscribers] = useState<SubscriberLead[]>(() => {
     const saved = localStorage.getItem('goppo_kahini_subscribers');
@@ -268,11 +288,39 @@ export default function App() {
     return [];
   });
 
-  // --- Theme Mode: Calm Green (Default, serene, calming) vs Midnight Dark ---
+  // --- Theme Mode: Purple & White (Light) vs Purple & Black (Dark) ---
   const [theme, setTheme] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem('goppo_theme');
-    return (saved as ThemeMode) || 'calm-green';
+    if (saved === 'purple-dark' || saved === 'midnight-dark') return 'purple-dark';
+    return 'purple-light';
   });
+
+  const isLight = theme === 'purple-light' || theme === 'calm-green';
+
+  const handleToggleTheme = (newTheme?: ThemeMode) => {
+    const targetTheme = newTheme
+      ? newTheme
+      : isLight
+      ? 'purple-dark'
+      : 'purple-light';
+    setTheme(targetTheme);
+    localStorage.setItem('goppo_theme', targetTheme);
+  };
+
+  useEffect(() => {
+    localStorage.setItem('goppo_theme', theme);
+    if (isLight) {
+      document.documentElement.classList.add('theme-light');
+      document.documentElement.classList.remove('theme-dark');
+      document.body.style.backgroundColor = '#fcfaff';
+      document.body.style.color = '#18181b';
+    } else {
+      document.documentElement.classList.add('theme-dark');
+      document.documentElement.classList.remove('theme-light');
+      document.body.style.backgroundColor = '#120a1c';
+      document.body.style.color = '#ffffff';
+    }
+  }, [theme, isLight]);
 
   // --- Active View: Stories (গল্পঘর) or Life Stories (মানুষের জীবন কথা) ---
   const [activeMainView, setActiveMainView] = useState<'stories' | 'lifestories'>('stories');
@@ -1597,6 +1645,44 @@ export default function App() {
     return true;
   });
 
+  // --- Sector Groupings (প্রতিটি সেক্টরের জন্য আলাদা ও সাজানো গল্পতালিকা) ---
+  const freeStories = stories.filter((s) => !s.isLittlePassOnly);
+  const popularStories = [...stories].sort(
+    (a, b) => (b.listenCount * (b.rating || 4.5)) - (a.listenCount * (a.rating || 4.5))
+  );
+  const passStories = stories.filter((s) => s.isLittlePassOnly);
+  const horrorStories = stories.filter((s) => s.genre === 'ভৌতিক ও অলৌকিক');
+  const mysteryStories = stories.filter(
+    (s) => s.genre === 'রহস্য ও গোয়েন্দা' || s.genre === 'রোমাঞ্চ ও থ্রিলার'
+  );
+  const sleepStories = stories.filter((s) => s.genre === 'ঘুমের গল্প ও প্রশান্তি');
+  const folkloreStories = stories.filter(
+    (s) =>
+      s.genre === 'বাস্তব ও রূপকথা' ||
+      s.genre === 'ঐতিহাসিক ও লোকগাথা' ||
+      s.genre === 'প্রেম ও রোমান্স (রোমান্টিক গল্প)'
+  );
+
+  const isFilterActive =
+    searchQuery.trim() !== '' ||
+    selectedGenre !== 'All' ||
+    selectedLengthCategory !== 'all' ||
+    accessFilter !== 'all';
+
+  const handleResetAllFilters = () => {
+    setSelectedLengthCategory('all');
+    setSelectedGenre('All');
+    setAccessFilter('all');
+    setSearchQuery('');
+  };
+
+  const handleScrollToSector = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   const genres: { label: string; value: StoryGenre }[] = [
     { label: 'সব ধারা', value: 'All' },
     { label: 'ভৌতিক ও অলৌকিক', value: 'ভৌতিক ও অলৌকিক' },
@@ -1607,12 +1693,14 @@ export default function App() {
     { label: 'বাস্তব ও রূপকথা', value: 'বাস্তব ও রূপকথা' },
   ];
 
-  // Theme styling definitions - Light Purple background, Pink accents, Soft Black containers
-  const themeContainerClass =
-    'bg-[#201132] text-zinc-100 selection:bg-pink-500/30 selection:text-pink-300';
+  // Theme styling definitions - Light Purple (White / Lilac) vs Dark Purple & Black
+  const themeContainerClass = isLight
+    ? 'bg-[#fcfaff] text-zinc-900 selection:bg-purple-200 selection:text-purple-900'
+    : 'bg-[#120a1c] text-zinc-100 selection:bg-pink-500/30 selection:text-pink-300';
 
-  const heroSectionClass =
-    'border-b border-purple-900/30 bg-gradient-to-b from-[#2a1442]/90 via-[#1d0e2f]/90 to-[#140921]';
+  const heroSectionClass = isLight
+    ? 'border-b border-purple-200/80 bg-gradient-to-b from-purple-100/60 via-purple-50/40 to-[#fcfaff]'
+    : 'border-b border-purple-900/30 bg-gradient-to-b from-[#2a1442]/90 via-[#1d0e2f]/90 to-[#140921]';
 
   // Dedicated Standalone Admin Portal Screen
   if (isStandaloneAdminOpen) {
@@ -1703,7 +1791,7 @@ export default function App() {
         setSearchQuery={setSearchQuery}
         activeAmbientCount={ambientTracks.filter((t) => t.isPlaying).length}
         theme={theme}
-        onToggleTheme={() => setTheme(theme === 'calm-green' ? 'midnight-dark' : 'calm-green')}
+        onToggleTheme={handleToggleTheme}
         activeView={activeMainView}
         onSelectView={(view) => setActiveMainView(view)}
         currentUser={currentUser}
@@ -1714,7 +1802,9 @@ export default function App() {
       />
 
       {/* Main View Switcher Banner on Mobile/Tablet */}
-      <div className="lg:hidden border-b border-purple-950/60 bg-[#120a1c]/95 px-3 py-2">
+      <div className={`lg:hidden border-b px-3 py-2 transition-colors ${
+        isLight ? 'border-purple-200 bg-white/95' : 'border-purple-950/60 bg-[#120a1c]/95'
+      }`}>
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => {
@@ -1724,6 +1814,8 @@ export default function App() {
             className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
               !currentPolicyPage && activeMainView === 'stories'
                 ? 'bg-purple-600 text-white shadow-sm'
+                : isLight
+                ? 'bg-purple-50 text-zinc-700 hover:bg-purple-100/70'
                 : 'bg-[#1a1426] text-zinc-400'
             }`}
           >
@@ -1739,6 +1831,8 @@ export default function App() {
             className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all relative ${
               !currentPolicyPage && activeMainView === 'lifestories'
                 ? 'bg-pink-500 text-white font-black shadow-sm'
+                : isLight
+                ? 'bg-purple-50 text-zinc-700 hover:bg-purple-100/70'
                 : 'bg-[#1a1426] text-zinc-400'
             }`}
           >
@@ -1755,6 +1849,7 @@ export default function App() {
           initialSlug={currentPolicyPage}
           onNavigateHome={handleNavigateHomeFromPolicy}
           onSelectPolicy={handleSelectPolicy}
+          theme={theme}
         />
       ) : activeMainView === 'lifestories' ? (
         <main className="mx-auto max-w-7xl w-full flex-1 px-3 sm:px-6 lg:px-8 py-5 sm:py-7">
@@ -1785,26 +1880,38 @@ export default function App() {
                     <span>প্রিমিয়াম বাংলা অডিও গল্প • মাত্র ₹২০ প্রতি মাসে</span>
                   </div>
                   
-                  <h1 className="font-serif-story text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight">
+                  <h1 className={`font-serif-story text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight ${
+                    isLight ? 'text-zinc-900' : 'text-white'
+                  }`}>
                     মন জুড়ানো বাংলা অডিও গল্পের প্রশান্তিময় ভুবন
                   </h1>
                   
-                  <p className="mt-2 sm:mt-3 text-xs sm:text-base text-purple-200/80 leading-relaxed max-w-xl">
+                  <p className={`mt-2 sm:mt-3 text-xs sm:text-base leading-relaxed max-w-xl ${
+                    isLight ? 'text-zinc-600' : 'text-purple-200/80'
+                  }`}>
                     রোমাঞ্চ, ভৌতিক রহস্য ও শান্ত ঘুমের কাহিনীর সাথে ব্যাকগ্রাউন্ডে ঝুম বৃষ্টি আর নিঝুম রাতের আবহ সুর।
                   </p>
 
                   {/* Benefit Pills */}
-                  <div className="mt-3.5 flex flex-wrap items-center justify-center md:justify-start gap-2.5 text-[11px] sm:text-xs text-zinc-300">
-                    <div className="flex items-center gap-1 bg-[#15111e]/90 px-2.5 py-1 rounded-full border border-purple-900/40">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-pink-400" />
+                  <div className={`mt-3.5 flex flex-wrap items-center justify-center md:justify-start gap-2.5 text-[11px] sm:text-xs ${
+                    isLight ? 'text-zinc-700' : 'text-zinc-300'
+                  }`}>
+                    <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full border ${
+                      isLight ? 'bg-white/90 border-purple-200 shadow-xs' : 'bg-[#15111e]/90 border-purple-900/40'
+                    }`}>
+                      <CheckCircle2 className="h-3.5 w-3.5 text-pink-500" />
                       <span>কোনো বিজ্ঞাপন নেই</span>
                     </div>
-                    <div className="flex items-center gap-1 bg-[#15111e]/90 px-2.5 py-1 rounded-full border border-purple-900/40">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-pink-400" />
+                    <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full border ${
+                      isLight ? 'bg-white/90 border-purple-200 shadow-xs' : 'bg-[#15111e]/90 border-purple-900/40'
+                    }`}>
+                      <CheckCircle2 className="h-3.5 w-3.5 text-pink-500" />
                       <span>স্ক্রিন অফ করে শুনুন</span>
                     </div>
-                    <div className="flex items-center gap-1 bg-[#15111e]/90 px-2.5 py-1 rounded-full border border-purple-900/40">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-pink-400" />
+                    <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full border ${
+                      isLight ? 'bg-white/90 border-purple-200 shadow-xs' : 'bg-[#15111e]/90 border-purple-900/40'
+                    }`}>
+                      <CheckCircle2 className="h-3.5 w-3.5 text-pink-500" />
                       <span>বিকাশ, UPI ও কার্ড পেমেন্ট</span>
                     </div>
                   </div>
@@ -1823,9 +1930,13 @@ export default function App() {
                     ) : (
                       <button
                         onClick={() => setIsSubscriptionManagerOpen(true)}
-                        className="flex items-center gap-2 rounded-full bg-pink-500/20 border border-pink-500/40 px-4 py-2 text-xs font-bold text-pink-300 hover:bg-pink-500/30 transition-colors"
+                        className={`flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition-colors ${
+                          isLight
+                            ? 'bg-pink-50 border-pink-300 text-pink-700 hover:bg-pink-100'
+                            : 'bg-pink-500/20 border-pink-500/40 text-pink-300 hover:bg-pink-500/30'
+                        }`}
                       >
-                        <CheckCircle2 className="h-4 w-4 text-pink-400" />
+                        <CheckCircle2 className="h-4 w-4 text-pink-500" />
                         <span>আপনার পাস সক্রিয় আছে (ম্যানেজ করুন)</span>
                       </button>
                     )}
@@ -1833,17 +1944,25 @@ export default function App() {
                     {/* Quick switch to Life Stories podcast */}
                     <button
                       onClick={() => setActiveMainView('lifestories')}
-                      className="flex items-center gap-2 rounded-full border border-pink-500/40 bg-pink-500/10 px-4 py-2.5 text-xs sm:text-sm font-bold text-pink-300 hover:bg-pink-500/20 transition-colors"
+                      className={`flex items-center gap-2 rounded-full border px-4 py-2.5 text-xs sm:text-sm font-bold transition-colors ${
+                        isLight
+                          ? 'border-pink-300 bg-pink-50/80 text-pink-700 hover:bg-pink-100'
+                          : 'border-pink-500/40 bg-pink-500/10 text-pink-300 hover:bg-pink-500/20'
+                      }`}
                     >
-                      <Mic className="h-4 w-4 text-pink-400" />
+                      <Mic className="h-4 w-4 text-pink-500" />
                       <span>মানুষের জীবন কথা পডকাস্ট</span>
                     </button>
 
                     <button
                       onClick={() => setIsAmbientMixerOpen(true)}
-                      className="flex items-center gap-2 rounded-full border border-purple-900/50 bg-[#16121f]/90 px-4 py-2.5 text-xs sm:text-sm font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
+                      className={`flex items-center gap-2 rounded-full border px-4 py-2.5 text-xs sm:text-sm font-medium transition-colors ${
+                        isLight
+                          ? 'border-purple-200 bg-white text-zinc-700 hover:bg-purple-50 hover:text-purple-950 shadow-xs'
+                          : 'border-purple-900/50 bg-[#16121f]/90 text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                      }`}
                     >
-                      <Sliders className="h-4 w-4 text-purple-300" />
+                      <Sliders className={`h-4 w-4 ${isLight ? 'text-purple-600' : 'text-purple-300'}`} />
                       <span>আবহ শব্দ</span>
                     </button>
                   </div>
@@ -1851,7 +1970,11 @@ export default function App() {
                 </div>
 
                 {/* Right Mini Featured Story Highlight */}
-                <div className="w-full max-w-xs md:w-72 rounded-2xl border border-purple-900/40 bg-[#14101c]/90 p-3.5 sm:p-4 shadow-xl shadow-black/60">
+                <div className={`w-full max-w-xs md:w-72 rounded-2xl border p-3.5 sm:p-4 transition-colors ${
+                  isLight
+                    ? 'border-purple-200 bg-white text-zinc-900 shadow-md shadow-purple-500/5'
+                    : 'border-purple-900/40 bg-[#14101c]/90 text-white shadow-xl shadow-black/60'
+                }`}>
                   <div className="flex items-center gap-3">
                     <div className="h-14 w-14 rounded-xl overflow-hidden bg-black border border-purple-900/40 shrink-0">
                       <img
@@ -1861,21 +1984,27 @@ export default function App() {
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <span className="text-[10px] font-bold text-pink-400 uppercase tracking-wider">
+                      <span className="text-[10px] font-bold text-pink-500 uppercase tracking-wider">
                         আজকের বিশেষ গল্প
                       </span>
-                      <h4 className="font-serif-story text-xs sm:text-sm font-bold text-white truncate">
+                      <h4 className={`font-serif-story text-xs sm:text-sm font-bold truncate ${
+                        isLight ? 'text-zinc-900' : 'text-white'
+                      }`}>
                         {stories[0]?.title}
                       </h4>
-                      <p className="text-[11px] text-zinc-400 truncate">
+                      <p className={`text-[11px] truncate ${
+                        isLight ? 'text-zinc-500' : 'text-zinc-400'
+                      }`}>
                         কণ্ঠে: {stories[0]?.narrator}
                       </p>
                     </div>
                   </div>
 
-                  <div className="mt-3 pt-2.5 border-t border-zinc-800 flex items-center justify-between">
-                    <span className="text-[11px] text-pink-300 font-semibold flex items-center gap-1">
-                      <Sparkles className="h-3 w-3 fill-pink-400 text-pink-400" />
+                  <div className={`mt-3 pt-2.5 border-t flex items-center justify-between ${
+                    isLight ? 'border-purple-100' : 'border-zinc-800'
+                  }`}>
+                    <span className="text-[11px] text-pink-600 font-semibold flex items-center gap-1">
+                      <Sparkles className="h-3 w-3 fill-pink-500 text-pink-500" />
                       <span>{stories[0]?.isLittlePassOnly ? 'পাস গল্প' : 'ফ্রি গল্প'}</span>
                     </span>
                     <button
@@ -1897,8 +2026,10 @@ export default function App() {
             {/* Story Length Tabs: ছোট গল্প (< 10m), মাঝারি গল্প (10-25m), বড়/মেগা গল্প (25m+) */}
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-pink-400" />
+                <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                  isLight ? 'text-purple-900' : 'text-zinc-400'
+                }`}>
+                  <Clock className="h-3.5 w-3.5 text-pink-500" />
                   <span>গল্পের দৈর্ঘ্য অনুযায়ী ক্যাটাগরি</span>
                 </span>
               </div>
@@ -1908,139 +2039,399 @@ export default function App() {
                   onClick={() => setSelectedLengthCategory('all')}
                   className={`p-2.5 sm:p-3 rounded-2xl border text-left transition-all ${
                     selectedLengthCategory === 'all'
-                      ? 'border-pink-500 bg-pink-500/15 text-white shadow-sm'
+                      ? isLight
+                        ? 'border-purple-600 bg-purple-100/90 text-purple-950 shadow-sm'
+                        : 'border-pink-500 bg-pink-500/15 text-white shadow-sm'
+                      : isLight
+                      ? 'border-purple-200 bg-white text-zinc-700 hover:border-purple-400 hover:text-purple-900 shadow-xs'
                       : 'border-purple-950/40 bg-[#14101c]/80 text-zinc-400 hover:text-white'
                   }`}
                 >
-                  <div className="text-xs font-bold text-white flex items-center justify-between">
+                  <div className={`text-xs font-bold flex items-center justify-between ${
+                    isLight ? (selectedLengthCategory === 'all' ? 'text-purple-950' : 'text-zinc-800') : 'text-white'
+                  }`}>
                     <span>সব দৈর্ঘ্যের গল্প</span>
-                    <span className="text-[10px] font-normal text-pink-300">({stories.length})</span>
+                    <span className={`text-[10px] font-normal ${isLight ? 'text-purple-700' : 'text-pink-300'}`}>({stories.length})</span>
                   </div>
-                  <p className="text-[10px] text-zinc-400 mt-0.5">সব পর্ব একসাথে</p>
+                  <p className={`text-[10px] mt-0.5 ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>সব পর্ব একসাথে</p>
                 </button>
 
                 <button
                   onClick={() => setSelectedLengthCategory('mini')}
                   className={`p-2.5 sm:p-3 rounded-2xl border text-left transition-all ${
                     selectedLengthCategory === 'mini'
-                      ? 'border-pink-500 bg-pink-500/15 text-white shadow-sm'
+                      ? isLight
+                        ? 'border-purple-600 bg-purple-100/90 text-purple-950 shadow-sm'
+                        : 'border-pink-500 bg-pink-500/15 text-white shadow-sm'
+                      : isLight
+                      ? 'border-purple-200 bg-white text-zinc-700 hover:border-purple-400 hover:text-purple-900 shadow-xs'
                       : 'border-purple-950/40 bg-[#14101c]/80 text-zinc-400 hover:text-white'
                   }`}
                 >
-                  <div className="text-xs font-bold text-pink-300 flex items-center justify-between">
+                  <div className={`text-xs font-bold flex items-center justify-between ${
+                    isLight ? (selectedLengthCategory === 'mini' ? 'text-purple-950' : 'text-zinc-800') : 'text-pink-300'
+                  }`}>
                     <span>⏱️ ছোট / মিনি গল্প</span>
-                    <span className="text-[10px] font-normal text-pink-300">
+                    <span className={`text-[10px] font-normal ${isLight ? 'text-purple-700' : 'text-pink-300'}`}>
                       ({stories.filter((s) => s.lengthCategory === 'mini').length})
                     </span>
                   </div>
-                  <p className="text-[10px] text-zinc-400 mt-0.5">&lt; ১০ মিনিট (চটজলদি)</p>
+                  <p className={`text-[10px] mt-0.5 ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>&lt; ১০ মিনিট (চটজলদি)</p>
                 </button>
 
                 <button
                   onClick={() => setSelectedLengthCategory('medium')}
                   className={`p-2.5 sm:p-3 rounded-2xl border text-left transition-all ${
                     selectedLengthCategory === 'medium'
-                      ? 'border-purple-400 bg-purple-500/15 text-white shadow-sm'
+                      ? isLight
+                        ? 'border-purple-600 bg-purple-100/90 text-purple-950 shadow-sm'
+                        : 'border-purple-400 bg-purple-500/15 text-white shadow-sm'
+                      : isLight
+                      ? 'border-purple-200 bg-white text-zinc-700 hover:border-purple-400 hover:text-purple-900 shadow-xs'
                       : 'border-purple-950/40 bg-[#14101c]/80 text-zinc-400 hover:text-white'
                   }`}
                 >
-                  <div className="text-xs font-bold text-purple-300 flex items-center justify-between">
+                  <div className={`text-xs font-bold flex items-center justify-between ${
+                    isLight ? (selectedLengthCategory === 'medium' ? 'text-purple-950' : 'text-zinc-800') : 'text-purple-300'
+                  }`}>
                     <span>📖 মাঝারি গল্প</span>
-                    <span className="text-[10px] font-normal text-purple-300">
+                    <span className={`text-[10px] font-normal ${isLight ? 'text-purple-700' : 'text-purple-300'}`}>
                       ({stories.filter((s) => s.lengthCategory === 'medium').length})
                     </span>
                   </div>
-                  <p className="text-[10px] text-zinc-400 mt-0.5">১০ - ২৫ মিনিট (মনোগ্রাহী)</p>
+                  <p className={`text-[10px] mt-0.5 ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>১০ - ২৫ মিনিট (মনোগ্রাহী)</p>
                 </button>
 
                 <button
                   onClick={() => setSelectedLengthCategory('mega')}
                   className={`p-2.5 sm:p-3 rounded-2xl border text-left transition-all ${
                     selectedLengthCategory === 'mega'
-                      ? 'border-pink-500 bg-pink-500/15 text-white shadow-sm'
+                      ? isLight
+                        ? 'border-purple-600 bg-purple-100/90 text-purple-950 shadow-sm'
+                        : 'border-pink-500 bg-pink-500/15 text-white shadow-sm'
+                      : isLight
+                      ? 'border-purple-200 bg-white text-zinc-700 hover:border-purple-400 hover:text-purple-900 shadow-xs'
                       : 'border-purple-950/40 bg-[#14101c]/80 text-zinc-400 hover:text-white'
                   }`}
                 >
-                  <div className="text-xs font-bold text-pink-300 flex items-center justify-between">
+                  <div className={`text-xs font-bold flex items-center justify-between ${
+                    isLight ? (selectedLengthCategory === 'mega' ? 'text-purple-950' : 'text-zinc-800') : 'text-pink-300'
+                  }`}>
                     <span>🎙️ বড় / মেগা গল্প</span>
-                    <span className="text-[10px] font-normal text-pink-300">
+                    <span className={`text-[10px] font-normal ${isLight ? 'text-purple-700' : 'text-pink-300'}`}>
                       ({stories.filter((s) => s.lengthCategory === 'mega').length})
                     </span>
                   </div>
-                  <p className="text-[10px] text-zinc-400 mt-0.5">২৫+ মিনিট (উপন্যাসধর্মী)</p>
+                  <p className={`text-[10px] mt-0.5 ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>২৫+ মিনিট (উপন্যাসধর্মী)</p>
                 </button>
               </div>
             </div>
 
-            {/* Genre Filter Pills */}
-            <div className="mb-6 flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none">
-              {genres.map((g) => (
-                <button
-                  key={g.value}
-                  onClick={() => setSelectedGenre(g.value)}
-                  className={`rounded-full px-3.5 py-1.5 text-xs font-medium whitespace-nowrap transition-all ${
-                    selectedGenre === g.value
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold shadow-md shadow-pink-950/40'
-                      : 'border border-purple-900/30 bg-[#14101c]/80 text-zinc-300 hover:border-pink-500/40 hover:text-white'
-                  }`}
-                >
-                  {g.label}
-                </button>
-              ))}
+            {/* Genre Filter Pills & Sector Controls Toolbar */}
+            <div className="mb-4 flex flex-col gap-3">
+              {/* Quick Sector Jump Pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                <span className={`text-[11px] font-bold shrink-0 flex items-center gap-1 ${
+                  isLight ? 'text-purple-900' : 'text-zinc-400'
+                }`}>
+                  <Compass className="h-3 w-3 text-pink-500" />
+                  <span>সেক্টর:</span>
+                </span>
 
-              <div className="h-4 w-px bg-zinc-800 mx-1 shrink-0" />
+                <button
+                  type="button"
+                  onClick={() => handleScrollToSector('sector-free-stories')}
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-all flex items-center gap-1 shrink-0 ${
+                    isLight
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                      : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25'
+                  }`}
+                >
+                  <Gift className="h-3 w-3" />
+                  <span>ফ্রি গল্প ({freeStories.length})</span>
+                </button>
 
-              {/* Free vs Little Pass Filter */}
-              <div className="flex items-center gap-1 shrink-0">
                 <button
-                  onClick={() => setAccessFilter('all')}
-                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-all ${
-                    accessFilter === 'all' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-white'
+                  type="button"
+                  onClick={() => handleScrollToSector('sector-popular-stories')}
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-all flex items-center gap-1 shrink-0 ${
+                    isLight
+                      ? 'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100'
+                      : 'bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25'
                   }`}
                 >
-                  সব গল্প
+                  <Flame className="h-3 w-3 text-amber-500 fill-amber-500" />
+                  <span>পপুলার ওয়াচ ({popularStories.length})</span>
                 </button>
+
                 <button
-                  onClick={() => setAccessFilter('free')}
-                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-all ${
-                    accessFilter === 'free' ? 'bg-purple-900/60 text-purple-300 border border-purple-500/40' : 'text-zinc-400 hover:text-white'
+                  type="button"
+                  onClick={() => handleScrollToSector('sector-pass-stories')}
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-all flex items-center gap-1 shrink-0 ${
+                    isLight
+                      ? 'bg-purple-50 text-purple-900 border border-purple-300 hover:bg-purple-100'
+                      : 'bg-purple-500/15 text-purple-300 border border-purple-500/30 hover:bg-purple-500/25'
                   }`}
                 >
-                  ফ্রি
+                  <Crown className="h-3 w-3 text-purple-500" />
+                  <span>মাসিক পাস ({passStories.length})</span>
                 </button>
+
                 <button
-                  onClick={() => setAccessFilter('little_pass')}
-                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-all ${
-                    accessFilter === 'little_pass' ? 'bg-pink-900/60 text-pink-300 border border-pink-500/40' : 'text-zinc-400 hover:text-white'
+                  type="button"
+                  onClick={() => handleScrollToSector('sector-horror-stories')}
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-all flex items-center gap-1 shrink-0 ${
+                    isLight
+                      ? 'bg-zinc-100 text-zinc-800 border border-zinc-300 hover:bg-zinc-200'
+                      : 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700'
                   }`}
                 >
-                  পাস
+                  <Ghost className="h-3 w-3" />
+                  <span>ভৌতিক ({horrorStories.length})</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleScrollToSector('sector-mystery-stories')}
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-all flex items-center gap-1 shrink-0 ${
+                    isLight
+                      ? 'bg-indigo-50 text-indigo-900 border border-indigo-300 hover:bg-indigo-100'
+                      : 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25'
+                  }`}
+                >
+                  <Compass className="h-3 w-3" />
+                  <span>রহস্য ও গোয়েন্দা ({mysteryStories.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleScrollToSector('sector-sleep-stories')}
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-all flex items-center gap-1 shrink-0 ${
+                    isLight
+                      ? 'bg-blue-50 text-blue-900 border border-blue-300 hover:bg-blue-100'
+                      : 'bg-blue-500/15 text-blue-300 border border-blue-500/30 hover:bg-blue-500/25'
+                  }`}
+                >
+                  <Moon className="h-3 w-3" />
+                  <span>ঘুমের গল্প ({sleepStories.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleScrollToSector('sector-folklore-stories')}
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-all flex items-center gap-1 shrink-0 ${
+                    isLight
+                      ? 'bg-rose-50 text-rose-900 border border-rose-300 hover:bg-rose-100'
+                      : 'bg-rose-500/15 text-rose-300 border border-rose-500/30 hover:bg-rose-500/25'
+                  }`}
+                >
+                  <Heart className="h-3 w-3" />
+                  <span>লোকগাথা ও প্রেম ({folkloreStories.length})</span>
+                </button>
+              </div>
+
+              {/* Genre Filter Pills & View/Density Switcher */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none flex-1">
+                  {genres.map((g) => (
+                    <button
+                      key={g.value}
+                      onClick={() => setSelectedGenre(g.value)}
+                      className={`rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap transition-all ${
+                        selectedGenre === g.value
+                          ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold shadow-xs'
+                          : isLight
+                          ? 'border border-purple-200 bg-white text-zinc-700 hover:border-purple-400 hover:text-purple-950 shadow-xs'
+                          : 'border border-purple-900/30 bg-[#14101c]/80 text-zinc-300 hover:border-pink-500/40 hover:text-white'
+                      }`}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+
+                  <div className={`h-4 w-px mx-0.5 shrink-0 ${isLight ? 'bg-purple-200' : 'bg-zinc-800'}`} />
+
+                  {/* Free vs Little Pass Filter */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => setAccessFilter('all')}
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium transition-all ${
+                        accessFilter === 'all'
+                          ? isLight ? 'bg-purple-200 text-purple-950 font-bold' : 'bg-zinc-700 text-white'
+                          : isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      সব
+                    </button>
+                    <button
+                      onClick={() => setAccessFilter('free')}
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium transition-all ${
+                        accessFilter === 'free'
+                          ? isLight ? 'bg-purple-100 text-purple-900 border border-purple-300 font-bold' : 'bg-purple-900/60 text-purple-300 border border-purple-500/40'
+                          : isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      ফ্রি
+                    </button>
+                    <button
+                      onClick={() => setAccessFilter('little_pass')}
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium transition-all ${
+                        accessFilter === 'little_pass'
+                          ? isLight ? 'bg-pink-100 text-pink-900 border border-pink-300 font-bold' : 'bg-pink-900/60 text-pink-300 border border-pink-500/40'
+                          : isLight ? 'text-zinc-600 hover:text-zinc-900' : 'text-zinc-400 hover:text-white'
+                      }`}
+                    >
+                      পাস
+                    </button>
+                  </div>
+                </div>
+
+                {/* Layout & Density Adjusters (Adjustable & Justified Controls) */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* View Mode Toggle: Sectors vs Full Grid */}
+                  <div className={`flex items-center rounded-xl p-0.5 border ${
+                    isLight ? 'border-purple-200 bg-purple-50/70' : 'border-zinc-800 bg-[#120a1c]'
+                  }`}>
+                    <button
+                      type="button"
+                      onClick={() => setCatalogViewMode('sectors')}
+                      className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-all ${
+                        catalogViewMode === 'sectors'
+                          ? isLight ? 'bg-white text-purple-950 font-bold shadow-xs' : 'bg-purple-900/80 text-white font-bold'
+                          : isLight ? 'text-zinc-600 hover:text-purple-900' : 'text-zinc-400 hover:text-white'
+                      }`}
+                      title="সেক্টর অনুযায়ী ভাগ করা বিন্যাস"
+                    >
+                      <Layers className="h-3 w-3" />
+                      <span className="hidden sm:inline">সেক্টর ভিউ</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCatalogViewMode('grid')}
+                      className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-all ${
+                        catalogViewMode === 'grid'
+                          ? isLight ? 'bg-white text-purple-950 font-bold shadow-xs' : 'bg-purple-900/80 text-white font-bold'
+                          : isLight ? 'text-zinc-600 hover:text-purple-900' : 'text-zinc-400 hover:text-white'
+                      }`}
+                      title="একত্রিত গ্রিড ভিউ"
+                    >
+                      <LayoutGrid className="h-3 w-3" />
+                      <span className="hidden sm:inline">গ্রিড</span>
+                    </button>
+                  </div>
+
+                  {/* Grid Density Toggle: Compact vs Normal */}
+                  <div className={`flex items-center rounded-xl p-0.5 border ${
+                    isLight ? 'border-purple-200 bg-purple-50/70' : 'border-zinc-800 bg-[#120a1c]'
+                  }`}>
+                    <button
+                      type="button"
+                      onClick={() => setGridDensity('compact')}
+                      className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-all ${
+                        gridDensity === 'compact'
+                          ? isLight ? 'bg-white text-purple-950 font-bold shadow-xs' : 'bg-pink-900/80 text-white font-bold'
+                          : isLight ? 'text-zinc-600 hover:text-purple-900' : 'text-zinc-400 hover:text-white'
+                      }`}
+                      title="ক্ষুদ্রাকার কমপ্যাক্ট গ্রিড"
+                    >
+                      <Grid3X3 className="h-3 w-3" />
+                      <span className="hidden sm:inline">ছোট কার্ড</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGridDensity('normal')}
+                      className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-all ${
+                        gridDensity === 'normal'
+                          ? isLight ? 'bg-white text-purple-950 font-bold shadow-xs' : 'bg-pink-900/80 text-white font-bold'
+                          : isLight ? 'text-zinc-600 hover:text-purple-900' : 'text-zinc-400 hover:text-white'
+                      }`}
+                      title="সাধারণ গ্রিড"
+                    >
+                      <Sliders className="h-3 w-3" />
+                      <span className="hidden sm:inline">স্বাভাবিক</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Stories Grid */}
-            {filteredStories.length === 0 ? (
-              <div className="rounded-3xl border border-purple-900/30 bg-[#14101c]/90 p-12 text-center">
-                <p className="text-zinc-400 text-sm">আপনার পছন্দের কোনো গল্প পাওয়া যায়নি। ফিল্টার পরিবর্তন করে দেখুন।</p>
-                <button
-                  onClick={() => {
-                    setSelectedLengthCategory('all');
-                    setSelectedGenre('All');
-                    setAccessFilter('all');
-                    setSearchQuery('');
-                  }}
-                  className="mt-3 text-xs text-pink-400 hover:underline"
-                >
-                  সব ফিল্টার রিসেট করুন
-                </button>
+            {/* Stories Display Area */}
+            {isFilterActive ? (
+              /* Filtered Results View */
+              <div>
+                <div className={`mb-4 flex items-center justify-between rounded-2xl border p-3.5 transition-colors ${
+                  isLight ? 'border-purple-200 bg-purple-50/70 text-purple-950' : 'border-purple-900/30 bg-[#14101c] text-zinc-200'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-pink-500" />
+                    <span className="text-xs sm:text-sm font-semibold">
+                      খোঁজার ফলাফল: <span className="font-bold text-pink-500">{filteredStories.length}টি গল্প</span>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleResetAllFilters}
+                    className="flex items-center gap-1 text-xs font-semibold text-pink-500 hover:underline hover:text-pink-600"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    <span>সব সেক্টর দেখুন</span>
+                  </button>
+                </div>
+
+                {filteredStories.length === 0 ? (
+                  <div className={`rounded-3xl border p-12 text-center transition-colors ${
+                    isLight ? 'border-purple-200 bg-white text-zinc-600 shadow-sm' : 'border-purple-900/30 bg-[#14101c]/90 text-zinc-400'
+                  }`}>
+                    <p className={`text-sm ${isLight ? 'text-zinc-600' : 'text-zinc-400'}`}>আপনার পছন্দের কোনো গল্প পাওয়া যায়নি। ফিল্টার পরিবর্তন করে দেখুন।</p>
+                    <button
+                      onClick={handleResetAllFilters}
+                      className="mt-3 text-xs text-pink-500 hover:underline font-medium"
+                    >
+                      সব ফিল্টার রিসেট করুন
+                    </button>
+                  </div>
+                ) : (
+                  <div className={gridDensity === 'compact'
+                    ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-3'
+                    : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4'
+                  }>
+                    {filteredStories.map((story) => (
+                      <StoryCard
+                        key={story.id}
+                        story={story}
+                        compact={gridDensity === 'compact'}
+                        isCurrentStory={currentStory?.id === story.id}
+                        isPlaying={isPlaying && currentStory?.id === story.id}
+                        isPlayingThis={isPlaying && currentStory?.id === story.id}
+                        subscription={subscription}
+                        isSubscribed={subscription?.status === 'active'}
+                        isUnlockedSingle={subscription?.unlockedStoryIds?.includes(story.id)}
+                        isBookmarked={bookmarks.some((b) => b.storyId === story.id)}
+                        onToggleBookmark={handleToggleBookmark}
+                        onSelect={(s) => handlePlayStory(s)}
+                        onPlay={() => handlePlayStory(story)}
+                        onPause={handlePauseStory}
+                        onOpenPaywall={() => handleOpenSubscriptionFlow(story)}
+                        onPromptSubscription={() => handleOpenSubscriptionFlow(story)}
+                        onOpenReviews={handleOpenReviews}
+                        reviewsCount={story.reviewsCount || 0}
+                        theme={theme}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
-                {filteredStories.map((story) => (
+            ) : catalogViewMode === 'grid' ? (
+              /* Full Unified Grid View */
+              <div className={gridDensity === 'compact'
+                ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-3'
+                : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4'
+              }>
+                {stories.map((story) => (
                   <StoryCard
                     key={story.id}
                     story={story}
+                    compact={gridDensity === 'compact'}
                     isCurrentStory={currentStory?.id === story.id}
                     isPlaying={isPlaying && currentStory?.id === story.id}
                     isPlayingThis={isPlaying && currentStory?.id === story.id}
@@ -2056,8 +2447,481 @@ export default function App() {
                     onPromptSubscription={() => handleOpenSubscriptionFlow(story)}
                     onOpenReviews={handleOpenReviews}
                     reviewsCount={story.reviewsCount || 0}
+                    theme={theme}
                   />
                 ))}
+              </div>
+            ) : (
+              /* Categorized Sectors View (জাস্টিফাইড ও সুবিন্যস্ত সেক্টরসমূহ) */
+              <div className="space-y-10">
+
+                {/* Sector 1: সব ধারার ফ্রি অডিও গল্প (Free Stories across all genres at the top) */}
+                <section id="sector-free-stories" className="scroll-mt-20">
+                  <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 border-purple-200/50 dark:border-purple-900/30">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                        <Gift className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className={`text-base sm:text-lg font-bold ${
+                            isLight ? 'text-zinc-900 font-display' : 'text-zinc-100 font-display'
+                          }`}>
+                            সব ধারার ফ্রি গল্প
+                          </h3>
+                          <span className="rounded-full bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300/60 dark:border-emerald-700/40 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300">
+                            {freeStories.length}টি উন্মুক্ত গল্প
+                          </span>
+                        </div>
+                        <p className={`text-[11px] sm:text-xs mt-0.5 ${
+                          isLight ? 'text-zinc-600' : 'text-zinc-400'
+                        }`}>
+                          কোনো সাবস্ক্রিপশন বা পাস ছাড়াই সম্পূর্ণ বিনামূল্যে শুনুন • সব ক্যাটাগরির উন্মুক্ত গল্প
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setAccessFilter('free')}
+                      className={`text-xs font-semibold hover:underline flex items-center gap-0.5 ${
+                        isLight ? 'text-purple-700' : 'text-pink-400'
+                      }`}
+                    >
+                      <span>শুধু ফ্রি ফিল্টার</span>
+                      <ChevronRight className="h-3 w-3" />
+                    </button>
+                  </div>
+
+                  <div className={gridDensity === 'compact'
+                    ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-3'
+                    : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4'
+                  }>
+                    {freeStories.map((story) => (
+                      <StoryCard
+                        key={story.id}
+                        story={story}
+                        compact={gridDensity === 'compact'}
+                        isCurrentStory={currentStory?.id === story.id}
+                        isPlaying={isPlaying && currentStory?.id === story.id}
+                        isPlayingThis={isPlaying && currentStory?.id === story.id}
+                        subscription={subscription}
+                        isSubscribed={subscription?.status === 'active'}
+                        isUnlockedSingle={subscription?.unlockedStoryIds?.includes(story.id)}
+                        isBookmarked={bookmarks.some((b) => b.storyId === story.id)}
+                        onToggleBookmark={handleToggleBookmark}
+                        onSelect={(s) => handlePlayStory(s)}
+                        onPlay={() => handlePlayStory(story)}
+                        onPause={handlePauseStory}
+                        onOpenPaywall={() => handleOpenSubscriptionFlow(story)}
+                        onPromptSubscription={() => handleOpenSubscriptionFlow(story)}
+                        onOpenReviews={handleOpenReviews}
+                        reviewsCount={story.reviewsCount || 0}
+                        theme={theme}
+                      />
+                    ))}
+                  </div>
+                </section>
+
+                {/* Sector 2: পপুলার ওয়াচ ও সর্বাধিক প্রশংসিত গল্প (Popular Watch & Trending with Ranking Badges) */}
+                <section id="sector-popular-stories" className="scroll-mt-20">
+                  <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 border-purple-200/50 dark:border-purple-900/30">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                        <Flame className="h-4 w-4 fill-current text-amber-500" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className={`text-base sm:text-lg font-bold ${
+                            isLight ? 'text-zinc-900 font-display' : 'text-zinc-100 font-display'
+                          }`}>
+                            পপুলার ওয়াচ ও ট্রেন্ডিং গল্প
+                          </h3>
+                          <span className="rounded-full bg-amber-100 dark:bg-amber-950/60 border border-amber-300/60 dark:border-amber-700/40 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300">
+                            শীর্ষ রেটেড ও সর্বাধিক শোনা
+                          </span>
+                        </div>
+                        <p className={`text-[11px] sm:text-xs mt-0.5 ${
+                          isLight ? 'text-zinc-600' : 'text-zinc-400'
+                        }`}>
+                          শ্রোতাদের সর্বাধিক পছন্দের ও সবচেয়ে বেশি প্রশংসিত রোমাঞ্চকর অডিও গল্প
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className={`text-[11px] font-medium ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                      র‍্যাঙ্কিং অনুযায়ী সাজানো
+                    </span>
+                  </div>
+
+                  <div className={gridDensity === 'compact'
+                    ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-3'
+                    : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4'
+                  }>
+                    {popularStories.slice(0, 6).map((story, index) => (
+                      <StoryCard
+                        key={story.id}
+                        story={story}
+                        compact={gridDensity === 'compact'}
+                        rankingNumber={index + 1}
+                        isCurrentStory={currentStory?.id === story.id}
+                        isPlaying={isPlaying && currentStory?.id === story.id}
+                        isPlayingThis={isPlaying && currentStory?.id === story.id}
+                        subscription={subscription}
+                        isSubscribed={subscription?.status === 'active'}
+                        isUnlockedSingle={subscription?.unlockedStoryIds?.includes(story.id)}
+                        isBookmarked={bookmarks.some((b) => b.storyId === story.id)}
+                        onToggleBookmark={handleToggleBookmark}
+                        onSelect={(s) => handlePlayStory(s)}
+                        onPlay={() => handlePlayStory(story)}
+                        onPause={handlePauseStory}
+                        onOpenPaywall={() => handleOpenSubscriptionFlow(story)}
+                        onPromptSubscription={() => handleOpenSubscriptionFlow(story)}
+                        onOpenReviews={handleOpenReviews}
+                        reviewsCount={story.reviewsCount || 0}
+                        theme={theme}
+                      />
+                    ))}
+                  </div>
+                </section>
+
+                {/* Sector 3: প্রিমিয়াম পাস ও মেগা অডিও সিরিজ (Monthly Pass & Mega Exclusives) */}
+                <section id="sector-pass-stories" className="scroll-mt-20">
+                  <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 border-purple-200/50 dark:border-purple-900/30">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-500/20 text-purple-700 dark:text-purple-300">
+                        <Crown className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className={`text-base sm:text-lg font-bold ${
+                            isLight ? 'text-zinc-900 font-display' : 'text-zinc-100 font-display'
+                          }`}>
+                            প্রিমিয়াম পাস ও মেগা সিরিজ
+                          </h3>
+                          <span className="rounded-full bg-purple-100 dark:bg-purple-950/60 border border-purple-300/60 dark:border-purple-700/40 px-2 py-0.5 text-[10px] font-bold text-purple-800 dark:text-purple-300">
+                            ₹২০ মাসিক পাস
+                          </span>
+                        </div>
+                        <p className={`text-[11px] sm:text-xs mt-0.5 ${
+                          isLight ? 'text-zinc-600' : 'text-zinc-400'
+                        }`}>
+                          মাত্র ২০ টাকার মাসিক পাসে অথবা ৫-১০ টাকায় সিঙ্গেল পাস নিয়ে সম্পূর্ণ শুনুন
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenSubscriptionFlow(null)}
+                      className="rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 px-2.5 py-1 text-xs font-bold text-white shadow-xs hover:opacity-95"
+                    >
+                      পাস নিন
+                    </button>
+                  </div>
+
+                  <div className={gridDensity === 'compact'
+                    ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-3'
+                    : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4'
+                  }>
+                    {passStories.map((story) => (
+                      <StoryCard
+                        key={story.id}
+                        story={story}
+                        compact={gridDensity === 'compact'}
+                        isCurrentStory={currentStory?.id === story.id}
+                        isPlaying={isPlaying && currentStory?.id === story.id}
+                        isPlayingThis={isPlaying && currentStory?.id === story.id}
+                        subscription={subscription}
+                        isSubscribed={subscription?.status === 'active'}
+                        isUnlockedSingle={subscription?.unlockedStoryIds?.includes(story.id)}
+                        isBookmarked={bookmarks.some((b) => b.storyId === story.id)}
+                        onToggleBookmark={handleToggleBookmark}
+                        onSelect={(s) => handlePlayStory(s)}
+                        onPlay={() => handlePlayStory(story)}
+                        onPause={handlePauseStory}
+                        onOpenPaywall={() => handleOpenSubscriptionFlow(story)}
+                        onPromptSubscription={() => handleOpenSubscriptionFlow(story)}
+                        onOpenReviews={handleOpenReviews}
+                        reviewsCount={story.reviewsCount || 0}
+                        theme={theme}
+                      />
+                    ))}
+                  </div>
+                </section>
+
+                {/* Sector 4: ভৌতিক ও অলৌকিক কাহিনী (Horror & Supernatural) */}
+                <section id="sector-horror-stories" className="scroll-mt-20">
+                  <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 border-purple-200/50 dark:border-purple-900/30">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-500/20 text-zinc-700 dark:text-zinc-300">
+                        <Ghost className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className={`text-base sm:text-lg font-bold ${
+                            isLight ? 'text-zinc-900 font-display' : 'text-zinc-100 font-display'
+                          }`}>
+                            ভৌতিক ও অলৌকিক কাহিনী
+                          </h3>
+                          <span className="rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 px-2 py-0.5 text-[10px] font-bold text-zinc-800 dark:text-zinc-200">
+                            {horrorStories.length}টি গল্প
+                          </span>
+                        </div>
+                        <p className={`text-[11px] sm:text-xs mt-0.5 ${
+                          isLight ? 'text-zinc-600' : 'text-zinc-400'
+                        }`}>
+                          গা ছমছমে অন্ধকার রাতের রোমহর্ষক ও অলৌকিক রহস্য
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGenre('ভৌতিক ও অলৌকিক')}
+                      className={`text-xs font-semibold hover:underline flex items-center gap-0.5 ${
+                        isLight ? 'text-purple-700' : 'text-pink-400'
+                      }`}
+                    >
+                      <span>সবগুলো দেখুন</span>
+                      <ChevronRight className="h-3 w-3" />
+                    </button>
+                  </div>
+
+                  <div className={gridDensity === 'compact'
+                    ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-3'
+                    : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4'
+                  }>
+                    {horrorStories.map((story) => (
+                      <StoryCard
+                        key={story.id}
+                        story={story}
+                        compact={gridDensity === 'compact'}
+                        isCurrentStory={currentStory?.id === story.id}
+                        isPlaying={isPlaying && currentStory?.id === story.id}
+                        isPlayingThis={isPlaying && currentStory?.id === story.id}
+                        subscription={subscription}
+                        isSubscribed={subscription?.status === 'active'}
+                        isUnlockedSingle={subscription?.unlockedStoryIds?.includes(story.id)}
+                        isBookmarked={bookmarks.some((b) => b.storyId === story.id)}
+                        onToggleBookmark={handleToggleBookmark}
+                        onSelect={(s) => handlePlayStory(s)}
+                        onPlay={() => handlePlayStory(story)}
+                        onPause={handlePauseStory}
+                        onOpenPaywall={() => handleOpenSubscriptionFlow(story)}
+                        onPromptSubscription={() => handleOpenSubscriptionFlow(story)}
+                        onOpenReviews={handleOpenReviews}
+                        reviewsCount={story.reviewsCount || 0}
+                        theme={theme}
+                      />
+                    ))}
+                  </div>
+                </section>
+
+                {/* Sector 5: রহস্য, রোমাঞ্চ ও গোয়েন্দা (Mystery & Detective Thrillers) */}
+                <section id="sector-mystery-stories" className="scroll-mt-20">
+                  <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 border-purple-200/50 dark:border-purple-900/30">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-700 dark:text-indigo-300">
+                        <Compass className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className={`text-base sm:text-lg font-bold ${
+                            isLight ? 'text-zinc-900 font-display' : 'text-zinc-100 font-display'
+                          }`}>
+                            রহস্য, রোমাঞ্চ ও গোয়েন্দা
+                          </h3>
+                          <span className="rounded-full bg-indigo-100 dark:bg-indigo-950/60 border border-indigo-300/60 dark:border-indigo-700/40 px-2 py-0.5 text-[10px] font-bold text-indigo-800 dark:text-indigo-300">
+                            {mysteryStories.length}টি গল্প
+                          </span>
+                        </div>
+                        <p className={`text-[11px] sm:text-xs mt-0.5 ${
+                          isLight ? 'text-zinc-600' : 'text-zinc-400'
+                        }`}>
+                          রুদ্ধশ্বাস অনুসন্ধান, টানটান সাসপেন্স ও অপরাধের নিখুঁত রহস্যভেদ
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGenre('রহস্য ও গোয়েন্দা')}
+                      className={`text-xs font-semibold hover:underline flex items-center gap-0.5 ${
+                        isLight ? 'text-purple-700' : 'text-pink-400'
+                      }`}
+                    >
+                      <span>সবগুলো দেখুন</span>
+                      <ChevronRight className="h-3 w-3" />
+                    </button>
+                  </div>
+
+                  <div className={gridDensity === 'compact'
+                    ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-3'
+                    : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4'
+                  }>
+                    {mysteryStories.map((story) => (
+                      <StoryCard
+                        key={story.id}
+                        story={story}
+                        compact={gridDensity === 'compact'}
+                        isCurrentStory={currentStory?.id === story.id}
+                        isPlaying={isPlaying && currentStory?.id === story.id}
+                        isPlayingThis={isPlaying && currentStory?.id === story.id}
+                        subscription={subscription}
+                        isSubscribed={subscription?.status === 'active'}
+                        isUnlockedSingle={subscription?.unlockedStoryIds?.includes(story.id)}
+                        isBookmarked={bookmarks.some((b) => b.storyId === story.id)}
+                        onToggleBookmark={handleToggleBookmark}
+                        onSelect={(s) => handlePlayStory(s)}
+                        onPlay={() => handlePlayStory(story)}
+                        onPause={handlePauseStory}
+                        onOpenPaywall={() => handleOpenSubscriptionFlow(story)}
+                        onPromptSubscription={() => handleOpenSubscriptionFlow(story)}
+                        onOpenReviews={handleOpenReviews}
+                        reviewsCount={story.reviewsCount || 0}
+                        theme={theme}
+                      />
+                    ))}
+                  </div>
+                </section>
+
+                {/* Sector 6: ঘুমের গল্প ও মানসিক প্রশান্তি (Calm Sleep & Tranquility) */}
+                <section id="sector-sleep-stories" className="scroll-mt-20">
+                  <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 border-purple-200/50 dark:border-purple-900/30">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/20 text-blue-700 dark:text-blue-300">
+                        <Moon className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className={`text-base sm:text-lg font-bold ${
+                            isLight ? 'text-zinc-900 font-display' : 'text-zinc-100 font-display'
+                          }`}>
+                            ঘুমের গল্প ও মানসিক প্রশান্তি
+                          </h3>
+                          <span className="rounded-full bg-blue-100 dark:bg-blue-950/60 border border-blue-300/60 dark:border-blue-700/40 px-2 py-0.5 text-[10px] font-bold text-blue-800 dark:text-blue-300">
+                            {sleepStories.length}টি গল্প
+                          </span>
+                        </div>
+                        <p className={`text-[11px] sm:text-xs mt-0.5 ${
+                          isLight ? 'text-zinc-600' : 'text-zinc-400'
+                        }`}>
+                          দিনের সব ক্লান্তি দূর করে শান্ত সুর ও মিষ্টি স্বপ্নের দেশে হারিয়ে যান
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGenre('ঘুমের গল্প ও প্রশান্তি')}
+                      className={`text-xs font-semibold hover:underline flex items-center gap-0.5 ${
+                        isLight ? 'text-purple-700' : 'text-pink-400'
+                      }`}
+                    >
+                      <span>সবগুলো দেখুন</span>
+                      <ChevronRight className="h-3 w-3" />
+                    </button>
+                  </div>
+
+                  <div className={gridDensity === 'compact'
+                    ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-3'
+                    : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4'
+                  }>
+                    {sleepStories.map((story) => (
+                      <StoryCard
+                        key={story.id}
+                        story={story}
+                        compact={gridDensity === 'compact'}
+                        isCurrentStory={currentStory?.id === story.id}
+                        isPlaying={isPlaying && currentStory?.id === story.id}
+                        isPlayingThis={isPlaying && currentStory?.id === story.id}
+                        subscription={subscription}
+                        isSubscribed={subscription?.status === 'active'}
+                        isUnlockedSingle={subscription?.unlockedStoryIds?.includes(story.id)}
+                        isBookmarked={bookmarks.some((b) => b.storyId === story.id)}
+                        onToggleBookmark={handleToggleBookmark}
+                        onSelect={(s) => handlePlayStory(s)}
+                        onPlay={() => handlePlayStory(story)}
+                        onPause={handlePauseStory}
+                        onOpenPaywall={() => handleOpenSubscriptionFlow(story)}
+                        onPromptSubscription={() => handleOpenSubscriptionFlow(story)}
+                        onOpenReviews={handleOpenReviews}
+                        reviewsCount={story.reviewsCount || 0}
+                        theme={theme}
+                      />
+                    ))}
+                  </div>
+                </section>
+
+                {/* Sector 7: বাস্তব জীবন, লোকগাথা ও রূপকথা (Real Life, Folklore & Romance) */}
+                <section id="sector-folklore-stories" className="scroll-mt-20">
+                  <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 border-purple-200/50 dark:border-purple-900/30">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/20 text-rose-700 dark:text-rose-300">
+                        <Heart className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className={`text-base sm:text-lg font-bold ${
+                            isLight ? 'text-zinc-900 font-display' : 'text-zinc-100 font-display'
+                          }`}>
+                            বাস্তব জীবন, লোকগাথা ও প্রেম
+                          </h3>
+                          <span className="rounded-full bg-rose-100 dark:bg-rose-950/60 border border-rose-300/60 dark:border-rose-700/40 px-2 py-0.5 text-[10px] font-bold text-rose-800 dark:text-rose-300">
+                            {folkloreStories.length}টি গল্প
+                          </span>
+                        </div>
+                        <p className={`text-[11px] sm:text-xs mt-0.5 ${
+                          isLight ? 'text-zinc-600' : 'text-zinc-400'
+                        }`}>
+                          হৃদয়স্পর্শী অনুভূতি, স্মৃতি, অমর লোকগাথা ও মিষ্টি প্রেমের গল্প
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGenre('বাস্তব ও রূপকথা')}
+                      className={`text-xs font-semibold hover:underline flex items-center gap-0.5 ${
+                        isLight ? 'text-purple-700' : 'text-pink-400'
+                      }`}
+                    >
+                      <span>সবগুলো দেখুন</span>
+                      <ChevronRight className="h-3 w-3" />
+                    </button>
+                  </div>
+
+                  <div className={gridDensity === 'compact'
+                    ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-3'
+                    : 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4'
+                  }>
+                    {folkloreStories.map((story) => (
+                      <StoryCard
+                        key={story.id}
+                        story={story}
+                        compact={gridDensity === 'compact'}
+                        isCurrentStory={currentStory?.id === story.id}
+                        isPlaying={isPlaying && currentStory?.id === story.id}
+                        isPlayingThis={isPlaying && currentStory?.id === story.id}
+                        subscription={subscription}
+                        isSubscribed={subscription?.status === 'active'}
+                        isUnlockedSingle={subscription?.unlockedStoryIds?.includes(story.id)}
+                        isBookmarked={bookmarks.some((b) => b.storyId === story.id)}
+                        onToggleBookmark={handleToggleBookmark}
+                        onSelect={(s) => handlePlayStory(s)}
+                        onPlay={() => handlePlayStory(story)}
+                        onPause={handlePauseStory}
+                        onOpenPaywall={() => handleOpenSubscriptionFlow(story)}
+                        onPromptSubscription={() => handleOpenSubscriptionFlow(story)}
+                        onOpenReviews={handleOpenReviews}
+                        reviewsCount={story.reviewsCount || 0}
+                        theme={theme}
+                      />
+                    ))}
+                  </div>
+                </section>
+
               </div>
             )}
 
@@ -2066,12 +2930,14 @@ export default function App() {
       )}
 
       {/* App Footer */}
-      <footer className="mt-auto border-t border-purple-900/30 bg-[#120a1c]/90 py-6 px-4 text-center text-xs text-zinc-400">
+      <footer className={`mt-auto border-t py-6 px-4 text-center text-xs transition-colors ${
+        isLight ? 'border-purple-200 bg-white text-zinc-600' : 'border-purple-900/30 bg-[#120a1c]/90 text-zinc-400'
+      }`}>
         <div className="mx-auto max-w-5xl flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="font-serif-story font-bold text-zinc-300">গপ্পো কাহিনী</span>
-            <span className="text-zinc-400">•</span>
-            <span className="text-[11px] text-zinc-400">বাংলার নিখাদ রোমাঞ্চ ও মানুষের জীবনের সত্য কথা</span>
+            <span className={`font-serif-story font-bold ${isLight ? 'text-purple-950' : 'text-zinc-300'}`}>গপ্পো কাহিনী</span>
+            <span className={isLight ? 'text-purple-300' : 'text-zinc-400'}>•</span>
+            <span className={`text-[11px] ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>বাংলার নিখাদ রোমাঞ্চ ও মানুষের জীবনের সত্য কথা</span>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-[11px]">
@@ -2080,7 +2946,7 @@ export default function App() {
                 if (currentPolicyPage) handleNavigateHomeFromPolicy();
                 setActiveMainView('stories');
               }}
-              className="text-zinc-400 hover:text-white transition-colors"
+              className={`transition-colors ${isLight ? 'text-zinc-600 hover:text-purple-950 font-medium' : 'text-zinc-400 hover:text-white'}`}
             >
               গল্পঘর
             </button>
@@ -2090,14 +2956,14 @@ export default function App() {
                 if (currentPolicyPage) handleNavigateHomeFromPolicy();
                 setActiveMainView('lifestories');
               }}
-              className="text-pink-400 hover:text-pink-300 font-semibold transition-colors"
+              className="text-pink-500 hover:text-pink-600 font-semibold transition-colors"
             >
               🎙️ মানুষের জীবন কথা
             </button>
 
             <button
               onClick={() => setIsNarratorAppModalOpen(true)}
-              className="text-purple-300 hover:text-purple-200 font-semibold transition-colors"
+              className={`font-semibold transition-colors ${isLight ? 'text-purple-700 hover:text-purple-900' : 'text-purple-300 hover:text-purple-200'}`}
             >
               কথক অডিশন
             </button>
@@ -2105,23 +2971,26 @@ export default function App() {
             {/* Mobile-First Compact Legal & Support Dropdown */}
             <LegalSupportDropdown
               variant="footer-dropdown"
+              theme={theme}
               onSelectPolicy={handleSelectPolicy}
             />
 
             {creatorSession?.isLoggedIn && (
-              <div className="flex items-center gap-2 bg-[#1a1426] px-2.5 py-1 rounded-full border border-purple-900/40">
-                <span className="text-pink-300 font-semibold">
+              <div className={`flex items-center gap-2 px-2.5 py-1 rounded-full border ${
+                isLight ? 'bg-purple-50 border-purple-200 text-purple-900' : 'bg-[#1a1426] border-purple-900/40 text-pink-300'
+              }`}>
+                <span className="font-semibold">
                   {creatorSession.role === 'super_admin' ? '👑 জয় (Admin)' : `🎙️ ${creatorSession.name}`}
                 </span>
                 <button
                   onClick={() => setIsStudioOpen(true)}
-                  className="text-pink-400 hover:underline text-[10px]"
+                  className="text-pink-500 hover:underline text-[10px]"
                 >
                   স্টুডিও
                 </button>
                 <button
                   onClick={handleCreatorLogout}
-                  className="text-rose-400 hover:underline text-[10px]"
+                  className="text-rose-500 hover:underline text-[10px]"
                 >
                   লগআউট
                 </button>
@@ -2149,6 +3018,7 @@ export default function App() {
         onOpenFullPlayer={() => setIsFullPlayerOpen(true)}
         onSetSleepTimer={handleSetSleepTimer}
         onDismissPlayer={handleDismissPlayer}
+        theme={theme}
       />
 
       {/* Mobile App Bottom Navigation Bar with 5 tabs */}
@@ -2159,6 +3029,7 @@ export default function App() {
         bookmarkCount={bookmarks.length}
         currentUser={currentUser}
         onRequireLogin={(msg) => handleOpenUserAuth('library', msg)}
+        theme={theme}
       />
 
       {/* Full Player Modal */}
@@ -2347,7 +3218,20 @@ export default function App() {
           itemId={activeReviewTarget.id}
           itemTitle={activeReviewTarget.title}
           itemType={activeReviewTarget.type}
-          currentUser={currentUser}
+          currentUser={
+            currentUser ||
+            (creatorSession?.isLoggedIn
+              ? {
+                  uid: 'hwvu4siXbGhcpbreCQfca6b1P0h1',
+                  email: creatorSession.email || 'joydas.21071997@gmail.com',
+                  displayName: creatorSession.name || 'জয় (প্রতিষ্ঠাতা)',
+                  role: 'admin',
+                  emailVerified: true,
+                  createdAt: '2026-01-01T00:00:00.000Z',
+                  provider: 'password',
+                }
+              : null)
+          }
           onRequireLogin={(msg) => handleOpenUserAuth('general', msg)}
           onStoryStatsUpdated={({ rating, reviewsCount }) => {
             setStories((prev) =>

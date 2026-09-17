@@ -34,6 +34,9 @@ import {
 import { Story, StoryGenre, StoryPricingTier, StoryLengthCategory } from '../../types';
 import { uploadAudioToFirebaseStorage, uploadCoverToFirebaseStorage } from '../../services/firebaseStorage';
 import { saveStoryToFirestore, deleteStoryFromFirestore } from '../../services/firestoreStories';
+import { onAuthStateChanged } from 'firebase/auth';
+import { getGoppoAuth } from '../../services/firebaseAuth';
+import { signInAdminWithGoogle, ensureAdminFirebaseAuth } from '../../services/adminAuth';
 
 interface AdminStoryUploaderProps {
   stories?: Story[];
@@ -55,18 +58,18 @@ export const AdminStoryUploader: React.FC<AdminStoryUploaderProps> = ({
   const [genre, setGenre] = useState<StoryGenre>('ভৌতিক ও অলৌকিক');
   
   // Story Length (গল্পের দৈর্ঘ্য: ১. ছোট গল্প, ২. মাঝারি গল্প, ৩. বড় গল্প)
-  const [lengthCategory, setLengthCategory] = useState<'mini' | 'medium' | 'mega' | ''>('');
+  const [lengthCategory, setLengthCategory] = useState<'mini' | 'medium' | 'mega'>('medium');
   const [durationMins, setDurationMins] = useState(15);
 
   // Story Type (গল্পের ধরন: ফ্রি গল্প / পেইড গল্প)
-  const [storyType, setStoryType] = useState<'free' | 'paid' | ''>('');
+  const [storyType, setStoryType] = useState<'free' | 'paid'>('free');
   const [storyPrice, setStoryPrice] = useState<number | ''>('');
 
   // Access Settings (অ্যাক্সেস ও প্রিমিয়াম সেটিংস)
   // 1. সাধারণ ফ্রি গল্প (Free content)
   // 2. পাস প্রয়োজন (Content requires the ₹20 Pass)
   // 3. পেইড গল্প (Content requires separate payment according to the Admin-defined price)
-  const [accessSetting, setAccessSetting] = useState<'free_general' | 'pass_required' | 'paid_individual' | ''>('');
+  const [accessSetting, setAccessSetting] = useState<'free_general' | 'pass_required' | 'paid_individual'>('free_general');
 
   // Podcast Access Setting (পডকাস্ট অ্যাক্সেস)
   // Default selected option: শুধুমাত্র ₹20 Pass সদস্যদের জন্য
@@ -111,6 +114,61 @@ export const AdminStoryUploader: React.FC<AdminStoryUploaderProps> = ({
 
   // Stories Catalog Search in Admin
   const [searchCatalog, setSearchCatalog] = useState('');
+
+  // Firebase Admin Auth Connection State
+  const [isFirebaseConnected, setIsFirebaseConnected] = useState(false);
+  const [adminEmailConnected, setAdminEmailConnected] = useState('');
+  const [isAuthenticatingAdmin, setIsAuthenticatingAdmin] = useState(false);
+  const [adminAuthNotice, setAdminAuthNotice] = useState('');
+
+  React.useEffect(() => {
+    const auth = getGoppoAuth();
+    if (!auth) return;
+
+    if (auth.currentUser && (auth.currentUser.email?.toLowerCase() === 'joydas.21071997@gmail.com' || auth.currentUser.uid === 'hwvu4siXbGhcpbreCQfca6b1P0h1')) {
+      setIsFirebaseConnected(true);
+      setAdminEmailConnected(auth.currentUser.email || 'joydas.21071997@gmail.com');
+    }
+
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user && (user.email?.toLowerCase() === 'joydas.21071997@gmail.com' || user.uid === 'hwvu4siXbGhcpbreCQfca6b1P0h1')) {
+        setIsFirebaseConnected(true);
+        setAdminEmailConnected(user.email || 'joydas.21071997@gmail.com');
+      } else {
+        setIsFirebaseConnected(false);
+        setAdminEmailConnected('');
+      }
+    });
+
+    ensureAdminFirebaseAuth().then((ok) => {
+      if (ok && auth.currentUser) {
+        setIsFirebaseConnected(true);
+        setAdminEmailConnected(auth.currentUser.email || 'joydas.21071997@gmail.com');
+      }
+    }).catch(() => {});
+
+    return () => unsub();
+  }, []);
+
+  const handleGoogleAdminAuth = async () => {
+    setIsAuthenticatingAdmin(true);
+    setAdminAuthNotice('');
+    try {
+      const res = await signInAdminWithGoogle();
+      if (res.success) {
+        setIsFirebaseConnected(true);
+        setAdminEmailConnected(res.email || 'joydas.21071997@gmail.com');
+        setAdminAuthNotice('সফলভাবে Google অ্যাডমিন অ্যাকাউন্ট সক্রিয় করা হয়েছে!');
+        setTimeout(() => setAdminAuthNotice(''), 5000);
+      } else {
+        setAdminAuthNotice(res.error || 'গুগল সাইন-ইন সম্পন্ন হয়নি।');
+      }
+    } catch (e: any) {
+      setAdminAuthNotice(e?.message || 'লগইন ব্যর্থ হয়েছে।');
+    } finally {
+      setIsAuthenticatingAdmin(false);
+    }
+  };
 
   const genres: StoryGenre[] = [
     'ভৌতিক ও অলৌকিক',
@@ -329,16 +387,21 @@ export const AdminStoryUploader: React.FC<AdminStoryUploaderProps> = ({
       setCoverPreviewUrl('');
       setStorageAudioPath('');
       setStorageCoverPath('');
-      setLengthCategory('');
-      setStoryType('');
+      setLengthCategory('medium');
+      setStoryType('free');
       setStoryPrice('');
-      setAccessSetting('');
+      setAccessSetting('free_general');
       setPodcastAccessSetting('pass_only');
       setValidationErrors([]);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('Publish story to Firestore failed:', err);
-      setPublishError(`গল্পটি ফায়ারস্টোরে সংরক্ষণ করতে সমস্যা হয়েছে: ${msg}`);
+
+      // Safeguard: add story to local state so creator work is accessible immediately in this session
+      onAddStory(newStory);
+
+      // Do NOT clear form fields on error so user input is not lost
+      setPublishError(`ফায়ারস্টোর ক্লাউড সিঙ্ক সমস্যা: ${msg}। (তবে আপনার কাজের সুরক্ষার্থে গল্পটি লোকাল মেমরিতে সংরক্ষিত হয়েছে)`);
     } finally {
       setIsPublishing(false);
     }
@@ -393,6 +456,55 @@ export const AdminStoryUploader: React.FC<AdminStoryUploaderProps> = ({
             <div className="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 border border-emerald-500/30">
               <CheckCircle2 className="w-4 h-4" /> সফলভাবে প্রকাশিত হয়েছে!
             </div>
+          )}
+        </div>
+
+        {/* Firebase Cloud Connection Status & One-Click Google Auth */}
+        <div className="mb-6 p-3.5 sm:p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs transition-colors bg-purple-950/40 border-purple-800/40">
+          <div className="flex items-center gap-2.5">
+            <span className={`w-3 h-3 rounded-full shrink-0 ${isFirebaseConnected ? 'bg-emerald-400 shadow-sm shadow-emerald-400' : 'bg-amber-400'}`} />
+            <div>
+              <div className="font-semibold text-white flex flex-wrap items-center gap-1.5">
+                <span>ফায়ারবেস ক্লাউড স্টোরেজ ও ডেটাবেজ:</span>
+                {isFirebaseConnected ? (
+                  <span className="text-emerald-300 font-bold bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                    সংযুক্ত ({adminEmailConnected || 'joydas.21071997@gmail.com'})
+                  </span>
+                ) : (
+                  <span className="text-amber-300 font-bold bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30">
+                    লগইন সিঙ্ক প্রয়োজন
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-purple-300/80 mt-0.5">
+                {isFirebaseConnected
+                  ? 'আপনার নতুন অডিও গল্প এবং শ্রোতাদের মন্তব্য সরাসরি লাইভ ক্লাউড ফায়ারস্টোরে সেভ হবে।'
+                  : 'গল্প ও মন্তব্য নিরবচ্ছিন্ন ক্লাউড সিঙ্ক করতে গুগল দিয়ে অ্যাডমিন জয় অ্যাকাউন্ট নিশ্চিত করুন।'}
+              </p>
+              {adminAuthNotice && (
+                <p className="text-[11px] text-pink-300 mt-1 font-medium">{adminAuthNotice}</p>
+              )}
+            </div>
+          </div>
+          {!isFirebaseConnected && (
+            <button
+              type="button"
+              onClick={handleGoogleAdminAuth}
+              disabled={isAuthenticatingAdmin}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-semibold text-xs transition-all flex items-center gap-1.5 shadow-md shadow-pink-600/30 active:scale-95 shrink-0 cursor-pointer disabled:opacity-50"
+            >
+              {isAuthenticatingAdmin ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>কানেক্ট হচ্ছে...</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-3.5 h-3.5 text-pink-200" />
+                  <span>Google দিয়ে অ্যাডমিন জয় কানেক্ট করুন</span>
+                </>
+              )}
+            </button>
           )}
         </div>
 
@@ -981,7 +1093,7 @@ export const AdminStoryUploader: React.FC<AdminStoryUploaderProps> = ({
               </label>
               <input
                 type="file"
-                accept="audio/*"
+                accept="audio/*,video/mp4,video/webm,.mp3,.wav,.m4a,.aac,.ogg,.mp4,.webm"
                 onChange={handleStoryAudioUpload}
                 className="w-full text-xs text-purple-300 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-pink-600 file:text-white hover:file:bg-pink-500 cursor-pointer"
               />

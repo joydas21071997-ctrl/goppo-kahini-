@@ -162,8 +162,8 @@ export async function fetchStoriesFromFirestore(): Promise<Story[]> {
  * Strictly validates that required fields and a valid Firebase Storage audioUrl are present.
  */
 export async function saveStoryToFirestore(story: Story): Promise<{ success: boolean; id: string; error?: string }> {
-  // Ensure Admin Firebase Auth session is active
-  await ensureAdminFirebaseAuth();
+  // Ensure Admin Firebase Auth session is active if available
+  await ensureAdminFirebaseAuth().catch(() => {});
 
   const db = getGoppoFirestore();
   if (!db) throw new Error('ফায়ারবেস ডেটাবেস সংযোগ পাওয়া যায়নি।');
@@ -222,16 +222,16 @@ export async function saveStoryToFirestore(story: Story): Promise<{ success: boo
     if (story.storageAudioPath) payload.storageAudioPath = story.storageAudioPath;
     if (story.storageCoverPath) payload.storageCoverPath = story.storageCoverPath;
 
-    // Enforce 15-second write timeout to prevent indefinite UI hang
+    // Enforce 30-second write timeout to prevent indefinite UI hang
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(
         () =>
           reject(
             new Error(
-              'ফায়ারস্টোরে সংরক্ষণের সময়সীমা অতিক্রম করেছে (১৫ সেকেন্ড)। ইন্টারনেট সংযোগ বা ফায়ারবেস অথেন্টিকেশন পরীক্ষা করুন।'
+              'ফায়ারস্টোরে সংরক্ষণের সময়সীমা অতিক্রম করেছে (৩০ সেকেন্ড)। ইন্টারনেট সংযোগ বা ফায়ারবেস অথেন্টিকেশন পরীক্ষা করুন।'
             )
           ),
-        15000
+        30000
       )
     );
 
@@ -257,8 +257,8 @@ export async function deleteStoryFromFirestore(
   audioUrl?: string,
   coverImage?: string
 ): Promise<{ success: boolean; error?: string }> {
-  // Ensure Admin Firebase Auth session is active
-  await ensureAdminFirebaseAuth();
+  // Ensure Admin Firebase Auth session is active if available
+  await ensureAdminFirebaseAuth().catch(() => {});
 
   const db = getGoppoFirestore();
   if (!db) throw new Error('ফায়ারবেস ডেটাবেস সংযোগ পাওয়া যায়নি।');

@@ -1,5 +1,6 @@
 import {
   getFirestore,
+  initializeFirestore,
   doc,
   getDoc,
   setDoc,
@@ -26,14 +27,19 @@ export function getGoppoFirestore(): Firestore | null {
     try {
       const app = getGoppoFirebaseApp();
       const config = getFirebaseConfig();
-      if (
-        config.firestoreDatabaseId &&
-        config.firestoreDatabaseId !== '(default)' &&
-        config.projectId !== 'jd-productions-app'
-      ) {
-        cachedFirestore = getFirestore(app, config.firestoreDatabaseId);
-      } else {
-        cachedFirestore = getFirestore(app);
+      const dbId =
+        config.firestoreDatabaseId && config.firestoreDatabaseId !== '(default)'
+          ? config.firestoreDatabaseId
+          : undefined;
+
+      try {
+        cachedFirestore = initializeFirestore(
+          app,
+          { experimentalAutoDetectLongPolling: true },
+          dbId
+        );
+      } catch {
+        cachedFirestore = dbId ? getFirestore(app, dbId) : getFirestore(app);
       }
     } catch (err) {
       console.warn('Firestore initialization notice:', err);

@@ -20,16 +20,13 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
-  ShieldCheck,
   User,
   FileText,
   Clock,
-  ArrowRight,
   LogIn
 } from 'lucide-react';
 import { GoppoKahiniLogo } from './GoppoKahiniLogo';
 import { ThemeMode, CreatorSession, AudienceUser } from '../types';
-import { isAuthorizedAdmin } from '../services/adminAuth';
 import { LegalSupportDropdown } from './legal/LegalSupportDropdown';
 import { LegalPolicySlug } from '../data/legalPolicies';
 
@@ -98,9 +95,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   // Accordion state for "কমিউনিটি ও তথ্য" (default collapsed to keep screen compact)
   const [isCommunityOpen, setIsCommunityOpen] = useState(false);
-
-  // Check if current user or session is an authorized Admin
-  const isAdmin = isAuthorizedAdmin(creatorSession, currentUser);
 
   const closeDrawer = () => setIsMenuOpen(false);
 
@@ -902,30 +896,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     onSelectPolicy(slug);
                   }}
                 />
-              )}
-
-              {/* Authorized Admin Panel Access in Drawer */}
-              {isAdmin && (
-                <div className={`pt-2 border-t ${isLight ? 'border-purple-200' : 'border-purple-900/30'}`}>
-                  <button
-                    onClick={() => {
-                      closeDrawer();
-                      if (onOpenStudio) onOpenStudio();
-                    }}
-                    className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all text-xs font-semibold w-full group border shadow-sm ${
-                      isLight
-                        ? 'bg-purple-100/80 hover:bg-purple-200 text-purple-900 border-purple-300'
-                        : 'bg-purple-900/40 hover:bg-purple-800/50 text-pink-300 hover:text-white border-pink-500/30'
-                    }`}
-                    title="এডমিন ক্রিয়েটর স্টুডিও"
-                  >
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className={`h-3.5 w-3.5 ${isLight ? 'text-purple-700' : 'text-pink-400'}`} />
-                      <span>ক্রিয়েটর স্টুডিও প্যানেল</span>
-                    </div>
-                    <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
-                </div>
               )}
 
               {/* General App Footer in Drawer */}

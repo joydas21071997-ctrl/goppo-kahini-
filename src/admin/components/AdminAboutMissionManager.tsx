@@ -14,7 +14,7 @@ import { INITIAL_ABOUT_MISSION_DATA } from '../../data/aboutMission';
 export const AdminAboutMissionManager: React.FC = () => {
   const [data, setData] = useState<AboutMissionData>(() => {
     try {
-      const stored = localStorage.getItem('goppo_about_mission');
+      const stored = localStorage.getItem('goppo_about_mission_data') || localStorage.getItem('goppo_about_mission');
       if (stored) return JSON.parse(stored);
     } catch {}
     return INITIAL_ABOUT_MISSION_DATA;
@@ -24,7 +24,9 @@ export const AdminAboutMissionManager: React.FC = () => {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('goppo_about_mission', JSON.stringify(data));
+    const serialized = JSON.stringify(data);
+    localStorage.setItem('goppo_about_mission', serialized);
+    localStorage.setItem('goppo_about_mission_data', serialized);
     window.dispatchEvent(new Event('goppo_about_mission_updated'));
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);

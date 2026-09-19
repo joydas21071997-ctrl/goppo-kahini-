@@ -30,7 +30,30 @@ import {
   getDelegatedAdmins,
   ensureAdminFirebaseAuth,
 } from '../services/adminAuth';
-import { subscribeStoriesFromFirestore } from '../services/firestoreStories';
+import {
+  subscribeStoriesFromFirestore,
+  saveStoryToFirestore,
+  deleteStoryFromFirestore,
+} from '../services/firestoreStories';
+import {
+  subscribeTransactionsFromFirestore,
+  saveTransactionToFirestore,
+  deleteTransactionFromFirestore,
+  subscribeSubscribersFromFirestore,
+  saveSubscriberToFirestore,
+  deleteSubscriberFromFirestore,
+  subscribeNarratorAppsFromFirestore,
+  saveNarratorAppToFirestore,
+  deleteNarratorAppFromFirestore,
+  subscribeLifeStoriesFromFirestore,
+  saveLifeStoryToFirestore,
+  deleteLifeStoryFromFirestore,
+  subscribePodcastEpisodesFromFirestore,
+  savePodcastEpisodeToFirestore,
+  deletePodcastEpisodeFromFirestore,
+  subscribeUpiConfigFromFirestore,
+  saveUpiConfigToFirestore,
+} from '../services/firestoreAdminData';
 
 export const StandaloneAdminPortal: React.FC = () => {
   // Authentication State
@@ -190,6 +213,78 @@ export const StandaloneAdminPortal: React.FC = () => {
     };
   }, []);
 
+  // Listen to Firestore transactions
+  useEffect(() => {
+    const unsubscribe = subscribeTransactionsFromFirestore((items) => {
+      if (items && items.length > 0) {
+        setPaymentTransactions(items);
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  // Listen to Firestore subscribers
+  useEffect(() => {
+    const unsubscribe = subscribeSubscribersFromFirestore((items) => {
+      if (items && items.length > 0) {
+        setSubscribers(items);
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  // Listen to Firestore narrator applications
+  useEffect(() => {
+    const unsubscribe = subscribeNarratorAppsFromFirestore((items) => {
+      if (items && items.length > 0) {
+        setNarratorApplications(items);
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  // Listen to Firestore life stories
+  useEffect(() => {
+    const unsubscribe = subscribeLifeStoriesFromFirestore((items) => {
+      if (items && items.length > 0) {
+        setLifeStorySubmissions(items);
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  // Listen to Firestore podcast episodes
+  useEffect(() => {
+    const unsubscribe = subscribePodcastEpisodesFromFirestore((items) => {
+      if (items && items.length > 0) {
+        setLifeStoryEpisodes(items);
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  // Listen to Firestore UPI settings
+  useEffect(() => {
+    const unsubscribe = subscribeUpiConfigFromFirestore((config) => {
+      if (config && config.upiId) {
+        setUpiConfig(config);
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
   // Ensure Admin Firebase Auth
   useEffect(() => {
     if (session?.isLoggedIn) {
@@ -292,20 +387,28 @@ export const StandaloneAdminPortal: React.FC = () => {
             const updated = [newStory, ...stories.filter((s) => s.id !== newStory.id)];
             setStories(updated);
             localStorage.setItem('goppo_stories', JSON.stringify(updated));
+            saveStoryToFirestore(newStory).catch(console.error);
           }}
           onDeleteStory={(storyId) => {
             const updated = stories.filter((s) => s.id !== storyId);
             setStories(updated);
             localStorage.setItem('goppo_stories', JSON.stringify(updated));
+            deleteStoryFromFirestore(storyId).catch(console.error);
           }}
           lifeStoryEpisodes={lifeStoryEpisodes}
           onAddLifeStoryEpisode={(newEp) => {
             const updated = [newEp, ...lifeStoryEpisodes.filter((e) => e.id !== newEp.id)];
             setLifeStoryEpisodes(updated);
             localStorage.setItem('goppo_podcast_episodes', JSON.stringify(updated));
+            savePodcastEpisodeToFirestore(newEp).catch(console.error);
           }}
           subscribers={subscribers}
           onUpdateSubscriberStatus={(id, status) => {
+            const target = subscribers.find((s) => s.id === id);
+            if (target) {
+              const updatedSub = { ...target, verificationStatus: status };
+              saveSubscriberToFirestore(updatedSub).catch(console.error);
+            }
             const updated = subscribers.map((s) => (s.id === id ? { ...s, verificationStatus: status } : s));
             setSubscribers(updated);
             localStorage.setItem('goppo_subscribers', JSON.stringify(updated));
@@ -314,14 +417,21 @@ export const StandaloneAdminPortal: React.FC = () => {
             const updated = subscribers.filter((s) => s.id !== id);
             setSubscribers(updated);
             localStorage.setItem('goppo_subscribers', JSON.stringify(updated));
+            deleteSubscriberFromFirestore(id).catch(console.error);
           }}
           onAddSubscriber={(newSub) => {
             const updated = [newSub, ...subscribers.filter((s) => s.id !== newSub.id)];
             setSubscribers(updated);
             localStorage.setItem('goppo_subscribers', JSON.stringify(updated));
+            saveSubscriberToFirestore(newSub).catch(console.error);
           }}
           narratorApplications={narratorApplications}
           onApproveNarrator={(id, code) => {
+            const target = narratorApplications.find((app) => app.id === id);
+            if (target) {
+              const approvedApp = { ...target, status: 'approved' as const, approvalCode: code };
+              saveNarratorAppToFirestore(approvedApp).catch(console.error);
+            }
             const updated = narratorApplications.map((app) =>
               app.id === id ? { ...app, status: 'approved' as const, approvalCode: code } : app
             );
@@ -329,6 +439,11 @@ export const StandaloneAdminPortal: React.FC = () => {
             localStorage.setItem('goppo_narrator_applications', JSON.stringify(updated));
           }}
           onRejectNarrator={(id) => {
+            const target = narratorApplications.find((app) => app.id === id);
+            if (target) {
+              const rejectedApp = { ...target, status: 'rejected' as const };
+              saveNarratorAppToFirestore(rejectedApp).catch(console.error);
+            }
             const updated = narratorApplications.map((app) =>
               app.id === id ? { ...app, status: 'rejected' as const } : app
             );
@@ -339,9 +454,15 @@ export const StandaloneAdminPortal: React.FC = () => {
             const updated = narratorApplications.filter((app) => app.id !== id);
             setNarratorApplications(updated);
             localStorage.setItem('goppo_narrator_applications', JSON.stringify(updated));
+            deleteNarratorAppFromFirestore(id).catch(console.error);
           }}
           lifeStorySubmissions={lifeStorySubmissions}
           onUpdateLifeStoryStatus={(id, status) => {
+            const target = lifeStorySubmissions.find((s) => s.id === id);
+            if (target) {
+              const updatedItem = { ...target, status };
+              saveLifeStoryToFirestore(updatedItem).catch(console.error);
+            }
             const updated = lifeStorySubmissions.map((s) => (s.id === id ? { ...s, status } : s));
             setLifeStorySubmissions(updated);
             localStorage.setItem('goppo_life_story_submissions', JSON.stringify(updated));
@@ -350,23 +471,56 @@ export const StandaloneAdminPortal: React.FC = () => {
             const updated = lifeStorySubmissions.filter((s) => s.id !== id);
             setLifeStorySubmissions(updated);
             localStorage.setItem('goppo_life_story_submissions', JSON.stringify(updated));
+            deleteLifeStoryFromFirestore(id).catch(console.error);
           }}
           paymentTransactions={paymentTransactions}
           onApprovePayment={(id) => {
-            const updated = paymentTransactions.map((tx) =>
-              tx.id === id ? { ...tx, status: 'approved' as const } : tx
-            );
+            let approvedTx: PaymentTransaction | null = null;
+            const updated = paymentTransactions.map((tx) => {
+              if (tx.id === id) {
+                approvedTx = { ...tx, status: 'approved' as const };
+                return approvedTx;
+              }
+              return tx;
+            });
             setPaymentTransactions(updated);
             localStorage.setItem('goppo_payment_transactions', JSON.stringify(updated));
+            if (approvedTx) {
+              saveTransactionToFirestore(approvedTx).catch(console.error);
+              const matchingLead = subscribers.find((l) => l.transactionId === (approvedTx as PaymentTransaction).utrTransactionId);
+              if (matchingLead) {
+                const verifiedLead = { ...matchingLead, verificationStatus: 'verified' as const };
+                saveSubscriberToFirestore(verifiedLead).catch(console.error);
+                setSubscribers((prev) => prev.map((l) => l.id === matchingLead.id ? verifiedLead : l));
+              }
+            }
           }}
           onRejectPayment={(id, reason) => {
-            const updated = paymentTransactions.map((tx) =>
-              tx.id === id ? { ...tx, status: 'rejected' as const, adminNote: reason } : tx
-            );
+            let rejectedTx: PaymentTransaction | null = null;
+            const updated = paymentTransactions.map((tx) => {
+              if (tx.id === id) {
+                rejectedTx = { ...tx, status: 'rejected' as const, adminNote: reason };
+                return rejectedTx;
+              }
+              return tx;
+            });
             setPaymentTransactions(updated);
             localStorage.setItem('goppo_payment_transactions', JSON.stringify(updated));
+            if (rejectedTx) {
+              saveTransactionToFirestore(rejectedTx).catch(console.error);
+              const matchingLead = subscribers.find((l) => l.transactionId === (rejectedTx as PaymentTransaction).utrTransactionId);
+              if (matchingLead) {
+                const rejLead = { ...matchingLead, verificationStatus: 'rejected' as const };
+                saveSubscriberToFirestore(rejLead).catch(console.error);
+                setSubscribers((prev) => prev.map((l) => l.id === matchingLead.id ? rejLead : l));
+              }
+            }
           }}
           onApproveRefund={(id) => {
+            const target = paymentTransactions.find((tx) => tx.id === id);
+            if (target) {
+              saveTransactionToFirestore({ ...target, refundStatus: 'approved' as const }).catch(console.error);
+            }
             const updated = paymentTransactions.map((tx) =>
               tx.id === id ? { ...tx, refundStatus: 'approved' as const } : tx
             );
@@ -374,6 +528,10 @@ export const StandaloneAdminPortal: React.FC = () => {
             localStorage.setItem('goppo_payment_transactions', JSON.stringify(updated));
           }}
           onRejectRefund={(id, reason) => {
+            const target = paymentTransactions.find((tx) => tx.id === id);
+            if (target) {
+              saveTransactionToFirestore({ ...target, refundStatus: 'rejected' as const, refundNote: reason }).catch(console.error);
+            }
             const updated = paymentTransactions.map((tx) =>
               tx.id === id ? { ...tx, refundStatus: 'rejected' as const, refundNote: reason } : tx
             );
@@ -381,24 +539,32 @@ export const StandaloneAdminPortal: React.FC = () => {
             localStorage.setItem('goppo_payment_transactions', JSON.stringify(updated));
           }}
           onCompleteRefund={(id, utr, amount, note) => {
-            const updated = paymentTransactions.map((tx) =>
-              tx.id === id
-                ? {
-                    ...tx,
-                    refundStatus: 'processed' as const,
-                    refundUtr: utr,
-                    refundAmount: amount,
-                    refundNote: note,
-                  }
-                : tx
-            );
+            let procTx: PaymentTransaction | null = null;
+            const updated = paymentTransactions.map((tx) => {
+              if (tx.id === id) {
+                procTx = {
+                  ...tx,
+                  status: 'refunded' as const,
+                  refundStatus: 'processed' as const,
+                  refundUtr: utr,
+                  refundAmount: amount,
+                  refundNote: note,
+                };
+                return procTx;
+              }
+              return tx;
+            });
             setPaymentTransactions(updated);
             localStorage.setItem('goppo_payment_transactions', JSON.stringify(updated));
+            if (procTx) {
+              saveTransactionToFirestore(procTx).catch(console.error);
+            }
           }}
           upiConfig={upiConfig}
           onUpdateUpiConfig={(newConfig) => {
             setUpiConfig(newConfig);
             localStorage.setItem('goppo_upi_config', JSON.stringify(newConfig));
+            saveUpiConfigToFirestore(newConfig).catch(console.error);
           }}
           adminActivityLogs={activityLogs}
         />

@@ -2485,11 +2485,11 @@ export const CreatorStudioModal: React.FC<CreatorStudioModalProps> = ({
                     <div className="space-y-2 rounded-xl bg-black/80 p-3 text-xs border border-purple-900/30 font-mono">
                       <div className="flex items-center justify-between text-zinc-400">
                         <span>Project ID:</span>
-                        <span className="text-white font-bold">{fbConfig.projectId || 'jd-productions-app'}</span>
+                        <span className="text-white font-bold">{fbConfig.projectId || 'argon-yarrow-wpthm'}</span>
                       </div>
                       <div className="flex items-center justify-between text-zinc-400">
                         <span>Project Number:</span>
-                        <span className="text-white">{fbConfig.projectNumber || '451367721746'}</span>
+                        <span className="text-white">{fbConfig.projectNumber || '346121043543'}</span>
                       </div>
                       <div className="flex items-center justify-between text-zinc-400">
                         <span>Android Package:</span>
@@ -2498,19 +2498,19 @@ export const CreatorStudioModal: React.FC<CreatorStudioModalProps> = ({
                       <div className="flex items-center justify-between text-zinc-400">
                         <span>Database URL:</span>
                         <span className="text-zinc-300 text-[11px] truncate max-w-[240px]">
-                          {fbConfig.databaseURL || 'jd-productions-app-default-rtdb.firebaseio.com'}
+                          {fbConfig.databaseURL || 'https://argon-yarrow-wpthm-default-rtdb.firebaseio.com'}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-zinc-400">
                         <span>Storage Bucket:</span>
                         <span className="text-zinc-300 text-[11px]">
-                          {fbConfig.storageBucket || 'jd-productions-app.firebasestorage.app'}
+                          {fbConfig.storageBucket || 'argon-yarrow-wpthm.firebasestorage.app'}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-zinc-400">
                         <span>App ID:</span>
                         <span className="text-zinc-300 text-[10px] truncate max-w-[200px]">
-                          {fbConfig.appId || '1:451367721746:web:f5fb54079c746e8d0f31cb'}
+                          {fbConfig.appId || '1:346121043543:web:5f1b919cbb4f9b6935ed12'}
                         </span>
                       </div>
                     </div>

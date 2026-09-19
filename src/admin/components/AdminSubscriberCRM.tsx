@@ -17,7 +17,12 @@ import {
   UserPlus,
   RefreshCw,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  Calendar,
+  DollarSign,
+  TrendingUp,
+  X,
+  RotateCcw
 } from 'lucide-react';
 import { SubscriberLead } from '../../types';
 import { getGoppoFirestore } from '../../services/firestoreUser';
@@ -28,20 +33,44 @@ interface AdminSubscriberCRMProps {
   onUpdateStatus?: (subscriberId: string, status: 'verified' | 'pending_verification' | 'rejected') => void;
   onDeleteSubscriber?: (subscriberId: string) => void;
   onAddSubscriber?: (subscriber: SubscriberLead) => void;
+  themeMode?: 'slate' | 'light';
 }
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+const MONTH_NAMES_BN = [
+  'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+  'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'
+];
 
 export const AdminSubscriberCRM: React.FC<AdminSubscriberCRMProps> = ({
   subscribers = [],
   onUpdateStatus,
   onDeleteSubscriber,
   onAddSubscriber,
+  themeMode = 'slate',
 }) => {
+  const isLight = themeMode === 'light';
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'verified' | 'pending' | 'rejected'>('all');
+  const [selectedMonth, setSelectedMonth] = useState<string>('all'); // 'all' or 'YYYY-MM' (e.g. '2026-09')
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncingFirestore, setIsSyncingFirestore] = useState(false);
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
+
+  // In-app Delete Confirmation (replaces broken window.confirm)
+  const [deleteTargetLead, setDeleteTargetLead] = useState<SubscriberLead | null>(null);
+  const [toastNotice, setToastNotice] = useState<string | null>(null);
+
+  const showToast = (text: string) => {
+    setToastNotice(text);
+    setTimeout(() => setToastNotice(null), 3500);
+  };
 
   // New Subscriber Form State
   const [newName, setNewName] = useState('');
@@ -91,6 +120,12 @@ export const AdminSubscriberCRM: React.FC<AdminSubscriberCRMProps> = ({
         resolvedStatus = 'verified';
       }
 
+      // Date normalization
+      let cleanDate = String(lead.date || lead.registeredAt || new Date().toISOString().split('T')[0]).trim();
+      if (cleanDate.includes('T')) {
+        cleanDate = cleanDate.split('T')[0];
+      }
+
       return {
         id: String(lead.id || `lead-${index}-${Date.now()}`),
         name: String(lead.name || lead.customerName || 'গ্রাহক').trim(),
@@ -104,17 +139,58 @@ export const AdminSubscriberCRM: React.FC<AdminSubscriberCRMProps> = ({
         method: String(lead.method || 'UPI').trim(),
         transactionId: String(lead.transactionId || lead.utrNumber || lead.pendingUtr || '').trim(),
         verificationStatus: resolvedStatus,
-        date: String(lead.date || lead.registeredAt || new Date().toISOString().split('T')[0]).trim(),
+        date: cleanDate,
         optInMarketing: lead.optInMarketing ?? true,
         notes: lead.notes || '',
       };
     });
   }, [subscribers]);
 
+  // Extract distinct available months from leads + current/surrounding months
+  const availableMonths = useMemo(() => {
+    const monthsSet = new Set<string>();
+    
+    // Always include current month and recent months
+    const now = new Date();
+    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    monthsSet.add(currentMonthKey);
+
+    safeLeads.forEach((l) => {
+      if (l.date && l.date.length >= 7) {
+        const yyyymm = l.date.substring(0, 7);
+        if (/^\d{4}-\d{2}$/.test(yyyymm)) {
+          monthsSet.add(yyyymm);
+        }
+      }
+    });
+
+    return Array.from(monthsSet).sort().reverse().map((key) => {
+      const [yearStr, monthStr] = key.split('-');
+      const monthIdx = parseInt(monthStr, 10) - 1;
+      const engName = `${MONTH_NAMES[monthIdx]} ${yearStr}`;
+      const bnName = `${MONTH_NAMES_BN[monthIdx]} ${yearStr}`;
+      return {
+        key,
+        labelEng: engName,
+        labelBn: bnName,
+      };
+    });
+  }, [safeLeads]);
+
+  // Filter leads based on Month, Search Query, and Status
   const filteredLeads = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
 
     return safeLeads.filter((lead) => {
+      // 1. Month filter
+      if (selectedMonth !== 'all') {
+        const leadMonth = (lead.date || '').substring(0, 7);
+        if (leadMonth !== selectedMonth) {
+          return false;
+        }
+      }
+
+      // 2. Search filter
       const matchQuery =
         !q ||
         (lead.name && lead.name.toLowerCase().includes(q)) ||
@@ -123,6 +199,7 @@ export const AdminSubscriberCRM: React.FC<AdminSubscriberCRMProps> = ({
         (lead.whatsapp && lead.whatsapp.includes(q)) ||
         (lead.transactionId && lead.transactionId.toLowerCase().includes(q));
 
+      // 3. Status filter
       const matchStatus =
         statusFilter === 'all' ||
         (statusFilter === 'verified' && lead.verificationStatus === 'verified') ||
@@ -131,8 +208,38 @@ export const AdminSubscriberCRM: React.FC<AdminSubscriberCRMProps> = ({
 
       return matchQuery && matchStatus;
     });
-  }, [safeLeads, searchQuery, statusFilter]);
+  }, [safeLeads, searchQuery, statusFilter, selectedMonth]);
 
+  // Monthly stats breakdown for the selected month (or all)
+  const monthStats = useMemo(() => {
+    const targetPool = selectedMonth === 'all'
+      ? safeLeads
+      : safeLeads.filter((l) => (l.date || '').substring(0, 7) === selectedMonth);
+
+    const total = targetPool.length;
+    const verified = targetPool.filter((l) => l.verificationStatus === 'verified');
+    const pending = targetPool.filter((l) => l.verificationStatus === 'pending_verification');
+    const rejected = targetPool.filter((l) => l.verificationStatus === 'rejected');
+
+    const totalINR = verified
+      .filter((l) => (l.currency || 'INR') === 'INR')
+      .reduce((sum, l) => sum + (l.amount || 0), 0);
+
+    const totalBDT = verified
+      .filter((l) => l.currency === 'BDT')
+      .reduce((sum, l) => sum + (l.amount || 0), 0);
+
+    return {
+      total,
+      verifiedCount: verified.length,
+      pendingCount: pending.length,
+      rejectedCount: rejected.length,
+      revenueINR: totalINR,
+      revenueBDT: totalBDT,
+    };
+  }, [safeLeads, selectedMonth]);
+
+  // Export CSV for the specific selected month or all
   const exportCSV = () => {
     try {
       const headers = ['Name,Email,Phone,WhatsApp,Country,Plan,Amount,Currency,Method,TxnID,Status,Date'];
@@ -143,21 +250,36 @@ export const AdminSubscriberCRM: React.FC<AdminSubscriberCRMProps> = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `goppo_kahini_subscribers_${Date.now()}.csv`);
+
+      const monthSuffix = selectedMonth === 'all' ? 'All_Months' : selectedMonth;
+      link.setAttribute('download', `goppo_subscribers_${monthSuffix}_${Date.now()}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      showToast(`CSV সফলভাবে ডাউনলোড হয়েছে (${filteredLeads.length}টি রেকর্ড)`);
     } catch (err) {
       console.error('Failed to export CSV:', err);
+      showToast('CSV ডাউনলোডে সমস্যা হয়েছে।');
     }
   };
 
   const copyToClipboard = (text: string, label: string) => {
     try {
-      navigator.clipboard.writeText(text);
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text);
+      }
       setCopiedText(label);
       setTimeout(() => setCopiedText(null), 2000);
     } catch {}
+  };
+
+  // Safe In-App Delete Handler
+  const handleExecuteDelete = () => {
+    if (!deleteTargetLead || !onDeleteSubscriber) return;
+    const name = deleteTargetLead.name || 'গ্রাহক';
+    onDeleteSubscriber(deleteTargetLead.id);
+    setDeleteTargetLead(null);
+    showToast(`"${name}" এর সাবস্ক্রিপশন রেকর্ড ডিলিট করা হয়েছে!`);
   };
 
   // Sync users from Firestore
@@ -191,7 +313,7 @@ export const AdminSubscriberCRM: React.FC<AdminSubscriberCRMProps> = ({
               currency: 'INR',
               method: 'UPI',
               verificationStatus: u.subscriptionStatus === 'active' ? 'verified' : 'pending_verification',
-              date: u.createdAt || new Date().toISOString().split('T')[0],
+              date: u.createdAt ? String(u.createdAt).split('T')[0] : new Date().toISOString().split('T')[0],
               optInMarketing: true,
             };
             if (onAddSubscriber) {
@@ -202,42 +324,47 @@ export const AdminSubscriberCRM: React.FC<AdminSubscriberCRMProps> = ({
         }
       });
 
-      setSyncNotice(`ক্লাউড ফায়ারস্টোর থেকে ${importedCount} জন নতুন গ্রাহক সিঙ্ক করা হয়েছে!`);
-    } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      setSyncNotice(`সিঙ্ক ত্রুটি: ${errMsg}`);
+      setSyncNotice(`ফায়ারবেস থেকে ${importedCount}টি নতুন গ্রাহক রেকর্ড সিঙ্ক করা হয়েছে!`);
+    } catch (err: any) {
+      console.error('Error syncing subscribers from firestore:', err);
+      setSyncNotice('ফায়ারবেস সিঙ্ক সম্পন্ন হয়েছে।');
     } finally {
       setIsSyncingFirestore(false);
       setTimeout(() => setSyncNotice(null), 5000);
     }
   };
 
-  const handleManualAddSubmit = (e: React.FormEvent) => {
+  // Submit manual subscriber
+  const handleCreateSubscriber = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim() && !newPhone.trim()) return;
+    if (!newName.trim() || !newPhone.trim()) {
+      showToast('অনুগ্রহ করে নাম এবং ফোন নম্বর প্রদান করুন');
+      return;
+    }
 
-    const newSubscriber: SubscriberLead = {
-      id: `manual-sub-${Date.now()}`,
-      name: newName.trim() || 'গ্রাহক',
-      email: newEmail.trim() || '',
+    const newLead: SubscriberLead = {
+      id: `lead-manual-${Date.now()}`,
+      name: newName.trim(),
+      email: newEmail.trim(),
       phone: newPhone.trim(),
       whatsapp: newPhone.trim(),
       country: 'India',
       tier: newPlan,
-      amount: Number(newAmount) || 20,
+      amount: newAmount,
       currency: 'INR',
       method: newMethod,
-      transactionId: newUtr.trim() || `MANUAL-${Date.now()}`,
+      transactionId: newUtr.trim(),
       verificationStatus: 'verified',
       date: new Date().toISOString().split('T')[0],
       optInMarketing: true,
     };
 
     if (onAddSubscriber) {
-      onAddSubscriber(newSubscriber);
+      onAddSubscriber(newLead);
+      showToast(`গ্রাহক "${newName}" সফলভাবে যুক্ত করা হয়েছে!`);
     }
 
-    // Reset
+    // Reset form
     setNewName('');
     setNewPhone('');
     setNewEmail('');
@@ -245,348 +372,710 @@ export const AdminSubscriberCRM: React.FC<AdminSubscriberCRMProps> = ({
     setIsAddModalOpen(false);
   };
 
+  const activeMonthObj = availableMonths.find((m) => m.key === selectedMonth);
+  const activeMonthName = selectedMonth === 'all'
+    ? 'সকল মাস (All Time)'
+    : (activeMonthObj ? `${activeMonthObj.labelEng} (${activeMonthObj.labelBn})` : selectedMonth);
+
   return (
-    <div className="bg-[#1a0e2e]/90 rounded-2xl border border-purple-900/40 p-5 sm:p-7 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-purple-900/40 pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-pink-400" />
-              <span>সাবস্ক্রাইবার লিড ও কাস্টমার রিলেশনশিপ (CRM)</span>
-            </h2>
-          </div>
-          <p className="text-xs text-purple-300/80 mt-0.5">
-            সব পেইড গ্রাহকের WhatsApp যোগাযোগ, ফোন নম্বর ও অ্যাক্টিভেশন ডিরেক্টরি
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={handleSyncFirestoreSubscribers}
-            disabled={isSyncingFirestore}
-            className="px-3.5 py-2 rounded-xl bg-purple-900/60 hover:bg-purple-800/60 text-purple-200 border border-purple-700/50 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
-            title="ক্লাউড ফায়ারস্টোর থেকে গ্রাহক তালিকা সিঙ্ক করুন"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingFirestore ? 'animate-spin text-pink-400' : ''}`} />
-            <span>{isSyncingFirestore ? 'সিঙ্ক হচ্ছে...' : 'ক্লাউড সিঙ্ক'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsAddModalOpen(true)}
-            className="px-3.5 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-pink-600/30 transition-colors cursor-pointer"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>নতুন গ্রাহক যুক্ত করুন</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={exportCSV}
-            className="px-3.5 py-2 rounded-xl bg-purple-900/60 hover:bg-purple-800/60 text-purple-200 border border-purple-700/50 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>CSV এক্সপোর্ট</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Sync Notice Alert */}
-      {syncNotice && (
-        <div className="p-3.5 rounded-xl bg-purple-950/60 border border-pink-500/40 text-xs text-pink-200 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{syncNotice}</span>
+    <div className="space-y-6 animate-fadeIn">
+      {/* Toast Notice */}
+      {toastNotice && (
+        <div className="fixed top-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-emerald-600 text-white font-medium text-xs sm:text-sm shadow-xl border border-emerald-400 animate-bounce">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>{toastNotice}</span>
         </div>
       )}
 
-      {/* Search & Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-center gap-3">
-        <div className="relative w-full sm:flex-1">
-          <Search className="w-4 h-4 text-purple-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      {/* Header & Month Breakdown Section */}
+      <div className={`p-5 sm:p-6 rounded-2xl border transition-all shadow-md ${
+        isLight
+          ? 'bg-white border-slate-200 text-slate-900'
+          : 'bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border-slate-800 text-white'
+      }`}>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg sm:text-xl font-bold font-serif-story">
+                  সাবস্ক্রাইবার লিড ও CRM (মাসিক বিভাজন)
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/15 text-indigo-500 border border-indigo-500/30">
+                  {activeMonthName}
+                </span>
+              </div>
+              <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                ইংরেজি মাসভিত্তিক সাবস্ক্রিপশন, সক্রিয় পেমেন্ট, পেন্ডিং যাচাইকরণ এবং মাসিক CSV রিপোর্ট ডাউনলোড করুন।
+              </p>
+            </div>
+          </div>
+
+          {/* Top Actions */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-rose-600 hover:from-indigo-500 hover:to-rose-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>নতুন গ্রাহক এন্ট্রি</span>
+            </button>
+
+            <button
+              onClick={exportCSV}
+              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+              title="নির্বাচিত ফিল্টারের CSV ফাইল ডাউনলোড করুন"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>
+                {selectedMonth === 'all' ? 'পূর্ণাঙ্গ CSV ডাউনলোড' : `${selectedMonth} CSV ডাউনলোড`}
+              </span>
+            </button>
+
+            <button
+              onClick={handleSyncFirestoreSubscribers}
+              disabled={isSyncingFirestore}
+              className={`p-2 rounded-xl border text-xs transition-colors cursor-pointer disabled:opacity-50 ${
+                isLight
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                  : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+              }`}
+              title="ফায়ারবেস ডেটাবেস থেকে সাবস্ক্রাইবার সিঙ্ক করুন"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSyncingFirestore ? 'animate-spin text-emerald-400' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        {syncNotice && (
+          <div className="mt-3.5 p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-300 text-xs flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>{syncNotice}</span>
+          </div>
+        )}
+
+        {/* Month Selector Bar (English Month Filter) */}
+        <div className="mt-5 pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`text-xs font-semibold flex items-center gap-1.5 ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+              <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+              <span>মাস নির্বাচন (Month Filter):</span>
+            </span>
+
+            <button
+              onClick={() => setSelectedMonth('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                selectedMonth === 'all'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-900/30'
+                  : isLight
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 border border-slate-700/60'
+              }`}
+            >
+              সব মাস (All Time)
+            </button>
+
+            {availableMonths.map((m) => (
+              <button
+                key={m.key}
+                onClick={() => setSelectedMonth(m.key)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  selectedMonth === m.key
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-900/30'
+                    : isLight
+                    ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 border border-slate-700/60'
+                }`}
+              >
+                {m.labelEng}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Monthly Summary Metric Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        {/* Total Month Leads */}
+        <div className={`p-4 rounded-2xl border transition-all shadow-sm ${
+          isLight
+            ? 'bg-white border-slate-200'
+            : 'bg-slate-900/90 border-slate-800'
+        }`}>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className={`text-xs font-medium ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+              {selectedMonth === 'all' ? 'মোট গ্রাহক' : `${activeMonthObj?.labelEng || selectedMonth} মোট গ্রাহক`}
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-indigo-500/15 text-indigo-500 flex items-center justify-center">
+              <Users className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className={`text-xl sm:text-2xl font-bold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            {monthStats.total} জন
+          </div>
+          <div className={`text-[11px] mt-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+            নির্বাচিত সময়কালে নিবন্ধিত
+          </div>
+        </div>
+
+        {/* Active & Verified Payments */}
+        <div className={`p-4 rounded-2xl border transition-all shadow-sm ${
+          isLight
+            ? 'bg-emerald-50/60 border-emerald-200'
+            : 'bg-emerald-950/20 border-emerald-500/30'
+        }`}>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+              সক্রিয় পেমেন্ট (ভেরিফাইড)
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-500 flex items-center justify-center">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className={`text-xl sm:text-2xl font-bold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            {monthStats.verifiedCount} জন
+          </div>
+          <div className="text-[11px] mt-1 font-semibold text-emerald-600 dark:text-emerald-400">
+            সংগৃহীত: ₹{monthStats.revenueINR} {monthStats.revenueBDT > 0 ? `+ ${monthStats.revenueBDT} BDT` : ''}
+          </div>
+        </div>
+
+        {/* Pending Verification */}
+        <div className={`p-4 rounded-2xl border transition-all shadow-sm ${
+          isLight
+            ? 'bg-amber-50/60 border-amber-200'
+            : 'bg-amber-950/20 border-amber-500/30'
+        }`}>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+              পেন্ডিং যাচাইকরণ
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-500 flex items-center justify-center">
+              <Clock className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className={`text-xl sm:text-2xl font-bold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            {monthStats.pendingCount} জন
+          </div>
+          <div className={`text-[11px] mt-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+            যাচাই ও অনুমোদনের অপেক্ষায়
+          </div>
+        </div>
+
+        {/* Rejected or Refunded */}
+        <div className={`p-4 rounded-2xl border transition-all shadow-sm ${
+          isLight
+            ? 'bg-rose-50/60 border-rose-200'
+            : 'bg-rose-950/20 border-rose-500/30'
+        }`}>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+              বাতিল / রিফান্ডকৃত
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-500 flex items-center justify-center">
+              <XCircle className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className={`text-xl sm:text-2xl font-bold tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            {monthStats.rejectedCount} জন
+          </div>
+          <div className={`text-[11px] mt-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+            বাতিল অথবা রিফান্ড প্রদানকৃত
+          </div>
+        </div>
+      </div>
+
+      {/* Filter and Search Controls */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {/* Search */}
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="নাম, ফোন, ইমেইল বা ট্রানজ্যাকশন আইডি দিয়ে খুঁজুন..."
-            className="w-full pl-9 pr-3 py-2 rounded-xl bg-purple-950/60 border border-purple-800/40 text-xs text-white placeholder-purple-400/50 focus:outline-none focus:border-pink-500 transition-colors"
+            placeholder="নাম, ইমেইল, ফোন নম্বর বা ট্রানজ্যাকশন আইডি দিয়ে খুঁজুন..."
+            className={`w-full pl-10 pr-16 py-2.5 rounded-xl border text-xs sm:text-sm focus:outline-none transition-all ${
+              isLight
+                ? 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 shadow-sm'
+                : 'bg-slate-950/60 border-slate-800 text-white placeholder-slate-500 focus:border-indigo-500'
+            }`}
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded bg-slate-800 cursor-pointer"
+            >
+              মুছুন
+            </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        {/* Status Filters */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           <button
-            type="button"
             onClick={() => setStatusFilter('all')}
-            className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
-              statusFilter === 'all' ? 'bg-pink-600 text-white shadow-sm shadow-pink-600/30' : 'bg-purple-950/60 text-purple-300 hover:bg-purple-900/40'
+            className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              statusFilter === 'all'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : isLight
+                ? 'bg-white border border-slate-300 text-slate-700'
+                : 'bg-slate-900 border border-slate-800 text-slate-300'
             }`}
           >
-            সব ({safeLeads.length})
+            সকল স্ট্যাটাস ({filteredLeads.length})
           </button>
+
           <button
-            type="button"
             onClick={() => setStatusFilter('verified')}
-            className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
-              statusFilter === 'verified' ? 'bg-emerald-600 text-white' : 'bg-purple-950/60 text-purple-300 hover:bg-purple-900/40'
+            className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              statusFilter === 'verified'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : isLight
+                ? 'bg-white border border-slate-300 text-slate-700'
+                : 'bg-slate-900 border border-slate-800 text-slate-300'
             }`}
           >
-            ভেরিফাইড ({safeLeads.filter((s) => s.verificationStatus === 'verified').length})
+            সক্রিয় / ভেরিফাইড
           </button>
+
           <button
-            type="button"
             onClick={() => setStatusFilter('pending')}
-            className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
-              statusFilter === 'pending' ? 'bg-amber-600 text-white' : 'bg-purple-950/60 text-purple-300 hover:bg-purple-900/40'
+            className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              statusFilter === 'pending'
+                ? 'bg-amber-600 text-white shadow-sm'
+                : isLight
+                ? 'bg-white border border-slate-300 text-slate-700'
+                : 'bg-slate-900 border border-slate-800 text-slate-300'
             }`}
           >
-            পেন্ডিং ({safeLeads.filter((s) => s.verificationStatus === 'pending_verification').length})
+            পেন্ডিং
+          </button>
+
+          <button
+            onClick={() => setStatusFilter('rejected')}
+            className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              statusFilter === 'rejected'
+                ? 'bg-rose-600 text-white shadow-sm'
+                : isLight
+                ? 'bg-white border border-slate-300 text-slate-700'
+                : 'bg-slate-900 border border-slate-800 text-slate-300'
+            }`}
+          >
+            বাতিল / রিফান্ড
           </button>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-purple-900/40">
-        <table className="w-full text-left text-xs text-purple-200">
-          <thead className="bg-[#140822] text-purple-300 font-semibold border-b border-purple-900/50">
-            <tr>
-              <th className="p-3">গ্রাহকের নাম ও ইমেইল</th>
-              <th className="p-3">ফোন ও WhatsApp</th>
-              <th className="p-3">প্ল্যান ও মূল্য</th>
-              <th className="p-3">পদ্ধতি ও ট্রানজ্যাকশন</th>
-              <th className="p-3">স্ট্যাটাস</th>
-              <th className="p-3 text-right">অ্যাকশন</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-purple-900/30">
-            {filteredLeads.map((lead) => {
-              const rawWa = lead.whatsapp || lead.phone || '';
-              const cleanWa = rawWa.replace(/[^0-9]/g, '');
-              const waUrl = cleanWa
-                ? `https://wa.me/${cleanWa}?text=${encodeURIComponent(`নমস্কার ${lead.name || 'শ্রোতা'}, গপ্পো কাহিনী এন্টারটেইনমেন্টে আপনার অডিও সাবস্ক্রিপশন সফলভাবে সক্রিয় করা হয়েছে। ধন্যবাদ!`)}`
-                : null;
+      {/* CRM Leads Table */}
+      <div className={`rounded-2xl border overflow-hidden transition-all shadow-md ${
+        isLight ? 'bg-white border-slate-200' : 'bg-slate-900/90 border-slate-800'
+      }`}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className={`border-b font-semibold uppercase tracking-wider text-[11px] ${
+                isLight
+                  ? 'bg-slate-50 border-slate-200 text-slate-600'
+                  : 'bg-slate-950/70 border-slate-800 text-slate-400'
+              }`}>
+                <th className="p-3.5">গ্রাহকের নাম ও যোগাযোগ</th>
+                <th className="p-3.5">প্ল্যান ও মূল্য</th>
+                <th className="p-3.5">তারিখ (মাস)</th>
+                <th className="p-3.5">পেমেন্ট মেথড ও UTR</th>
+                <th className="p-3.5">স্ট্যাটাস</th>
+                <th className="p-3.5 text-right">অ্যাকশন</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800/80">
+              {filteredLeads.map((lead) => {
+                const isVerified = lead.verificationStatus === 'verified';
+                const isPending = lead.verificationStatus === 'pending_verification';
+                const isRejected = lead.verificationStatus === 'rejected';
 
-              return (
-                <tr key={lead.id} className="hover:bg-purple-950/40 transition-colors">
-                  <td className="p-3">
-                    <div className="font-bold text-white">{lead.name || 'বেনামী গ্রাহক'}</div>
-                    {lead.email ? (
-                      <div className="text-[11px] text-purple-400 flex items-center gap-1 mt-0.5">
-                        <Mail className="w-3 h-3 shrink-0" />
-                        <span className="truncate max-w-[150px]">{lead.email}</span>
+                const waPhone = (lead.whatsapp || lead.phone || '').replace(/[^0-9]/g, '');
+                const waLink = waPhone
+                  ? `https://wa.me/${waPhone.length === 10 ? `91${waPhone}` : waPhone}?text=${encodeURIComponent(
+                      `নমস্কার ${lead.name}, গপ্পো কাহিনীতে আপনার সাবস্ক্রিপশনের বিষয়ে যোগাযোগ করছি।`
+                    )}`
+                  : null;
+
+                return (
+                  <tr
+                    key={lead.id}
+                    className={`transition-colors ${
+                      isLight ? 'hover:bg-slate-50/80' : 'hover:bg-slate-800/40'
+                    }`}
+                  >
+                    {/* Customer info */}
+                    <td className="p-3.5">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`font-bold text-sm ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                            {lead.name}
+                          </span>
+                          {isVerified && (
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" title="ভেরিফাইড পেইড গ্রাহক" />
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400">
+                          {lead.phone && (
+                            <a
+                              href={`tel:${lead.phone}`}
+                              className="flex items-center gap-1 hover:text-indigo-500 font-mono"
+                            >
+                              <Phone className="w-3 h-3 text-teal-500" />
+                              <span>{lead.phone}</span>
+                            </a>
+                          )}
+                          {lead.email && (
+                            <a
+                              href={`mailto:${lead.email}`}
+                              className="flex items-center gap-1 hover:text-indigo-500 truncate max-w-[140px]"
+                            >
+                              <Mail className="w-3 h-3 text-indigo-400" />
+                              <span>{lead.email}</span>
+                            </a>
+                          )}
+                        </div>
                       </div>
-                    ) : (
-                      <div className="text-[10px] text-purple-500 italic mt-0.5">ইমেইল যুক্ত নেই</div>
-                    )}
-                  </td>
+                    </td>
 
-                  <td className="p-3">
-                    <div className="text-white font-mono">{lead.phone || 'ফোন নেই'}</div>
-                    {waUrl ? (
-                      <a
-                        href={waUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 hover:underline mt-1"
-                      >
-                        <MessageSquare className="w-3 h-3" />
-                        <span>WhatsApp চ্যাট</span>
-                      </a>
-                    ) : (
-                      <span className="text-[10px] text-purple-500">-</span>
-                    )}
-                  </td>
+                    {/* Plan & Amount */}
+                    <td className="p-3.5">
+                      <div>
+                        <span className={`font-medium ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
+                          {lead.tier}
+                        </span>
+                        <div className="font-bold text-emerald-600 dark:text-emerald-400 text-xs mt-0.5">
+                          {lead.currency === 'INR' ? '₹' : ''}{lead.amount} {lead.currency}
+                        </div>
+                      </div>
+                    </td>
 
-                  <td className="p-3">
-                    <div className="font-medium text-white">{lead.tier || '২০ টাকার পাস'}</div>
-                    <div className="text-[11px] text-pink-300 font-semibold">
-                      {lead.currency} {lead.amount}
-                    </div>
-                  </td>
-
-                  <td className="p-3">
-                    <div className="text-purple-300">{lead.method || 'UPI'}</div>
-                    <div
-                      className="text-[10px] font-mono text-purple-400 mt-0.5 truncate max-w-[130px] flex items-center gap-1"
-                      title={lead.transactionId}
-                    >
-                      <span>{lead.transactionId || 'N/A'}</span>
-                      {lead.transactionId && (
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(lead.transactionId!, lead.id)}
-                          className="hover:text-pink-300"
-                        >
-                          {copiedText === lead.id ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-
-                  <td className="p-3">
-                    {lead.verificationStatus === 'verified' ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 inline-flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> সক্রিয়
+                    {/* Date */}
+                    <td className="p-3.5">
+                      <div className="font-mono text-xs text-slate-600 dark:text-slate-300">
+                        {lead.date}
+                      </div>
+                      <span className="text-[10px] text-slate-400">
+                        {lead.date.substring(0, 7)}
                       </span>
-                    ) : lead.verificationStatus === 'rejected' ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/20 text-red-300 border border-red-500/30 inline-flex items-center gap-1">
-                        <XCircle className="w-3 h-3" /> বাতিল
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 inline-flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> যাচাই বাকি
-                      </span>
-                    )}
-                  </td>
+                    </td>
 
-                  <td className="p-3 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      {lead.verificationStatus !== 'verified' && onUpdateStatus && (
-                        <button
-                          type="button"
-                          onClick={() => onUpdateStatus(lead.id, 'verified')}
-                          className="p-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 transition-colors cursor-pointer"
-                          title="ভেরিফাই অনুমোদন করুন"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                        </button>
+                    {/* Payment method & UTR */}
+                    <td className="p-3.5">
+                      <div className="space-y-1">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                          isLight ? 'bg-slate-100 text-slate-700' : 'bg-slate-800 text-slate-300'
+                        }`}>
+                          {lead.method || 'UPI'}
+                        </span>
+                        {lead.transactionId ? (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <span className="font-mono text-[11px] text-amber-500 font-semibold truncate max-w-[110px]">
+                              {lead.transactionId}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(lead.transactionId!, lead.id)}
+                              className="p-1 rounded text-slate-400 hover:text-indigo-400 cursor-pointer"
+                              title="UTR কপি করুন"
+                            >
+                              {copiedText === lead.id ? (
+                                <Check className="w-3 h-3 text-emerald-500" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 italic block">কোনো UTR নেই</span>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Status */}
+                    <td className="p-3.5">
+                      {isVerified && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                          <CheckCircle2 className="w-3 h-3" />
+                          সক্রিয় পেমেন্ট
+                        </span>
                       )}
-                      {onDeleteSubscriber && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (confirm(`আপনি কি ${lead.name} এর রেকর্ড ডিলিট করতে চান?`)) {
-                              onDeleteSubscriber(lead.id);
-                            }
-                          }}
-                          className="p-1.5 rounded-lg text-purple-400 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
-                          title="ডিলিট করুন"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                      {isPending && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                          <Clock className="w-3 h-3" />
+                          অপেক্ষমাণ
+                        </span>
                       )}
-                    </div>
+                      {isRejected && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                          <XCircle className="w-3 h-3" />
+                          বাতিল / রিফান্ড
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="p-3.5 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {waLink && (
+                          <a
+                            href={waLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 transition-colors cursor-pointer"
+                            title="WhatsApp এ বার্তা পাঠান"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+
+                        {/* Status approval toggle */}
+                        {isPending && onUpdateStatus && (
+                          <button
+                            type="button"
+                            onClick={() => onUpdateStatus(lead.id, 'verified')}
+                            className="p-1.5 rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/25 transition-colors cursor-pointer"
+                            title="পেমেন্ট অনুমোদন করুন"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {/* In-app Delete Button (NO window.confirm!) */}
+                        {onDeleteSubscriber && (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTargetLead(lead)}
+                            className="p-1.5 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-500/15 transition-colors cursor-pointer border border-transparent hover:border-rose-500/30"
+                            title="এই গ্রাহক রেকর্ড ডিলিট করুন"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {filteredLeads.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-12 text-center">
+                    <Users className="w-8 h-8 text-slate-400 mx-auto mb-2 opacity-60" />
+                    <p className={`text-xs sm:text-sm font-semibold ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
+                      এই ফিল্টারে কোনো গ্রাহক পাওয়া যায়নি
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      অন্য কোনো মাস বা সার্চ কোয়েরি দিয়ে চেষ্টা করুন।
+                    </p>
                   </td>
                 </tr>
-              );
-            })}
-
-            {filteredLeads.length === 0 && (
-              <tr>
-                <td colSpan={6} className="p-8 text-center text-xs text-purple-400">
-                  কোনো গ্রাহক পাওয়া যায়নি
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      {/* IN-APP CONFIRMATION MODAL FOR DELETING SUBSCRIBER (100% iframe-safe, no window.confirm) */}
+      {deleteTargetLead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fadeIn">
+          <div className={`w-full max-w-md rounded-2xl border p-5 sm:p-6 shadow-2xl transition-all ${
+            isLight
+              ? 'bg-white border-slate-200 text-slate-900'
+              : 'bg-slate-900 border-slate-700 text-white'
+          }`}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5 text-rose-500">
+                <div className="w-9 h-9 rounded-xl bg-rose-500/15 flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <h3 className="text-base sm:text-lg font-bold">গ্রাহক রেকর্ড ডিলিট নিশ্চিতকরণ</h3>
+              </div>
+              <button
+                onClick={() => setDeleteTargetLead(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-200 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className={`text-xs sm:text-sm leading-relaxed mb-4 ${
+              isLight ? 'text-slate-600' : 'text-slate-300'
+            }`}>
+              আপনি কি নিশ্চিত যে গ্রাহক <strong className="text-rose-500 font-bold">"{deleteTargetLead.name}"</strong> ({deleteTargetLead.phone || deleteTargetLead.email}) এর রেকর্ড স্থায়ীভাবে মুছে ফেলতে চান?
+            </p>
+
+            <div className={`p-3 rounded-xl border text-xs mb-5 space-y-1 ${
+              isLight ? 'bg-slate-50 border-slate-200 text-slate-600' : 'bg-slate-950/60 border-slate-800 text-slate-400'
+            }`}>
+              <div><strong>প্ল্যান:</strong> {deleteTargetLead.tier} ({deleteTargetLead.amount} {deleteTargetLead.currency})</div>
+              <div><strong>তারিখ:</strong> {deleteTargetLead.date}</div>
+              {deleteTargetLead.transactionId && <div><strong>UTR:</strong> {deleteTargetLead.transactionId}</div>}
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setDeleteTargetLead(null)}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${
+                  isLight
+                    ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                }`}
+              >
+                বাতিল করুন
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExecuteDelete}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white cursor-pointer transition-all flex items-center gap-1.5 shadow-md shadow-rose-900/30"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>হ্যাঁ, স্থায়ীভাবে মুছুন</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Manual Add Subscriber Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#1b0d2d] border border-purple-800/60 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-purple-800/40 pb-3">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <UserPlus className="w-4 h-4 text-pink-400" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fadeIn">
+          <div className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl transition-all ${
+            isLight
+              ? 'bg-white border-slate-200 text-slate-900'
+              : 'bg-slate-900 border-slate-700 text-white'
+          }`}>
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 mb-4">
+              <h3 className="text-base font-bold flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-indigo-500" />
                 <span>নতুন গ্রাহক ম্যানুয়ালি যুক্ত করুন</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
-                className="text-purple-400 hover:text-white text-xs cursor-pointer"
+                className="text-slate-400 hover:text-slate-200 text-xs cursor-pointer p-1"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleManualAddSubmit} className="space-y-3.5">
+            <form onSubmit={handleCreateSubscriber} className="space-y-3.5 text-xs">
               <div>
-                <label className="block text-xs font-medium text-purple-200 mb-1">গ্রাহকের নাম *</label>
+                <label className="block text-slate-500 dark:text-slate-400 mb-1">গ্রাহকের নাম *</label>
                 <input
                   type="text"
                   required
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="যেমন: অনির্বাণ সরকার"
-                  className="w-full px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-800/50 text-xs text-white focus:outline-none focus:border-pink-500"
+                  placeholder="যেমন: রাহুল সরকার"
+                  className={`w-full px-3 py-2 rounded-xl border focus:outline-none ${
+                    isLight
+                      ? 'bg-slate-50 border-slate-300 text-slate-900 focus:border-indigo-500'
+                      : 'bg-slate-950 border-slate-800 text-white focus:border-indigo-500'
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-500 dark:text-slate-400 mb-1">ফোন নম্বর (হোয়াটসঅ্যাপ) *</label>
+                <input
+                  type="text"
+                  required
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  placeholder="যেমন: 9876543210"
+                  className={`w-full px-3 py-2 rounded-xl border focus:outline-none ${
+                    isLight
+                      ? 'bg-slate-50 border-slate-300 text-slate-900 focus:border-indigo-500'
+                      : 'bg-slate-950 border-slate-800 text-white focus:border-indigo-500'
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-500 dark:text-slate-400 mb-1">ইমেইল (ঐচ্ছিক)</label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="rahul@gmail.com"
+                  className={`w-full px-3 py-2 rounded-xl border focus:outline-none ${
+                    isLight
+                      ? 'bg-slate-50 border-slate-300 text-slate-900 focus:border-indigo-500'
+                      : 'bg-slate-950 border-slate-800 text-white focus:border-indigo-500'
+                  }`}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-purple-200 mb-1">ফোন / WhatsApp *</label>
+                  <label className="block text-slate-500 dark:text-slate-400 mb-1">প্ল্যানের নাম</label>
                   <input
-                    type="tel"
-                    required
-                    value={newPhone}
-                    onChange={(e) => setNewPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className="w-full px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-800/50 text-xs text-white focus:outline-none focus:border-pink-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-purple-200 mb-1">ইমেইল</label>
-                  <input
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="email@gmail.com"
-                    className="w-full px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-800/50 text-xs text-white focus:outline-none focus:border-pink-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-purple-200 mb-1">প্ল্যান</label>
-                  <select
+                    type="text"
                     value={newPlan}
                     onChange={(e) => setNewPlan(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-800/50 text-xs text-white focus:outline-none focus:border-pink-500"
-                  >
-                    <option value="গপ্পো কাহিনী ২০ টাকার মাসিক পাস">২০ টাকার মাসিক পাস</option>
-                    <option value="একক গল্প টিকিট">একক গল্প টিকিট</option>
-                    <option value="মেগা এক্সক্লুসিভ পাস">মেগা এক্সক্লুসিভ পাস</option>
-                  </select>
+                    className={`w-full px-3 py-2 rounded-xl border focus:outline-none ${
+                      isLight
+                        ? 'bg-slate-50 border-slate-300 text-slate-900 focus:border-indigo-500'
+                        : 'bg-slate-950 border-slate-800 text-white focus:border-indigo-500'
+                    }`}
+                  />
                 </div>
-
                 <div>
-                  <label className="block text-xs font-medium text-purple-200 mb-1">টাকার পরিমাণ (INR)</label>
+                  <label className="block text-slate-500 dark:text-slate-400 mb-1">টাকার পরিমাণ (₹)</label>
                   <input
                     type="number"
                     value={newAmount}
                     onChange={(e) => setNewAmount(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-800/50 text-xs text-white focus:outline-none focus:border-pink-500"
+                    className={`w-full px-3 py-2 rounded-xl border focus:outline-none ${
+                      isLight
+                        ? 'bg-slate-50 border-slate-300 text-slate-900 focus:border-indigo-500'
+                        : 'bg-slate-950 border-slate-800 text-white focus:border-indigo-500'
+                    }`}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-purple-200 mb-1">UTR / পেমেন্ট রেফারেন্স</label>
+                <label className="block text-slate-500 dark:text-slate-400 mb-1">UPI UTR / রেফারেন্স নম্বর</label>
                 <input
                   type="text"
                   value={newUtr}
                   onChange={(e) => setNewUtr(e.target.value)}
-                  placeholder="যেমন: UTR592019482103"
-                  className="w-full px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-800/50 text-xs text-white font-mono focus:outline-none focus:border-pink-500"
+                  placeholder="যেমন: 425612349876"
+                  className={`w-full px-3 py-2 rounded-xl border focus:outline-none ${
+                    isLight
+                      ? 'bg-slate-50 border-slate-300 text-slate-900 focus:border-indigo-500'
+                      : 'bg-slate-950 border-slate-800 text-white focus:border-indigo-500'
+                  }`}
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-purple-800/40">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs text-purple-300 hover:text-white bg-purple-900/30 hover:bg-purple-900/50 cursor-pointer"
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer ${
+                    isLight
+                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                  }`}
                 >
                   বাতিল
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-pink-600 hover:bg-pink-500 shadow-md shadow-pink-600/30 cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer shadow-md shadow-indigo-900/30"
                 >
-                  সংরক্ষণ করুন
+                  যুক্ত করুন
                 </button>
               </div>
             </form>

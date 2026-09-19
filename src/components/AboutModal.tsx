@@ -20,6 +20,7 @@ import {
 import { GoppoKahiniLogo } from './GoppoKahiniLogo';
 import { UserContactMessage, AboutMissionData, TeamMember } from '../types';
 import { INITIAL_ABOUT_MISSION_DATA } from '../data/aboutMission';
+import { submitContactMessage } from '../services/firestoreInbox';
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -45,7 +46,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
   const [aboutData, setAboutData] = useState<AboutMissionData>(() => {
     if (propAboutData) return propAboutData;
     try {
-      const saved = localStorage.getItem('goppo_about_mission_data');
+      const saved = localStorage.getItem('goppo_about_mission_data') || localStorage.getItem('goppo_about_mission');
       if (saved) return JSON.parse(saved);
     } catch {}
     return INITIAL_ABOUT_MISSION_DATA;
@@ -54,7 +55,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
   useEffect(() => {
     const handleStorageUpdate = () => {
       try {
-        const saved = localStorage.getItem('goppo_about_mission_data');
+        const saved = localStorage.getItem('goppo_about_mission_data') || localStorage.getItem('goppo_about_mission');
         if (saved) setAboutData(JSON.parse(saved));
       } catch {}
     };
@@ -73,31 +74,22 @@ export const AboutModal: React.FC<AboutModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleContactSubmit = (e: React.FormEvent) => {
+  const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!senderName.trim() || !senderEmail.trim() || !messageText.trim()) return;
 
     setIsSubmitting(true);
 
-    const newMessage: UserContactMessage = {
-      id: `msg-${Date.now()}`,
-      senderName: senderName.trim(),
-      senderEmail: senderEmail.trim(),
-      senderPhone: senderPhone.trim() || undefined,
-      category,
-      message: messageText.trim(),
-      timestamp: `${new Date().toLocaleDateString('bn-BD')} ${new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' })}`,
-      status: 'unread',
-    };
-
     try {
-      const stored = localStorage.getItem('goppo_contact_messages');
-      const messages: UserContactMessage[] = stored ? JSON.parse(stored) : [];
-      messages.unshift(newMessage);
-      localStorage.setItem('goppo_contact_messages', JSON.stringify(messages));
-      window.dispatchEvent(new Event('goppo_contact_messages_updated'));
+      await submitContactMessage({
+        senderName: senderName.trim(),
+        senderEmail: senderEmail.trim(),
+        senderPhone: senderPhone.trim() || undefined,
+        category,
+        message: messageText.trim(),
+      });
     } catch (err) {
-      console.error('Error saving contact message:', err);
+      console.error('Error submitting contact message:', err);
     }
 
     setTimeout(() => {

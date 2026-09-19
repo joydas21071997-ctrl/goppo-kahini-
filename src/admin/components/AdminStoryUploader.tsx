@@ -111,6 +111,7 @@ export const AdminStoryUploader: React.FC<AdminStoryUploaderProps> = ({
   const [publishSuccess, setPublishSuccess] = useState(false);
   const [deletingStoryId, setDeletingStoryId] = useState<string | null>(null);
   const [deleteStatusMessage, setDeleteStatusMessage] = useState('');
+  const [storyToDelete, setStoryToDelete] = useState<Story | null>(null);
 
   // Stories Catalog Search in Admin
   const [searchCatalog, setSearchCatalog] = useState('');
@@ -407,10 +408,10 @@ export const AdminStoryUploader: React.FC<AdminStoryUploaderProps> = ({
     }
   };
 
-  const handleDeleteStory = async (story: Story) => {
-    if (!confirm(`আপনি কি "${story.title}" গল্পটি ডিলিট করতে চান?\n\nসতর্কতা: এটি ফায়ারস্টোর ডেটাবেস এবং ফায়ারবেস স্টোরেজের অডিও ও কভার ফাইল থেকে চিরতরে মুছে যাবে।`)) {
-      return;
-    }
+  const handleConfirmDeleteStory = async () => {
+    if (!storyToDelete) return;
+    const story = storyToDelete;
+    setStoryToDelete(null);
 
     setDeletingStoryId(story.id);
     setDeleteStatusMessage(`"${story.title}" ফায়ারবেস থেকে মুছে ফেলা হচ্ছে...`);
@@ -425,7 +426,7 @@ export const AdminStoryUploader: React.FC<AdminStoryUploaderProps> = ({
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('Delete story failed:', err);
-      alert(`গল্প মুছে ফেলতে ব্যর্থ হয়েছে: ${msg}`);
+      setDeleteStatusMessage(`গল্প মুছে ফেলতে সমস্যা হয়েছে: ${msg}`);
     } finally {
       setDeletingStoryId(null);
     }
@@ -1495,7 +1496,7 @@ export const AdminStoryUploader: React.FC<AdminStoryUploaderProps> = ({
               </div>
 
               <button
-                onClick={() => handleDeleteStory(story)}
+                onClick={() => setStoryToDelete(story)}
                 disabled={deletingStoryId === story.id}
                 className="p-1.5 rounded-lg text-purple-400 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-colors cursor-pointer"
                 title="গল্প ডিলিট করুন"
@@ -1516,6 +1517,54 @@ export const AdminStoryUploader: React.FC<AdminStoryUploaderProps> = ({
           )}
         </div>
       </div>
+
+      {/* IN-APP STORY DELETE CONFIRMATION MODAL */}
+      {storyToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fadeIn">
+          <div className="max-w-md w-full rounded-2xl bg-slate-900 border border-slate-700 p-5 sm:p-6 shadow-2xl text-white space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-rose-400 font-bold">
+                <AlertCircle className="w-5 h-5" />
+                <span>গল্প মুছে ফেলার নিশ্চয়তা</span>
+              </div>
+              <button
+                onClick={() => setStoryToDelete(null)}
+                className="text-slate-400 hover:text-white p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              আপনি কি নিশ্চিত যে <strong className="text-rose-400">&quot;{storyToDelete.title}&quot;</strong> গল্পটি ডিলিট করতে চান?
+            </p>
+
+            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+              <div>লেখক: {storyToDelete.author || 'গপ্পো কাহিনী'}</div>
+              <div>সময়কাল: {Math.round(storyToDelete.duration / 60)} মিনিট</div>
+              <div className="text-rose-400">সতর্কতা: এটি ফায়ারস্টোর ডেটাবেস এবং স্টোরেজের অডিও ও কভার ফাইল থেকে চিরতরে মুছে যাবে।</div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setStoryToDelete(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
+              >
+                বাতিল
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteStory}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white cursor-pointer flex items-center gap-1.5 shadow-md shadow-rose-900/30"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>হ্যাঁ, স্থায়ীভাবে মুছুন</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

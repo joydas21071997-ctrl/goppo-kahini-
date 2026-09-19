@@ -79,7 +79,14 @@ export const AdminLegalSupportManager: React.FC = () => {
   };
 
   const handleOpenPage = (slug: LegalPolicySlug) => {
-    window.open(`/${slug}`, '_blank');
+    try {
+      const opened = window.open(`/${slug}`, '_blank');
+      if (!opened) {
+        window.location.href = `/${slug}`;
+      }
+    } catch {
+      window.location.href = `/${slug}`;
+    }
   };
 
   const activeDoc: LegalPolicyDoc = LEGAL_POLICIES_DATA[selectedSlug];

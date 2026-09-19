@@ -93,6 +93,25 @@ import {
   saveStoryToFirestore,
   deleteStoryFromFirestore,
 } from './services/firestoreStories';
+import {
+  subscribeTransactionsFromFirestore,
+  saveTransactionToFirestore,
+  deleteTransactionFromFirestore,
+  subscribeSubscribersFromFirestore,
+  saveSubscriberToFirestore,
+  deleteSubscriberFromFirestore,
+  subscribeNarratorAppsFromFirestore,
+  saveNarratorAppToFirestore,
+  deleteNarratorAppFromFirestore,
+  subscribeLifeStoriesFromFirestore,
+  saveLifeStoryToFirestore,
+  deleteLifeStoryFromFirestore,
+  subscribePodcastEpisodesFromFirestore,
+  savePodcastEpisodeToFirestore,
+  deletePodcastEpisodeFromFirestore,
+  subscribeUpiConfigFromFirestore,
+  saveUpiConfigToFirestore,
+} from './services/firestoreAdminData';
 
 // Initial Demo Narrator Applications for Joy to review & approve
 const INITIAL_NARRATOR_APPLICATIONS: NarratorApplication[] = [
@@ -529,6 +548,84 @@ export default function App() {
       if (firestoreStories && firestoreStories.length > 0) {
         setStories(firestoreStories);
         localStorage.setItem('goppo_kahini_custom_stories', JSON.stringify(firestoreStories));
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  // Listen to Firestore Transactions real-time synchronization
+  useEffect(() => {
+    const unsubscribe = subscribeTransactionsFromFirestore((items) => {
+      if (items && items.length > 0) {
+        setPaymentTransactions(items);
+        localStorage.setItem('goppo_payment_transactions', JSON.stringify(items));
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  // Listen to Firestore Subscribers CRM real-time synchronization
+  useEffect(() => {
+    const unsubscribe = subscribeSubscribersFromFirestore((items) => {
+      if (items && items.length > 0) {
+        setSubscribers(items);
+        localStorage.setItem('goppo_kahini_subscribers', JSON.stringify(items));
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  // Listen to Firestore Narrator Applications real-time synchronization
+  useEffect(() => {
+    const unsubscribe = subscribeNarratorAppsFromFirestore((items) => {
+      if (items && items.length > 0) {
+        setNarratorApplications(items);
+        localStorage.setItem('goppo_narrator_applications', JSON.stringify(items));
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  // Listen to Firestore Life Stories Submissions real-time synchronization
+  useEffect(() => {
+    const unsubscribe = subscribeLifeStoriesFromFirestore((items) => {
+      if (items && items.length > 0) {
+        setLifeStorySubmissions(items);
+        localStorage.setItem('goppo_life_story_submissions', JSON.stringify(items));
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  // Listen to Firestore Podcast Episodes real-time synchronization
+  useEffect(() => {
+    const unsubscribe = subscribePodcastEpisodesFromFirestore((items) => {
+      if (items && items.length > 0) {
+        setLifeStories(items);
+        localStorage.setItem('goppo_podcast_episodes', JSON.stringify(items));
+      }
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  // Listen to Firestore Global UPI / Payment Gateway Configuration
+  useEffect(() => {
+    const unsubscribe = subscribeUpiConfigFromFirestore((config) => {
+      if (config && config.upiId) {
+        setUpiConfig(config);
+        localStorage.setItem('goppo_upi_config', JSON.stringify(config));
       }
     });
     return () => {
@@ -1054,6 +1151,10 @@ export default function App() {
     };
     setSubscribers((prev) => [newLead, ...prev]);
 
+    // Persist immediately to Google AI Studio Firestore
+    saveTransactionToFirestore(newTx).catch(console.error);
+    saveSubscriberToFirestore(newLead).catch(console.error);
+
     // Activate User's subscription immediately upon payment submission
     const isAnnual = txData.planId === 'little_annual';
     const expiryDate = new Date();
@@ -1158,6 +1259,11 @@ export default function App() {
 
     if (approvedTx) {
       const tx = approvedTx as PaymentTransaction;
+      saveTransactionToFirestore(tx).catch(console.error);
+      const matchingLead = subscribers.find((lead) => lead.transactionId === tx.utrTransactionId);
+      if (matchingLead) {
+        saveSubscriberToFirestore({ ...matchingLead, verificationStatus: 'verified' }).catch(console.error);
+      }
       const isAnnual = tx.planId === 'little_annual';
       const expiryDate = new Date();
       if (isAnnual) {
@@ -1236,11 +1342,23 @@ export default function App() {
     setSubscribers((prev) =>
       prev.map((lead) => {
         if (targetTx && lead.transactionId === (targetTx as PaymentTransaction).utrTransactionId) {
-          return { ...lead, verificationStatus: 'rejected' };
+          const updatedLead = { ...lead, verificationStatus: 'rejected' as const };
+          saveSubscriberToFirestore(updatedLead).catch(console.error);
+          return updatedLead;
         }
         return lead;
       })
     );
+
+    if (targetTx) {
+      saveTransactionToFirestore({
+        ...targetTx,
+        status: 'rejected',
+        rejectedBy: 'জয় (সুপার অ্যাডমিন)',
+        rejectedDate: timeStr,
+        rejectionReason: reason,
+      }).catch(console.error);
+    }
 
     // If this was current user's pending transaction, revert to free
     setSubscription((prev) => {
@@ -1321,15 +1439,18 @@ export default function App() {
     const now = new Date();
     const timeStr = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
     setPaymentTransactions((prev) =>
-      prev.map((t) =>
-        t.id === transactionId
-          ? {
-              ...t,
-              status: 'paid',
-              rejectionReason: `রিফান্ড বাতিল: ${reason}`,
-            }
-          : t
-      )
+      prev.map((t) => {
+        if (t.id === transactionId) {
+          const updated = {
+            ...t,
+            status: 'paid' as const,
+            rejectionReason: `রিফান্ড বাতিল: ${reason}`,
+          };
+          saveTransactionToFirestore(updated).catch(console.error);
+          return updated;
+        }
+        return t;
+      })
     );
 
     const log: AdminActivityLog = {
@@ -1366,6 +1487,7 @@ export default function App() {
             refundUtr,
             refundNote,
           };
+          saveTransactionToFirestore(refundedTx).catch(console.error);
           return refundedTx;
         }
         return t;
@@ -1407,16 +1529,19 @@ export default function App() {
     const latestPaid = paymentTransactions.find((t) => t.status === 'paid');
     if (latestPaid) {
       setPaymentTransactions((prev) =>
-        prev.map((t) =>
-          t.id === latestPaid.id
-            ? {
-                ...t,
-                status: 'cancelled',
-                cancellationDate: timeStr,
-                cancellationReason: reason || 'ব্যবহারকারী স্বেচ্ছায় বাতিল করেছেন',
-              }
-            : t
-        )
+        prev.map((t) => {
+          if (t.id === latestPaid.id) {
+            const updated = {
+              ...t,
+              status: 'cancelled' as const,
+              cancellationDate: timeStr,
+              cancellationReason: reason || 'ব্যবহারকারী স্বেচ্ছায় বাতিল করেছেন',
+            };
+            saveTransactionToFirestore(updated).catch(console.error);
+            return updated;
+          }
+          return t;
+        })
       );
     }
 
@@ -1434,6 +1559,7 @@ export default function App() {
   // 8. Update UPI Config
   const handleUpdateUpiConfig = (newConfig: UpiConfig) => {
     setUpiConfig(newConfig);
+    saveUpiConfigToFirestore(newConfig).catch(console.error);
     const now = new Date();
     const timeStr = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
     const log: AdminActivityLog = {
@@ -1450,12 +1576,20 @@ export default function App() {
   // Subscriber CRM Updates
   const handleUpdateSubscriberStatus = (subscriberId: string, status: 'verified' | 'pending_verification' | 'rejected') => {
     setSubscribers((prev) =>
-      prev.map((s) => (s.id === subscriberId ? { ...s, verificationStatus: status } : s))
+      prev.map((s) => {
+        if (s.id === subscriberId) {
+          const updated = { ...s, verificationStatus: status };
+          saveSubscriberToFirestore(updated).catch(console.error);
+          return updated;
+        }
+        return s;
+      })
     );
   };
 
   const handleDeleteSubscriber = (subscriberId: string) => {
     setSubscribers((prev) => prev.filter((s) => s.id !== subscriberId));
+    deleteSubscriberFromFirestore(subscriberId).catch(console.error);
   };
 
   // Life Story Handlers
@@ -1469,6 +1603,7 @@ export default function App() {
       status: 'new',
     };
     setLifeStorySubmissions((prev) => [newSub, ...prev]);
+    saveLifeStoryToFirestore(newSub).catch(console.error);
   };
 
   const handleUpdateLifeStoryStatus = (
@@ -1476,12 +1611,20 @@ export default function App() {
     status: 'new' | 'contacted' | 'recorded' | 'archived'
   ) => {
     setLifeStorySubmissions((prev) =>
-      prev.map((item) => (item.id === submissionId ? { ...item, status } : item))
+      prev.map((item) => {
+        if (item.id === submissionId) {
+          const updated = { ...item, status };
+          saveLifeStoryToFirestore(updated).catch(console.error);
+          return updated;
+        }
+        return item;
+      })
     );
   };
 
   const handleDeleteLifeStorySubmission = (submissionId: string) => {
     setLifeStorySubmissions((prev) => prev.filter((item) => item.id !== submissionId));
+    deleteLifeStoryFromFirestore(submissionId).catch(console.error);
   };
 
   // Story Publishing
@@ -1491,6 +1634,7 @@ export default function App() {
       localStorage.setItem('goppo_kahini_custom_stories', JSON.stringify(updated));
       return updated;
     });
+    saveStoryToFirestore(newStory).catch(console.error);
   };
 
   // Narrator Auditions / Applications
@@ -1504,32 +1648,44 @@ export default function App() {
       appliedDate: new Date().toISOString().split('T')[0],
     };
     setNarratorApplications((prev) => [newApp, ...prev]);
+    saveNarratorAppToFirestore(newApp).catch(console.error);
   };
 
   const handleApproveNarrator = (appId: string, approvalCode: string) => {
     setNarratorApplications((prev) =>
-      prev.map((a) =>
-        a.id === appId
-          ? {
-              ...a,
-              status: 'approved',
-              approvalCode,
-              approvedDate: new Date().toISOString().split('T')[0],
-              approvedBy: 'জয় (Joy)',
-            }
-          : a
-      )
+      prev.map((a) => {
+        if (a.id === appId) {
+          const approved = {
+            ...a,
+            status: 'approved' as const,
+            approvalCode,
+            approvedDate: new Date().toISOString().split('T')[0],
+            approvedBy: 'জয় (Joy)',
+          };
+          saveNarratorAppToFirestore(approved).catch(console.error);
+          return approved;
+        }
+        return a;
+      })
     );
   };
 
   const handleRejectNarrator = (appId: string) => {
     setNarratorApplications((prev) =>
-      prev.map((a) => (a.id === appId ? { ...a, status: 'rejected' } : a))
+      prev.map((a) => {
+        if (a.id === appId) {
+          const rejected = { ...a, status: 'rejected' as const };
+          saveNarratorAppToFirestore(rejected).catch(console.error);
+          return rejected;
+        }
+        return a;
+      })
     );
   };
 
   const handleDeleteNarratorApp = (appId: string) => {
     setNarratorApplications((prev) => prev.filter((a) => a.id !== appId));
+    deleteNarratorAppFromFirestore(appId).catch(console.error);
   };
 
   // Creator Session Handlers
@@ -1722,10 +1878,12 @@ export default function App() {
             localStorage.setItem('goppo_kahini_custom_stories', JSON.stringify(updated));
             return updated;
           });
+          deleteStoryFromFirestore(id).catch(console.error);
         }}
         lifeStoryEpisodes={lifeStories}
         onAddLifeStoryEpisode={(ep) => {
           setLifeStories((prev) => [ep, ...prev]);
+          savePodcastEpisodeToFirestore(ep).catch(console.error);
         }}
         subscribers={subscribers}
         onUpdateSubscriberStatus={handleUpdateSubscriberStatus}

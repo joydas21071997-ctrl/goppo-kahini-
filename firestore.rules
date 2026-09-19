@@ -16,6 +16,10 @@ service cloud.firestore {
             && request.auth.token.email == 'joydas.21071997@gmail.com'
             && request.auth.token.email_verified == true
           )
+          || (
+            request.auth.token.role == 'admin'
+            || request.auth.token.role == 'super_admin'
+          )
         );
     }
 
@@ -37,29 +41,79 @@ service cloud.firestore {
       // ২. গল্পের রিভিউ সাব-কালেকশন (Story Reviews)
       match /reviews/{reviewId} {
         allow read: if true;
-        
         allow create, update: if (isAuthenticated() && (request.auth.uid == reviewId || isAdmin()))
                               || (!isAuthenticated() && isValidId(reviewId));
-                              
         allow delete: if isAuthenticated() && (request.auth.uid == reviewId || isAdmin());
       }
     }
 
-    // ৩. ব্যবহারকারীদের প্রোফাইল (Users)
+    // ৩. ব্যবহারকারীদের প্রোফাইল ও ডেটা (Users, Bookmarks, History)
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      
-      allow create: if isOwner(userId)
-                    && isValidId(userId)
-                    && request.resource.data.uid == userId;
-                    
+      allow create: if isOwner(userId) && isValidId(userId);
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
+
+      // ইউজার সাব-কালেকশন (বুকমার্কস, হিস্ট্রি, ফেভারিটস)
+      match /{subcollection}/{docId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
     }
 
-    // ৪. অ্যাডমিন ইউজার
+    // ৪. অনুমোদিত অ্যাডমিন ইউজার তালিকা
     match /admin_users/{adminId} {
-      allow read, write: if isAdmin();
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ৫. শ্রোতাদের ইনবক্স ও যোগাযোগ বার্তা (Contact Messages)
+    match /contact_messages/{messageId} {
+      allow create: if isValidId(messageId);
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ৬. পেমেন্ট ও লেনদেন (Payment Transactions)
+    match /transactions/{transactionId} {
+      allow read: if true;
+      allow create: if isValidId(transactionId);
+      allow update, delete: if isAdmin() || isAuthenticated();
+    }
+
+    // ৭. সাবস্ক্রাইবার ও সিআরএম লিড (Subscribers & Leads)
+    match /subscribers/{subscriberId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() || isAuthenticated();
+    }
+
+    // ৮. কথক অডিশন ও আবেদন (Narrator Applications)
+    match /narrator_applications/{appId} {
+      allow read: if true;
+      allow create: if isValidId(appId);
+      allow update, delete: if isAdmin() || isAuthenticated();
+    }
+
+    // ৯. মানুষের জীবনের গল্প (Life Stories Submissions)
+    match /life_stories/{storyId} {
+      allow read: if true;
+      allow create: if isValidId(storyId);
+      allow update, delete: if isAdmin() || isAuthenticated();
+    }
+
+    // ১০. পডকাস্ট এপিসোড (Podcast Episodes)
+    match /podcast_episodes/{episodeId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() || isAuthenticated();
+    }
+
+    // ১১. সিস্টেম ও ইউপিআই সেটিংস (System Settings)
+    match /system_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin() || isAuthenticated();
+    }
+
+    // ১২. অ্যাডমিন অ্যাক্টিভিটি লগ (Admin Activity Logs)
+    match /admin_activity_logs/{logId} {
+      allow read, write: if true;
     }
 
     match /{document=**} {

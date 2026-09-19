@@ -65,12 +65,16 @@ export interface UserContactMessage {
   senderName: string;
   senderEmail: string;
   senderPhone?: string;
-  category: 'complaint' | 'feedback' | 'story_request' | 'payment_help' | 'general_feedback' | 'other';
+  userName?: string;
+  userEmail?: string;
+  userPhone?: string;
+  category: 'complaint' | 'feedback' | 'story_request' | 'payment_help' | 'general_feedback' | 'other' | string;
   subject?: string;
   message: string;
   createdAt?: string;
   timestamp?: string;
   status: 'unread' | 'read' | 'replied';
+  isRead?: boolean;
 }
 
 export interface Bookmark {

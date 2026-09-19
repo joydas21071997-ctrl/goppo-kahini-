@@ -60,6 +60,26 @@ export const AdminPortalApp: React.FC<AdminPortalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
 
+  // UI Theme mode ('slate' or 'light') - comfortable colors, no murky black
+  const [adminTheme, setAdminTheme] = useState<'slate' | 'light'>(() => {
+    try {
+      const saved = localStorage.getItem('goppo_admin_ui_theme');
+      return saved === 'light' ? 'light' : 'slate';
+    } catch {
+      return 'slate';
+    }
+  });
+
+  const toggleAdminTheme = () => {
+    setAdminTheme((prev) => {
+      const next = prev === 'light' ? 'slate' : 'light';
+      try {
+        localStorage.setItem('goppo_admin_ui_theme', next);
+      } catch {}
+      return next;
+    });
+  };
+
   // Cloud Firestore manual sync status
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccessMessage, setSyncSuccessMessage] = useState<string | null>(null);
@@ -76,23 +96,25 @@ export const AdminPortalApp: React.FC<AdminPortalProps> = ({
     (s) => s.status === 'new'
   ).length;
 
-  // Unread messages
+  // Unread messages - safe check
   let unreadInboxCount = 0;
   try {
     const raw = localStorage.getItem('goppo_contact_messages');
     if (raw) {
       const msgs = JSON.parse(raw);
-      unreadInboxCount = msgs.filter((m: any) => !m.isRead).length;
+      if (Array.isArray(msgs)) {
+        unreadInboxCount = msgs.filter((m: any) => !(m.isRead === true || m.status === 'read' || m.status === 'replied')).length;
+      }
     }
   } catch {}
 
-  // Revenue totals
+  // Revenue totals (supports both 'paid' and legacy 'approved')
   const totalRevenueINR = paymentTransactions
-    .filter((t) => t.status === 'approved' && t.currency === 'INR')
+    .filter((t) => (t.status === 'paid' || (t.status as any) === 'approved') && t.currency === 'INR')
     .reduce((sum, t) => sum + (t.amount || 0), 0);
 
   const totalRevenueBDT = paymentTransactions
-    .filter((t) => t.status === 'approved' && t.currency === 'BDT')
+    .filter((t) => (t.status === 'paid' || (t.status as any) === 'approved') && t.currency === 'BDT')
     .reduce((sum, t) => sum + (t.amount || 0), 0);
 
   const verifiedSubscribersCount = subscribers.filter(
@@ -117,8 +139,14 @@ export const AdminPortalApp: React.FC<AdminPortalProps> = ({
     }
   };
 
+  const isLight = adminTheme === 'light';
+
   return (
-    <div className="min-h-screen bg-[#0e0719] text-purple-100 flex flex-col font-sans selection:bg-pink-500 selection:text-white">
+    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${
+      isLight
+        ? 'bg-slate-100 text-slate-900 selection:bg-rose-500 selection:text-white'
+        : 'bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100 selection:bg-rose-500 selection:text-white'
+    }`}>
       {/* Top Admin Sticky Navigation Bar */}
       <AdminHeader
         creatorSession={creatorSession}
@@ -129,6 +157,8 @@ export const AdminPortalApp: React.FC<AdminPortalProps> = ({
         pendingAuditionsCount={pendingAuditionsCount}
         newLifeStoriesCount={newLifeStoriesCount}
         unreadInboxCount={unreadInboxCount}
+        themeMode={adminTheme}
+        onToggleTheme={toggleAdminTheme}
       />
 
       {/* Main Admin Workspace with responsive sidebar layout */}
@@ -141,6 +171,7 @@ export const AdminPortalApp: React.FC<AdminPortalProps> = ({
           pendingAuditionsCount={pendingAuditionsCount}
           newLifeStoriesCount={newLifeStoriesCount}
           unreadInboxCount={unreadInboxCount}
+          themeMode={adminTheme}
         />
 
         {/* Right Active Tab Content */}
@@ -159,6 +190,7 @@ export const AdminPortalApp: React.FC<AdminPortalProps> = ({
               onSyncFirestore={handleSyncFirestore}
               isSyncing={isSyncing}
               syncSuccessMessage={syncSuccessMessage}
+              themeMode={adminTheme}
             />
           )}
 
@@ -173,6 +205,7 @@ export const AdminPortalApp: React.FC<AdminPortalProps> = ({
               upiConfig={upiConfig}
               onUpdateUpiConfig={onUpdateUpiConfig}
               activityLogs={adminActivityLogs}
+              themeMode={adminTheme}
             />
           )}
 
@@ -197,6 +230,7 @@ export const AdminPortalApp: React.FC<AdminPortalProps> = ({
               onUpdateStatus={onUpdateSubscriberStatus}
               onDeleteSubscriber={onDeleteSubscriber}
               onAddSubscriber={onAddSubscriber}
+              themeMode={adminTheme}
             />
           )}
 
@@ -206,6 +240,7 @@ export const AdminPortalApp: React.FC<AdminPortalProps> = ({
               onApproveNarrator={onApproveNarrator}
               onRejectNarrator={onRejectNarrator}
               onDeleteNarratorApp={onDeleteNarratorApp}
+              themeMode={adminTheme}
             />
           )}
 
@@ -216,10 +251,11 @@ export const AdminPortalApp: React.FC<AdminPortalProps> = ({
               submissions={lifeStorySubmissions}
               onUpdateStatus={onUpdateLifeStoryStatus}
               onDeleteSubmission={onDeleteLifeStorySubmission}
+              themeMode={adminTheme}
             />
           )}
 
-          {activeTab === 'inbox' && <AdminInboxManager />}
+          {activeTab === 'inbox' && <AdminInboxManager themeMode={adminTheme} />}
 
           {activeTab === 'settings' && (
             <AdminSettingsManager

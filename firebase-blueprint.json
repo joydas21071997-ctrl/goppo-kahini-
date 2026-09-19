@@ -369,6 +369,24 @@
       "schema": "PaymentTransaction",
       "description": "Payment logs and subscription purchases"
     },
+    "/subscribers/{subscriberId}": {
+      "description": "Subscriber leads and CRM customer records"
+    },
+    "/narrator_applications/{appId}": {
+      "description": "Voice artist audition and narrator applications"
+    },
+    "/life_stories/{storyId}": {
+      "description": "Submissions and records of listener real-life stories"
+    },
+    "/podcast_episodes/{episodeId}": {
+      "description": "Life story podcast episodes for listeners"
+    },
+    "/contact_messages/{messageId}": {
+      "description": "Audience contact and support messages to admin"
+    },
+    "/system_settings/{settingId}": {
+      "description": "Global application configuration like UPI settings and payment gateways"
+    },
     "/admin_users/{adminId}": {
       "schema": "AdminUser",
       "description": "List of administrators with authorized access"

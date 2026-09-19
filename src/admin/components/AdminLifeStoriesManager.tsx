@@ -19,15 +19,19 @@ interface AdminLifeStoriesManagerProps {
   submissions: LifeStorySubmission[];
   onUpdateStatus: (id: string, status: 'new' | 'contacted' | 'recorded' | 'archived') => void;
   onDeleteSubmission: (id: string) => void;
+  themeMode?: 'slate' | 'light';
 }
 
 export const AdminLifeStoriesManager: React.FC<AdminLifeStoriesManagerProps> = ({
   submissions,
   onUpdateStatus,
   onDeleteSubmission,
+  themeMode = 'slate',
 }) => {
+  const isLight = themeMode === 'light';
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'contacted' | 'recorded' | 'archived'>('all');
+  const [itemToDelete, setItemToDelete] = useState<LifeStorySubmission | null>(null);
 
   const filtered = submissions.filter((item) => {
     const matchSearch =
@@ -140,11 +144,7 @@ export const AdminLifeStoriesManager: React.FC<AdminLifeStoriesManagerProps> = (
                   </select>
 
                   <button
-                    onClick={() => {
-                      if (confirm(`আপনি কি এই গল্পটি মুছে ফেলতে চান?`)) {
-                        onDeleteSubmission(item.id);
-                      }
-                    }}
+                    onClick={() => setItemToDelete(item)}
                     className="p-2 rounded-xl text-purple-400 hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
                     title="ডিলিট করুন"
                   >
@@ -193,6 +193,51 @@ export const AdminLifeStoriesManager: React.FC<AdminLifeStoriesManagerProps> = (
           </div>
         )}
       </div>
+
+      {/* In-app Life Story Submission Delete Confirmation Modal */}
+      {itemToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fadeIn">
+          <div className="max-w-md w-full rounded-2xl bg-slate-900 border border-slate-700 p-5 sm:p-6 shadow-2xl text-white space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-rose-400 font-bold">
+                <Trash2 className="w-5 h-5" />
+                <span>গল্প মুছে ফেলার নিশ্চয়তা</span>
+              </div>
+              <button
+                onClick={() => setItemToDelete(null)}
+                className="text-slate-400 hover:text-white p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              আপনি কি নিশ্চিত যে <strong className="text-rose-400">&quot;{itemToDelete.title}&quot;</strong> (প্রেরক: {itemToDelete.userName}) গল্পটি মুছে ফেলতে চান?
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setItemToDelete(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
+              >
+                বাতিল
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteSubmission(itemToDelete.id);
+                  setItemToDelete(null);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white cursor-pointer flex items-center gap-1.5 shadow-md shadow-rose-900/30"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>হ্যাঁ, মুছুন</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,29 +1,15 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getFirebaseAppInstance } from './firebaseConfig';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
-import { OFFICIAL_GOPPO_FIREBASE_CONFIG, getFirebaseConfig } from './firebaseConfig';
 import { ensureAdminFirebaseAuth } from './adminAuth';
 
-// Initialize Firebase App instance safely
+// Initialize Firebase App instance safely using the central dedicated AI Studio configuration
 export function getGoppoFirebaseApp() {
-  const currentConfig = getFirebaseConfig();
-  const config = {
-    apiKey: currentConfig.apiKey || OFFICIAL_GOPPO_FIREBASE_CONFIG.apiKey,
-    authDomain: currentConfig.authDomain || `${currentConfig.projectId || 'goppo-kahini-app'}.firebaseapp.com`,
-    projectId: currentConfig.projectId || 'goppo-kahini-app',
-    storageBucket: currentConfig.storageBucket || `${currentConfig.projectId || 'goppo-kahini-app'}.firebasestorage.app`,
-    messagingSenderId: currentConfig.messagingSenderId || OFFICIAL_GOPPO_FIREBASE_CONFIG.messagingSenderId,
-    appId: currentConfig.appId || OFFICIAL_GOPPO_FIREBASE_CONFIG.appId,
-  };
-
-  if (!getApps().length) {
-    return initializeApp(config);
-  }
-  return getApp();
+  return getFirebaseAppInstance();
 }
 
 // Get Firebase Storage instance
 export function getGoppoStorage() {
-  const app = getGoppoFirebaseApp();
+  const app = getFirebaseAppInstance();
   return getStorage(app);
 }
 

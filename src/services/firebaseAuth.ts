@@ -35,29 +35,7 @@ let cachedAuth: ReturnType<typeof getAuth> | null = null;
 let fallbackAuthInstance: ReturnType<typeof getAuth> | null = null;
 
 export function getOfficialFallbackAuth(): ReturnType<typeof getAuth> | null {
-  if (!fallbackAuthInstance) {
-    try {
-      const existing = getApps().find((a) => a.name === 'officialGoppoAuthApp');
-      const app =
-        existing ||
-        initializeApp(
-          {
-            apiKey: OFFICIAL_GOPPO_FIREBASE_CONFIG.apiKey,
-            authDomain: OFFICIAL_GOPPO_FIREBASE_CONFIG.authDomain,
-            projectId: OFFICIAL_GOPPO_FIREBASE_CONFIG.projectId,
-            storageBucket: OFFICIAL_GOPPO_FIREBASE_CONFIG.storageBucket,
-            messagingSenderId: OFFICIAL_GOPPO_FIREBASE_CONFIG.messagingSenderId,
-            appId: OFFICIAL_GOPPO_FIREBASE_CONFIG.appId,
-          },
-          'officialGoppoAuthApp'
-        );
-      fallbackAuthInstance = getAuth(app);
-      setPersistence(fallbackAuthInstance, browserLocalPersistence).catch(() => {});
-    } catch (e) {
-      console.warn('Official fallback auth init notice:', e);
-    }
-  }
-  return fallbackAuthInstance;
+  return getGoppoAuth();
 }
 
 export function getGoppoAuth() {

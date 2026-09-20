@@ -21,7 +21,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { UpiConfig } from '../../types';
-import { getFirebaseConfig, FirebaseAppConfig } from '../../services/firebaseConfig';
+import { getFirebaseConfig, FirebaseAppConfig, OFFICIAL_GOPPO_FIREBASE_CONFIG } from '../../services/firebaseConfig';
 import { seedInitialStoriesToFirestore } from '../../services/firestoreStories';
 import { getGoppoFirestore } from '../../services/firestoreUser';
 import { collection, getDocs } from 'firebase/firestore';
@@ -171,6 +171,17 @@ export const AdminSettingsManager: React.FC<AdminSettingsManagerProps> = ({
     };
 
     localStorage.setItem('goppo_firebase_config', JSON.stringify(newConfig));
+    setFbSaved(true);
+    setTimeout(() => setFbSaved(false), 3000);
+  };
+
+  const handleRestoreOfficialFirebase = () => {
+    localStorage.removeItem('goppo_firebase_config');
+    setFbApiKey(OFFICIAL_GOPPO_FIREBASE_CONFIG.apiKey || '');
+    setFbProjectId(OFFICIAL_GOPPO_FIREBASE_CONFIG.projectId || 'argon-yarrow-wpthm');
+    setFbStorageBucket(OFFICIAL_GOPPO_FIREBASE_CONFIG.storageBucket || 'argon-yarrow-wpthm.firebasestorage.app');
+    setFbAuthDomain(OFFICIAL_GOPPO_FIREBASE_CONFIG.authDomain || 'argon-yarrow-wpthm.firebaseapp.com');
+    setFbDatabaseId(OFFICIAL_GOPPO_FIREBASE_CONFIG.firestoreDatabaseId || '');
     setFbSaved(true);
     setTimeout(() => setFbSaved(false), 3000);
   };
@@ -591,24 +602,26 @@ export const AdminSettingsManager: React.FC<AdminSettingsManagerProps> = ({
             <div className="p-3 rounded-lg bg-purple-900/30 border border-purple-800/30 space-y-1.5">
               <div className="flex items-center gap-2 text-purple-200 font-semibold">
                 <FileAudio className="w-3.5 h-3.5 text-pink-400" />
-                <span>Firebase Storage (ফাইল ও অডিও)</span>
+                <span>Firebase Storage (ফাইল ও অডিও হোস্টিং)</span>
               </div>
               <ul className="text-[11px] text-purple-300/80 space-y-1 pl-5 list-disc">
-                <li><code className="text-pink-300 font-mono">stories/audio/</code> — প্রতিটি গল্পের MP3 ফাইল</li>
-                <li><code className="text-pink-300 font-mono">stories/covers/</code> — গল্পের পোস্টার ও থাম্বনেইল</li>
-                <li><code className="text-pink-300 font-mono">payment_proofs/</code> — পেমেন্ট স্ক্রিনশট রসিদ</li>
+                <li><code className="text-pink-300 font-mono">stories/audio/</code> — প্রতিটি মূল অডিও গল্পের MP3 ফাইল</li>
+                <li><code className="text-pink-300 font-mono">stories/covers/</code> — গল্পের পোস্টার ও থাম্বনেইল ছবি</li>
+                <li><code className="text-pink-300 font-mono">podcasts/</code> — জীবনের গল্প পডকাস্ট অডিও ফাইল</li>
+                <li><code className="text-pink-300 font-mono">narrator_auditions/</code> — কথকদের অডিশন ভয়েস স্যাম্পল</li>
               </ul>
             </div>
 
             <div className="p-3 rounded-lg bg-purple-900/30 border border-purple-800/30 space-y-1.5">
               <div className="flex items-center gap-2 text-purple-200 font-semibold">
                 <Database className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Cloud Firestore (টেক্সট ও মেটাডেটা)</span>
+                <span>Cloud Firestore (ডাটাবেস কালেকশন)</span>
               </div>
               <ul className="text-[11px] text-purple-300/80 space-y-1 pl-5 list-disc">
-                <li><code className="text-indigo-300 font-mono">stories</code> — গল্পের নাম, লেখক, অডিও লিংক, লিসেন সংখ্যা</li>
-                <li><code className="text-indigo-300 font-mono">users</code> — শ্রোতাদের প্রোফাইল ও ২০ টাকা সাবস্ক্রিপশন স্ট্যাটাস</li>
-                <li><code className="text-indigo-300 font-mono">payments</code> — UTR ও পেমেন্ট ট্রানজ্যাকশন অডিট হিস্ট্রি</li>
+                <li><code className="text-indigo-300 font-mono">stories</code> — গল্পের নাম, লেখক, অডিও লিংক, পর্ব ও মেটাডেটা</li>
+                <li><code className="text-indigo-300 font-mono">users</code> — শ্রোতাদের প্রোফাইল, বুকমার্কস, হিস্ট্রি ও সাবস্ক্রিপশন</li>
+                <li><code className="text-indigo-300 font-mono">transactions</code> — ২০ টাকা পাস ও পেমেন্ট অডিট লগ</li>
+                <li><code className="text-indigo-300 font-mono">narrator_applications & life_stories</code> — আবেদন ও বাস্তব গল্প</li>
               </ul>
             </div>
           </div>
@@ -625,7 +638,7 @@ export const AdminSettingsManager: React.FC<AdminSettingsManagerProps> = ({
                 type="text"
                 value={fbProjectId}
                 onChange={(e) => setFbProjectId(e.target.value)}
-                placeholder="pro-surge-bcbh2 অথবা আপনার প্রজেক্ট আইডি"
+                placeholder="argon-yarrow-wpthm"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-purple-950/60 border border-purple-800/40 text-white text-xs sm:text-sm focus:outline-none focus:border-pink-500 font-mono"
               />
             </div>
@@ -653,7 +666,7 @@ export const AdminSettingsManager: React.FC<AdminSettingsManagerProps> = ({
                 type="text"
                 value={fbStorageBucket}
                 onChange={(e) => setFbStorageBucket(e.target.value)}
-                placeholder="pro-surge-bcbh2.firebasestorage.app"
+                placeholder="argon-yarrow-wpthm.firebasestorage.app"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-purple-950/60 border border-purple-800/40 text-white text-xs sm:text-sm focus:outline-none focus:border-pink-500 font-mono"
               />
             </div>
@@ -666,7 +679,7 @@ export const AdminSettingsManager: React.FC<AdminSettingsManagerProps> = ({
                 type="text"
                 value={fbAuthDomain}
                 onChange={(e) => setFbAuthDomain(e.target.value)}
-                placeholder="pro-surge-bcbh2.firebaseapp.com"
+                placeholder="argon-yarrow-wpthm.firebaseapp.com"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-purple-950/60 border border-purple-800/40 text-white text-xs sm:text-sm focus:outline-none focus:border-pink-500 font-mono"
               />
             </div>
@@ -679,7 +692,7 @@ export const AdminSettingsManager: React.FC<AdminSettingsManagerProps> = ({
                 type="text"
                 value={fbDatabaseId}
                 onChange={(e) => setFbDatabaseId(e.target.value)}
-                placeholder="(default) অথবা ডেটাবেস আইডি"
+                placeholder="ai-studio-8thsep5goppokahi-54c61b69-958f-49b7-97b1-8d4a3b90b263"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-purple-950/60 border border-purple-800/40 text-white text-xs sm:text-sm focus:outline-none focus:border-pink-500 font-mono"
               />
             </div>
@@ -692,17 +705,29 @@ export const AdminSettingsManager: React.FC<AdminSettingsManagerProps> = ({
               </span>
             ) : (
               <span className="text-xs text-purple-400">
-                এই সেটিংস সংরক্ষিত হলে অ্যাডমিন ও মূল অডিয়েন্স পোর্টাল উভয়ই একই ডেটাবেস থেকে রান করবে।
+                এই সেটিংস সংরক্ষিত হলে অ্যাডমিন ও মূল অডিয়েন্স পোর্টাল উভয়ই একই লাইভ ডেটাবেস ও ক্লাউড স্টোরেজ থেকে রান করবে।
               </span>
             )}
 
-            <button
-              type="submit"
-              className="px-5 py-2.5 rounded-xl bg-purple-900/60 hover:bg-purple-800/60 text-purple-200 hover:text-white font-semibold text-xs sm:text-sm flex items-center gap-2 cursor-pointer border border-purple-700/40 self-end"
-            >
-              <Save className="w-4 h-4" />
-              <span>কনফিগ সেভ করুন</span>
-            </button>
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <button
+                type="button"
+                onClick={handleRestoreOfficialFirebase}
+                className="px-3.5 py-2.5 rounded-xl bg-purple-900/40 hover:bg-purple-900/70 text-purple-300 hover:text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer border border-purple-700/30"
+                title="সিস্টেমের অফিশিয়াল Firebase প্রজেক্ট কনফিগারেশনে ফেরত যান"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-pink-400" />
+                <span>অফিসিয়াল কনফিগ রিস্টোর</span>
+              </button>
+
+              <button
+                type="submit"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-semibold text-xs sm:text-sm flex items-center gap-2 cursor-pointer shadow-md shadow-pink-600/30"
+              >
+                <Save className="w-4 h-4" />
+                <span>কনফিগ সেভ করুন</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>

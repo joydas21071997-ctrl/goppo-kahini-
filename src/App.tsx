@@ -94,6 +94,12 @@ import {
   deleteStoryFromFirestore,
 } from './services/firestoreStories';
 import {
+  saveUserBookmarksToFirestore,
+  fetchUserBookmarksFromFirestore,
+  saveUserHistoryToFirestore,
+  fetchUserHistoryFromFirestore,
+} from './services/firestoreUser';
+import {
   subscribeTransactionsFromFirestore,
   saveTransactionToFirestore,
   deleteTransactionFromFirestore,
@@ -478,17 +484,40 @@ export default function App() {
     const pageParam = (search.get('page') || search.get('policy') || search.get('legal') || '').toLowerCase();
     const hash = window.location.hash.replace(/^#/, '').toLowerCase();
 
-    const validSlugs: LegalPolicySlug[] = ['privacy-policy', 'terms', 'refund-policy', 'disclaimer', 'contact'];
+    const validSlugs: LegalPolicySlug[] = [
+      'privacy-policy',
+      'terms',
+      'data-deletion',
+      'grievance',
+      'refund-policy',
+      'subscription-terms',
+      'community-guidelines',
+      'copyright-policy',
+      'disclaimer',
+      'third-party-services',
+      'app-permissions',
+      'legal-info',
+      'contact'
+    ];
 
     if (validSlugs.includes(path as LegalPolicySlug)) return path as LegalPolicySlug;
     if (validSlugs.includes(pageParam as LegalPolicySlug)) return pageParam as LegalPolicySlug;
     if (validSlugs.includes(hash as LegalPolicySlug)) return hash as LegalPolicySlug;
 
     // Friendly aliases
-    if (path === 'privacy' || hash === 'privacy') return 'privacy-policy';
-    if (path === 'refund' || hash === 'refund') return 'refund-policy';
-    if (path === 'terms-and-conditions' || hash === 'terms-and-conditions') return 'terms';
-    if (path === 'support' || hash === 'support' || path === 'contact-us' || hash === 'contact-us') return 'contact';
+    if (path === 'privacy' || hash === 'privacy' || path === 'dpdp' || hash === 'dpdp') return 'privacy-policy';
+    if (path === 'refund' || hash === 'refund' || path === 'cancellation') return 'refund-policy';
+    if (path === 'terms-and-conditions' || hash === 'terms-and-conditions' || path === 'tos') return 'terms';
+    if (path === 'delete-account' || path === 'data-delete' || path === 'account-deletion') return 'data-deletion';
+    if (path === 'grievance-officer' || path === 'nodal-officer' || path === 'complaint') return 'grievance';
+    if (path === 'subscription' || path === 'pricing-terms' || path === 'pass-terms') return 'subscription-terms';
+    if (path === 'guidelines' || path === 'community' || path === 'rules') return 'community-guidelines';
+    if (path === 'copyright' || path === 'dmca' || path === 'ipr') return 'copyright-policy';
+    if (path === 'disclaimers') return 'disclaimer';
+    if (path === 'third-party' || path === 'partners') return 'third-party-services';
+    if (path === 'permissions' || path === 'app-permission') return 'app-permissions';
+    if (path === 'legal' || path === 'about-legal' || path === 'legal-notice') return 'legal-info';
+    if (path === 'support' || hash === 'support' || path === 'contact-us' || hash === 'contact-us' || path === 'help') return 'contact';
 
     return null;
   };
@@ -805,9 +834,47 @@ export default function App() {
     localStorage.setItem('goppo_kahini_subscription', JSON.stringify(subscription));
   }, [subscription]);
 
+  // Load user bookmarks & listening history from Firestore on login
+  useEffect(() => {
+    if (currentUser?.uid) {
+      fetchUserBookmarksFromFirestore(currentUser.uid)
+        .then((cloudBms) => {
+          if (cloudBms && Array.isArray(cloudBms) && cloudBms.length > 0) {
+            setBookmarks((prev) => {
+              const map = new Map<string, BookmarkType>();
+              [...cloudBms, ...prev].forEach((b) => map.set(b.id, b));
+              return Array.from(map.values());
+            });
+          }
+        })
+        .catch(console.error);
+
+      fetchUserHistoryFromFirestore(currentUser.uid)
+        .then((cloudHist) => {
+          if (cloudHist && Array.isArray(cloudHist) && cloudHist.length > 0) {
+            setListeningHistory((prev) => {
+              const map = new Map<string, ListeningHistoryItem>();
+              [...cloudHist, ...prev].forEach((h) => map.set(h.id, h));
+              return Array.from(map.values());
+            });
+          }
+        })
+        .catch(console.error);
+    }
+  }, [currentUser?.uid]);
+
   useEffect(() => {
     localStorage.setItem('goppo_kahini_bookmarks', JSON.stringify(bookmarks));
-  }, [bookmarks]);
+    if (currentUser?.uid) {
+      saveUserBookmarksToFirestore(currentUser.uid, bookmarks).catch(console.error);
+    }
+  }, [bookmarks, currentUser?.uid]);
+
+  useEffect(() => {
+    if (currentUser?.uid) {
+      saveUserHistoryToFirestore(currentUser.uid, listeningHistory).catch(console.error);
+    }
+  }, [listeningHistory, currentUser?.uid]);
 
   useEffect(() => {
     localStorage.setItem('goppo_kahini_custom_stories', JSON.stringify(stories));

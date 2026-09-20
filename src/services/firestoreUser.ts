@@ -224,3 +224,72 @@ export async function fetchUserProfileFromFirestore(uid: string): Promise<Firest
   }
   return null;
 }
+
+/**
+ * Saves user bookmarks to Firestore under `users/{uid}`
+ */
+export async function saveUserBookmarksToFirestore(uid: string, bookmarks: any[]): Promise<void> {
+  const db = getGoppoFirestore();
+  if (!db || !uid) return;
+
+  try {
+    const userDocRef = doc(db, 'users', uid);
+    await setDoc(userDocRef, { bookmarks, updatedAt: serverTimestamp() }, { merge: true });
+  } catch (err) {
+    console.warn('Firestore save bookmarks warning:', err);
+  }
+}
+
+/**
+ * Fetches user bookmarks from Firestore
+ */
+export async function fetchUserBookmarksFromFirestore(uid: string): Promise<any[] | null> {
+  const db = getGoppoFirestore();
+  if (!db || !uid) return null;
+
+  try {
+    const userDocRef = doc(db, 'users', uid);
+    const snap = await getDoc(userDocRef);
+    if (snap.exists() && snap.data().bookmarks) {
+      return snap.data().bookmarks;
+    }
+  } catch (err) {
+    console.warn('Firestore fetch bookmarks warning:', err);
+  }
+  return null;
+}
+
+/**
+ * Saves user listening history to Firestore under `users/{uid}`
+ */
+export async function saveUserHistoryToFirestore(uid: string, history: any[]): Promise<void> {
+  const db = getGoppoFirestore();
+  if (!db || !uid) return;
+
+  try {
+    const userDocRef = doc(db, 'users', uid);
+    await setDoc(userDocRef, { listeningHistory: history, updatedAt: serverTimestamp() }, { merge: true });
+  } catch (err) {
+    console.warn('Firestore save listening history warning:', err);
+  }
+}
+
+/**
+ * Fetches user listening history from Firestore
+ */
+export async function fetchUserHistoryFromFirestore(uid: string): Promise<any[] | null> {
+  const db = getGoppoFirestore();
+  if (!db || !uid) return null;
+
+  try {
+    const userDocRef = doc(db, 'users', uid);
+    const snap = await getDoc(userDocRef);
+    if (snap.exists() && snap.data().listeningHistory) {
+      return snap.data().listeningHistory;
+    }
+  } catch (err) {
+    console.warn('Firestore fetch history warning:', err);
+  }
+  return null;
+}
+

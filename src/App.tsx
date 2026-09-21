@@ -584,21 +584,34 @@ export default function App() {
     };
   }, []);
 
-  // Listen to Firestore Transactions real-time synchronization
+  // Listen to Firestore Transactions real-time synchronization (Admin reads all; authenticated user reads only own)
   useEffect(() => {
-    const unsubscribe = subscribeTransactionsFromFirestore((items) => {
-      if (items && items.length > 0) {
-        setPaymentTransactions(items);
-        localStorage.setItem('goppo_payment_transactions', JSON.stringify(items));
-      }
-    });
-    return () => {
-      if (typeof unsubscribe === 'function') unsubscribe();
-    };
-  }, []);
+    const isAdmin = isAuthorizedAdmin(creatorSession, currentUser);
+    if (isAdmin) {
+      const unsubscribe = subscribeTransactionsFromFirestore((items) => {
+        if (items && items.length > 0) {
+          setPaymentTransactions(items);
+          localStorage.setItem('goppo_payment_transactions', JSON.stringify(items));
+        }
+      });
+      return () => {
+        if (typeof unsubscribe === 'function') unsubscribe();
+      };
+    } else if (currentUser?.uid) {
+      const unsubscribe = subscribeTransactionsFromFirestore((items) => {
+        if (items) {
+          setPaymentTransactions(items);
+        }
+      }, undefined, currentUser.uid);
+      return () => {
+        if (typeof unsubscribe === 'function') unsubscribe();
+      };
+    }
+  }, [creatorSession, currentUser]);
 
-  // Listen to Firestore Subscribers CRM real-time synchronization
+  // Listen to Firestore Subscribers CRM real-time synchronization (Admin-only collection)
   useEffect(() => {
+    if (!isAuthorizedAdmin(creatorSession, currentUser)) return;
     const unsubscribe = subscribeSubscribersFromFirestore((items) => {
       if (items && items.length > 0) {
         setSubscribers(items);
@@ -608,10 +621,11 @@ export default function App() {
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
     };
-  }, []);
+  }, [creatorSession, currentUser]);
 
-  // Listen to Firestore Narrator Applications real-time synchronization
+  // Listen to Firestore Narrator Applications real-time synchronization (Admin-only read)
   useEffect(() => {
+    if (!isAuthorizedAdmin(creatorSession, currentUser)) return;
     const unsubscribe = subscribeNarratorAppsFromFirestore((items) => {
       if (items && items.length > 0) {
         setNarratorApplications(items);
@@ -621,10 +635,11 @@ export default function App() {
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
     };
-  }, []);
+  }, [creatorSession, currentUser]);
 
-  // Listen to Firestore Life Stories Submissions real-time synchronization
+  // Listen to Firestore Life Stories Submissions real-time synchronization (Admin-only read)
   useEffect(() => {
+    if (!isAuthorizedAdmin(creatorSession, currentUser)) return;
     const unsubscribe = subscribeLifeStoriesFromFirestore((items) => {
       if (items && items.length > 0) {
         setLifeStorySubmissions(items);
@@ -634,9 +649,9 @@ export default function App() {
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
     };
-  }, []);
+  }, [creatorSession, currentUser]);
 
-  // Listen to Firestore Podcast Episodes real-time synchronization
+  // Listen to Firestore Podcast Episodes real-time synchronization (Public read, Admin write)
   useEffect(() => {
     const unsubscribe = subscribePodcastEpisodesFromFirestore((items) => {
       if (items && items.length > 0) {
@@ -649,8 +664,9 @@ export default function App() {
     };
   }, []);
 
-  // Listen to Firestore Global UPI / Payment Gateway Configuration
+  // Listen to Firestore Global UPI / System Settings Configuration (Admin-only read/write)
   useEffect(() => {
+    if (!isAuthorizedAdmin(creatorSession, currentUser)) return;
     const unsubscribe = subscribeUpiConfigFromFirestore((config) => {
       if (config && config.upiId) {
         setUpiConfig(config);
@@ -660,7 +676,7 @@ export default function App() {
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
     };
-  }, []);
+  }, [creatorSession, currentUser]);
 
   const handleOpenUserAuth = (
     reason: 'play_story' | 'take_pass' | 'library' | 'general' = 'general',
@@ -3447,7 +3463,7 @@ export default function App() {
             currentUser ||
             (creatorSession?.isLoggedIn
               ? {
-                  uid: 'hwvu4siXbGhcpbreCQfca6b1P0h1',
+                  uid: 'XENByyR5dOY1i0NqI0ridlEmVc23',
                   email: creatorSession.email || 'joydas.21071997@gmail.com',
                   displayName: creatorSession.name || 'জয় (প্রতিষ্ঠাতা)',
                   role: 'admin',

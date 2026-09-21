@@ -213,8 +213,9 @@ export const StandaloneAdminPortal: React.FC = () => {
     };
   }, []);
 
-  // Listen to Firestore transactions
+  // Listen to Firestore transactions (Admin authenticated only)
   useEffect(() => {
+    if (!session?.isLoggedIn) return;
     const unsubscribe = subscribeTransactionsFromFirestore((items) => {
       if (items && items.length > 0) {
         setPaymentTransactions(items);
@@ -223,10 +224,11 @@ export const StandaloneAdminPortal: React.FC = () => {
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
     };
-  }, []);
+  }, [session?.isLoggedIn]);
 
-  // Listen to Firestore subscribers
+  // Listen to Firestore subscribers (Admin authenticated only)
   useEffect(() => {
+    if (!session?.isLoggedIn) return;
     const unsubscribe = subscribeSubscribersFromFirestore((items) => {
       if (items && items.length > 0) {
         setSubscribers(items);
@@ -235,10 +237,11 @@ export const StandaloneAdminPortal: React.FC = () => {
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
     };
-  }, []);
+  }, [session?.isLoggedIn]);
 
-  // Listen to Firestore narrator applications
+  // Listen to Firestore narrator applications (Admin authenticated only)
   useEffect(() => {
+    if (!session?.isLoggedIn) return;
     const unsubscribe = subscribeNarratorAppsFromFirestore((items) => {
       if (items && items.length > 0) {
         setNarratorApplications(items);
@@ -247,10 +250,11 @@ export const StandaloneAdminPortal: React.FC = () => {
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
     };
-  }, []);
+  }, [session?.isLoggedIn]);
 
-  // Listen to Firestore life stories
+  // Listen to Firestore life stories (Admin authenticated only)
   useEffect(() => {
+    if (!session?.isLoggedIn) return;
     const unsubscribe = subscribeLifeStoriesFromFirestore((items) => {
       if (items && items.length > 0) {
         setLifeStorySubmissions(items);
@@ -259,9 +263,9 @@ export const StandaloneAdminPortal: React.FC = () => {
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
     };
-  }, []);
+  }, [session?.isLoggedIn]);
 
-  // Listen to Firestore podcast episodes
+  // Listen to Firestore podcast episodes (Public read)
   useEffect(() => {
     const unsubscribe = subscribePodcastEpisodesFromFirestore((items) => {
       if (items && items.length > 0) {
@@ -273,8 +277,9 @@ export const StandaloneAdminPortal: React.FC = () => {
     };
   }, []);
 
-  // Listen to Firestore UPI settings
+  // Listen to Firestore UPI settings (Admin authenticated only)
   useEffect(() => {
+    if (!session?.isLoggedIn) return;
     const unsubscribe = subscribeUpiConfigFromFirestore((config) => {
       if (config && config.upiId) {
         setUpiConfig(config);
@@ -283,7 +288,7 @@ export const StandaloneAdminPortal: React.FC = () => {
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
     };
-  }, []);
+  }, [session?.isLoggedIn]);
 
   // Ensure Admin Firebase Auth
   useEffect(() => {

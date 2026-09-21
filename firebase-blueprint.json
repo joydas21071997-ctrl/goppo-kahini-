@@ -390,6 +390,9 @@
     "/admin_users/{adminId}": {
       "schema": "AdminUser",
       "description": "List of administrators with authorized access"
+    },
+    "/admin_activity_logs/{logId}": {
+      "description": "Audit trails and activity logs of administrator actions"
     }
   }
 }

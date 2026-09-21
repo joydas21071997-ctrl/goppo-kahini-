@@ -51,9 +51,7 @@ export const AdminSettingsManager: React.FC<AdminSettingsManagerProps> = ({
     upiConfig.paymentInstructions || 'পেমেন্ট সম্পন্ন করার পর স্ক্রিনশট বা ১২ সংখ্যার UTR নম্বর সাবমিট করুন।'
   );
   const [razorpayKeyId, setRazorpayKeyId] = useState(upiConfig.razorpayKeyId || '');
-  const [razorpayKeySecret, setRazorpayKeySecret] = useState(upiConfig.razorpayKeySecret || '');
   const [cashfreeAppId, setCashfreeAppId] = useState(upiConfig.cashfreeAppId || '');
-  const [cashfreeSecretKey, setCashfreeSecretKey] = useState(upiConfig.cashfreeSecretKey || '');
   const [isGatewayActive, setIsGatewayActive] = useState(upiConfig.isGatewayActive ?? false);
   const [upiSaved, setUpiSaved] = useState(false);
 
@@ -117,9 +115,7 @@ export const AdminSettingsManager: React.FC<AdminSettingsManagerProps> = ({
       bankName: bankName.trim(),
       paymentInstructions: paymentInstructions.trim(),
       razorpayKeyId: razorpayKeyId.trim(),
-      razorpayKeySecret: razorpayKeySecret.trim(),
       cashfreeAppId: cashfreeAppId.trim(),
-      cashfreeSecretKey: cashfreeSecretKey.trim(),
       isGatewayActive,
     });
     setUpiSaved(true);
@@ -317,13 +313,13 @@ export const AdminSettingsManager: React.FC<AdminSettingsManagerProps> = ({
                 <span>পেমেন্ট গেটওয়ে ক্রেডেনশিয়াল (Razorpay / Cashfree API)</span>
               </div>
               <p className="text-[11px] text-purple-300/80">
-                গেটওয়ে ড্যাশবোর্ড (যেমন Razorpay Dashboard &rarr; Settings &rarr; API Keys) থেকে Key ID ও Key Secret সংগ্রহ করে নিচে দিন:
+                গেটওয়ে ড্যাশবোর্ড (যেমন Razorpay Dashboard &rarr; Settings &rarr; API Keys) থেকে পাবলিক Client Key ID সংগ্রহ করে দিন:
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-3">
                 <div>
                   <label className="block text-[11px] font-semibold text-purple-200 mb-1">
-                    Gateway Key ID (Client ID)
+                    Gateway Key ID / Client Public ID
                   </label>
                   <input
                     type="text"
@@ -334,17 +330,12 @@ export const AdminSettingsManager: React.FC<AdminSettingsManagerProps> = ({
                   />
                 </div>
 
-                <div>
-                  <label className="block text-[11px] font-semibold text-purple-200 mb-1">
-                    Gateway Key Secret (Private Key)
-                  </label>
-                  <input
-                    type="password"
-                    value={razorpayKeySecret}
-                    onChange={(e) => setRazorpayKeySecret(e.target.value)}
-                    placeholder="••••••••••••••••"
-                    className="w-full px-3 py-2 rounded-xl bg-purple-950/80 border border-purple-700/50 text-white text-xs font-mono focus:outline-none focus:border-pink-500"
-                  />
+                <div className="p-3 rounded-xl bg-purple-950/50 border border-emerald-500/30 text-emerald-300 text-[11px] flex items-start gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold block text-emerald-200">সার্ভার-সাইড সিকিউরিটি নীতি (Zero-Trust):</span>
+                    পেমেন্ট গেটওয়ে প্রাইভেট সিক্রেট কী (Razorpay Secret Key বা Cashfree Secret Key) সার্ভার এনভায়রনমেন্টে সুরক্ষিত থাকে এবং ব্রাউজার ক্লায়েন্টে কখনো সেভ বা এক্সপোজ করা হয় না।
+                  </div>
                 </div>
               </div>
 

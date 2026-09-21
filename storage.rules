@@ -3,30 +3,38 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
     function isAdmin() {
-      return request.auth != null
+      return isAuthenticated()
         && (
-          request.auth.uid == 'hwvu4siXbGhcpbreCQfca6b1P0h1'
+          request.auth.uid == 'XENByyR5dOY1i0NqI0ridlEmVc23'
           || (
             request.auth.token.email != null
             && request.auth.token.email == 'joydas.21071997@gmail.com'
           )
+          || (
+            request.auth.token.role == 'admin'
+            || request.auth.token.role == 'super_admin'
+          )
         );
     }
 
-    // Story Audio
+    // Story Audio: Public read, Admin write/delete
     match /stories/audio/{allPaths=**} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Story Cover Images
+    // Story Cover Images: Public read, Admin write/delete
     match /stories/covers/{allPaths=**} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Podcasts
+    // Podcasts: Public read, Admin write/delete
     match /podcasts/{allPaths=**} {
       allow read: if true;
       allow write: if isAdmin();

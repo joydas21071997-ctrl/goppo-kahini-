@@ -6,6 +6,7 @@ import {
   deleteDoc,
   onSnapshot,
   query,
+  where,
   orderBy,
   limit,
 } from 'firebase/firestore';
@@ -40,7 +41,8 @@ function handleFirestoreError(error: unknown, op: OperationType, path: string) {
 
 export function subscribeTransactionsFromFirestore(
   onUpdate: (transactions: PaymentTransaction[]) => void,
-  onError?: (error: unknown) => void
+  onError?: (error: unknown) => void,
+  userId?: string
 ): () => void {
   const db = getGoppoFirestore();
   if (!db) {
@@ -49,7 +51,7 @@ export function subscribeTransactionsFromFirestore(
 
   try {
     const colRef = collection(db, 'transactions');
-    const q = query(colRef);
+    const q = userId ? query(colRef, where('userId', '==', userId)) : query(colRef);
 
     const unsubscribe = onSnapshot(
       q,
@@ -572,9 +574,7 @@ export function subscribeUpiConfigFromFirestore(
             paymentInstructions: data.paymentInstructions,
             gatewayMode: data.gatewayMode || 'manual_upi',
             razorpayKeyId: data.razorpayKeyId,
-            razorpayKeySecret: data.razorpayKeySecret,
             cashfreeAppId: data.cashfreeAppId,
-            cashfreeSecretKey: data.cashfreeSecretKey,
             isGatewayActive: Boolean(data.isGatewayActive),
           });
         }
@@ -599,6 +599,9 @@ export async function saveUpiConfigToFirestore(config: UpiConfig): Promise<boole
   try {
     const docRef = doc(db, 'system_settings', 'upi_config');
     const cleanData: Record<string, any> = { ...config };
+    // Strictly ensure no server-side secrets are ever stored in client Firestore documents
+    delete cleanData.razorpayKeySecret;
+    delete cleanData.cashfreeSecretKey;
     Object.keys(cleanData).forEach((key) => {
       if (cleanData[key] === undefined) {
         delete cleanData[key];

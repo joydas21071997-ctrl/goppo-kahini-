@@ -5,10 +5,10 @@ import { getGoppoAuth, getOfficialFallbackAuth } from './firebaseAuth';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
 /**
- * SOLE AUTHORIZED ADMIN: joydas.21071997@gmail.com
- * Verified Firebase Auth UID: hwvu4siXbGhcpbreCQfca6b1P0h1
+ * SOLE AUTHORIZED PRIMARY SUPER ADMIN: joydas.21071997@gmail.com
+ * Verified Firebase Auth UID: XENByyR5dOY1i0NqI0ridlEmVc23
  */
-export const SOLE_AUTHORIZED_ADMIN_UID = 'hwvu4siXbGhcpbreCQfca6b1P0h1';
+export const SOLE_AUTHORIZED_ADMIN_UID = 'XENByyR5dOY1i0NqI0ridlEmVc23';
 export const VERIFIED_ADMIN_EMAILS = [
   'joydas.21071997@gmail.com',
 ];
@@ -134,12 +134,17 @@ export function isAuthorizedAdmin(
     return false;
   }
 
-  // 1. Active Creator Session
+  // 1. Primary Super Admin Firebase Auth UID check (Primary source of identity)
+  if (currentUser?.uid === SOLE_AUTHORIZED_ADMIN_UID) {
+    return true;
+  }
+
+  // 2. Active Creator Session
   if (creatorSession?.isLoggedIn && (creatorSession.role === 'super_admin' || creatorSession.role === 'approved_narrator')) {
     return true;
   }
 
-  // 2. Verified Super Admin email or admin role
+  // 3. Verified Super Admin email or admin role
   if (currentUser?.email) {
     const cleanEmail = currentUser.email.trim().toLowerCase();
     if (isPrimarySuperAdminEmail(cleanEmail)) {
@@ -147,7 +152,7 @@ export function isAuthorizedAdmin(
     }
   }
 
-  // 3. Custom Firebase token role claim
+  // 4. Custom Firebase token role claim
   if (currentUser?.role === 'admin') {
     return true;
   }
@@ -157,7 +162,7 @@ export function isAuthorizedAdmin(
 
 /**
  * Ensures Firebase Auth is actively authenticated as the authorized Admin:
- * joydas.21071997@gmail.com (UID: hwvu4siXbGhcpbreCQfca6b1P0h1)
+ * joydas.21071997@gmail.com (UID: XENByyR5dOY1i0NqI0ridlEmVc23)
  * Refreshes the ID token so Firebase Storage and Firestore security rules permit audio/cover uploads.
  */
 export async function ensureAdminFirebaseAuth(): Promise<boolean> {

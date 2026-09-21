@@ -207,7 +207,12 @@ export async function submitOrUpdateStoryReview(
     }
   }
 
-  const reviewAuthorUid = auth?.currentUser?.uid || user.uid;
+  if (!auth?.currentUser) {
+    throw new Error('রিভিউ পোস্ট করার জন্য অনুগ্রহ করে আপনার অ্যাকাউন্টে সাইন-ইন করুন। বেনামী রিভিউ অনুমোদিত নয়।');
+  }
+
+  // Strictly enforce authenticated Firebase Auth UID as the document key and review identity
+  const reviewAuthorUid = auth.currentUser.uid;
   const reviewDocRef = doc(db, 'stories', storyId, 'reviews', reviewAuthorUid);
 
   // Check if previous document exists to preserve original createdAt and likes

@@ -126,13 +126,13 @@ export const AdminStoryUploader: React.FC<AdminStoryUploaderProps> = ({
     const auth = getGoppoAuth();
     if (!auth) return;
 
-    if (auth.currentUser && (auth.currentUser.email?.toLowerCase() === 'joydas.21071997@gmail.com' || auth.currentUser.uid === 'hwvu4siXbGhcpbreCQfca6b1P0h1')) {
+    if (auth.currentUser && (auth.currentUser.email?.toLowerCase() === 'joydas.21071997@gmail.com' || auth.currentUser.uid === 'XENByyR5dOY1i0NqI0ridlEmVc23')) {
       setIsFirebaseConnected(true);
       setAdminEmailConnected(auth.currentUser.email || 'joydas.21071997@gmail.com');
     }
 
     const unsub = onAuthStateChanged(auth, (user) => {
-      if (user && (user.email?.toLowerCase() === 'joydas.21071997@gmail.com' || user.uid === 'hwvu4siXbGhcpbreCQfca6b1P0h1')) {
+      if (user && (user.email?.toLowerCase() === 'joydas.21071997@gmail.com' || user.uid === 'XENByyR5dOY1i0NqI0ridlEmVc23')) {
         setIsFirebaseConnected(true);
         setAdminEmailConnected(user.email || 'joydas.21071997@gmail.com');
       } else {

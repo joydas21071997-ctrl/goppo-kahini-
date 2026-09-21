@@ -10,7 +10,7 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated()
         && (
-          request.auth.uid == 'hwvu4siXbGhcpbreCQfca6b1P0h1'
+          request.auth.uid == 'XENByyR5dOY1i0NqI0ridlEmVc23'
           || (
             request.auth.token.email != null 
             && request.auth.token.email == 'joydas.21071997@gmail.com'
@@ -31,27 +31,31 @@ service cloud.firestore {
       return id is string && id.size() > 0 && id.size() <= 128;
     }
 
-    // ১. গল্পের কালেকশন (Stories)
+    // ১. গল্পের কালেকশন (Stories): Public read, Admin write
     match /stories/{storyId} {
       allow read: if true;
-      allow create, update: if isAdmin()
-                            || (!isAuthenticated() && isValidId(storyId) && request.resource.data.title is string);
-      allow delete: if isAdmin() || !isAuthenticated();
+      allow create, update, delete: if isAdmin();
 
       // ২. গল্পের রিভিউ সাব-কালেকশন (Story Reviews)
+      // Path: stories/{storyId}/reviews/{reviewId} (reviewId is the user's Auth UID)
+      // Normal user may create/update/delete only their own review. Anonymous reviews forbidden.
       match /reviews/{reviewId} {
         allow read: if true;
-        allow create, update: if (isAuthenticated() && (request.auth.uid == reviewId || isAdmin()))
-                              || (!isAuthenticated() && isValidId(reviewId));
-        allow delete: if isAuthenticated() && (request.auth.uid == reviewId || isAdmin());
+        allow create, update, delete: if isAuthenticated() && (request.auth.uid == reviewId || isAdmin());
+      }
+
+      // গল্প সংক্রান্ত চ্যাপ্টার বা পর্ব (Episodes)
+      match /episodes/{episodeId} {
+        allow read: if true;
+        allow write: if isAdmin();
       }
     }
 
     // ৩. ব্যবহারকারীদের প্রোফাইল ও ডেটা (Users, Bookmarks, History)
+    // User can read/write their own profile; Admin can read/manage user profiles
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && isValidId(userId);
-      allow update: if isOwner(userId) || isAdmin();
+      allow create, update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
 
       // ইউজার সাব-কালেকশন (বুকমার্কস, হিস্ট্রি, ফেভারিটস)
@@ -60,60 +64,64 @@ service cloud.firestore {
       }
     }
 
-    // ৪. অনুমোদিত অ্যাডমিন ইউজার তালিকা
+    // ৪. অনুমোদিত অ্যাডমিন ইউজার তালিকা (Admin Users): Admin only
     match /admin_users/{adminId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow read, write: if isAdmin();
     }
 
     // ৫. শ্রোতাদের ইনবক্স ও যোগাযোগ বার্তা (Contact Messages)
+    // Public create, Admin read/update/delete
     match /contact_messages/{messageId} {
       allow create: if isValidId(messageId);
       allow read, update, delete: if isAdmin();
     }
 
     // ৬. পেমেন্ট ও লেনদেন (Payment Transactions)
+    // User can create their own transaction, user can read only their own transaction,
+    // user cannot modify payment status; Admin manages all transactions.
     match /transactions/{transactionId} {
-      allow read: if true;
-      allow create: if isValidId(transactionId);
-      allow update, delete: if isAdmin() || isAuthenticated();
+      allow create: if (isAuthenticated() && request.resource.data.userId == request.auth.uid && request.resource.data.status == 'pending') || isAdmin();
+      allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     // ৭. সাবস্ক্রাইবার ও সিআরএম লিড (Subscribers & Leads)
+    // Public/user creation allowed; normal users cannot read; Admin manages records
     match /subscribers/{subscriberId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin() || isAuthenticated();
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
     }
 
     // ৮. কথক অডিশন ও আবেদন (Narrator Applications)
+    // Public create, Admin read/update/delete
     match /narrator_applications/{appId} {
-      allow read: if true;
       allow create: if isValidId(appId);
-      allow update, delete: if isAdmin() || isAuthenticated();
+      allow read, update, delete: if isAdmin();
     }
 
     // ৯. মানুষের জীবনের গল্প (Life Stories Submissions)
+    // Public create, Admin read/update/delete
     match /life_stories/{storyId} {
-      allow read: if true;
       allow create: if isValidId(storyId);
-      allow update, delete: if isAdmin() || isAuthenticated();
+      allow read, update, delete: if isAdmin();
     }
 
     // ১০. পডকাস্ট এপিসোড (Podcast Episodes)
+    // Public read, Admin write
     match /podcast_episodes/{episodeId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin() || isAuthenticated();
+      allow write: if isAdmin();
     }
 
-    // ১১. সিস্টেম ও ইউপিআই সেটিংস (System Settings)
+    // ১১. সিস্টেম ও ইউপিআই সেটিংস (System Settings): Admin-only
     match /system_settings/{settingId} {
-      allow read: if true;
-      allow write: if isAdmin() || isAuthenticated();
+      allow read, write: if isAdmin();
     }
 
-    // ১২. অ্যাডমিন অ্যাক্টিভিটি লগ (Admin Activity Logs)
+    // ১২. অ্যাডমিন অ্যাক্টিভিটি লগ (Admin Activity Logs): Admin-only
     match /admin_activity_logs/{logId} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
     }
 
     match /{document=**} {

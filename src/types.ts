@@ -179,10 +179,8 @@ export interface UpiConfig {
 
   // Automated Payment Gateway Settings (Direct Bank Settlement via API)
   gatewayMode?: 'manual_upi' | 'razorpay' | 'cashfree' | 'phonepe_pg';
-  razorpayKeyId?: string;
-  razorpayKeySecret?: string;
-  cashfreeAppId?: string;
-  cashfreeSecretKey?: string;
+  razorpayKeyId?: string; // Public client key only
+  cashfreeAppId?: string; // Public client app ID only
   isGatewayActive?: boolean;
 }
 

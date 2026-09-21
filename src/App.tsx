@@ -3239,6 +3239,12 @@ export default function App() {
             )}
           </div>
         </div>
+
+        <div className={`mt-3 pt-3 border-t max-w-5xl mx-auto flex items-center justify-center text-[11px] ${
+          isLight ? 'border-purple-200/60 text-zinc-500' : 'border-purple-900/30 text-zinc-400'
+        }`}>
+          <span>© 2026 Goppo Kahini. All rights reserved.</span>
+        </div>
       </footer>
 
       {/* Docked Audio Player Bar */}

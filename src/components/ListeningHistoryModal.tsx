@@ -1,6 +1,7 @@
 import React from 'react';
-import { X, Play, Clock, Trash2, BookOpen, Headphones } from 'lucide-react';
+import { X, Play, Clock, Trash2, Headphones } from 'lucide-react';
 import { ListeningHistoryItem, Story } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ListeningHistoryModalProps {
   isOpen: boolean;
@@ -21,12 +22,15 @@ export const ListeningHistoryModal: React.FC<ListeningHistoryModalProps> = ({
   onRemoveItem,
   allStories,
 }) => {
+  const { t, language } = useLanguage();
   if (!isOpen) return null;
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return `${mins} মি. ${secs > 0 ? `${secs} সে.` : ''}`;
+    const mUnit = language === 'bn' ? 'মি.' : language === 'hi' ? 'मि.' : 'm';
+    const sUnit = language === 'bn' ? 'সে.' : language === 'hi' ? 'से.' : 's';
+    return `${mins} ${mUnit} ${secs > 0 ? `${secs} ${sUnit}` : ''}`;
   };
 
   return (
@@ -43,10 +47,10 @@ export const ListeningHistoryModal: React.FC<ListeningHistoryModalProps> = ({
             </div>
             <div>
               <h3 className="font-serif-story text-base sm:text-lg font-bold text-white">
-                শোনার ইতিহাস
+                {t('history_title', 'শোনার ইতিহাস')}
               </h3>
               <p className="text-[11px] text-zinc-400">
-                পূর্বে যে গল্পগুলো আপনি শুনেছেন বা চালু করেছিলেন
+                {t('history_sub', 'পূর্বে যে গল্পগুলো আপনি শুনেছেন বা চালু করেছিলেন')}
               </p>
             </div>
           </div>
@@ -54,7 +58,7 @@ export const ListeningHistoryModal: React.FC<ListeningHistoryModalProps> = ({
           <button
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 hover:text-white hover:bg-purple-900/40 transition-colors"
-            title="বন্ধ করুন"
+            title={t('close', 'বন্ধ করুন')}
           >
             <X className="h-4 w-4" />
           </button>
@@ -68,10 +72,10 @@ export const ListeningHistoryModal: React.FC<ListeningHistoryModalProps> = ({
                 <Clock className="h-6 w-6" />
               </div>
               <h4 className="text-sm font-bold text-zinc-300 mb-1">
-                ইতিহাসে কোনো গল্প নেই
+                {t('no_history', 'ইতিহাসে কোনো গল্প নেই')}
               </h4>
               <p className="text-xs text-zinc-500 max-w-xs mb-4">
-                আপনি এখনো কোনো গল্প শোনেননি। গল্পঘর থেকে যেকোনো গল্প প্লে করলে তা স্বয়ংক্রিয়ভাবে এখানে সংরক্ষিত হবে।
+                {t('no_history_hint', 'আপনি এখনো কোনো গল্প শোনেননি। গল্পঘর থেকে যেকোনো গল্প প্লে করলে তা স্বয়ংক্রিয়ভাবে এখানে সংরক্ষিত হবে।')}
               </p>
             </div>
           ) : (
@@ -115,15 +119,15 @@ export const ListeningHistoryModal: React.FC<ListeningHistoryModalProps> = ({
                         onClose();
                       }}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-95 text-white text-xs font-bold shadow-sm transition-all"
-                      title="পুনরায় শুনুন"
+                      title={t('replay', 'পুনরায় শুনুন')}
                     >
                       <Play className="h-3 w-3 fill-white" />
-                      <span className="hidden sm:inline">শুনুন</span>
+                      <span className="hidden sm:inline">{t('listen', 'শুনুন')}</span>
                     </button>
                     <button
                       onClick={() => onRemoveItem(item.id)}
                       className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-zinc-800 rounded-lg transition-colors"
-                      title="তালিকা থেকে সরান"
+                      title={t('remove_from_list', 'তালিকা থেকে সরান')}
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -138,14 +142,14 @@ export const ListeningHistoryModal: React.FC<ListeningHistoryModalProps> = ({
         {history.length > 0 && (
           <div className="flex items-center justify-between border-t border-zinc-850 px-4 py-3 bg-zinc-900/40">
             <span className="text-xs text-zinc-500">
-              মোট {history.length}টি গল্প সংরক্ষিত আছে
+              {t('total_stories_saved', 'মোট সংরক্ষিত গল্প:')} {history.length}
             </span>
             <button
               onClick={onClearHistory}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-rose-400 hover:border-rose-900/40 text-xs font-medium transition-all"
             >
               <Trash2 className="h-3.5 w-3.5" />
-              <span>ইতিহাস মুছুন</span>
+              <span>{t('clear_history', 'ইতিহাস মুছুন')}</span>
             </button>
           </div>
         )}

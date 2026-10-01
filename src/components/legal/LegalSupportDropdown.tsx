@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { LegalPolicySlug } from '../../data/legalPolicies';
 import { ThemeMode } from '../../types';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface LegalSupportDropdownProps {
   onSelectPolicy: (slug: LegalPolicySlug) => void;
@@ -35,17 +36,24 @@ export const LEGAL_MENU_ITEMS: {
 }[] = [
   {
     slug: 'privacy-policy',
-    titleBn: 'গোপনীয়তা নীতি',
+    titleBn: 'গোপনীয়তা নীতি',
     titleEn: 'Privacy Policy',
     badgeBn: 'DPDP Act 2023',
     icon: <Shield className="h-3.5 w-3.5 text-purple-400" />
   },
   {
     slug: 'terms',
-    titleBn: 'শর্তাবলী ও নিয়মাবলী',
+    titleBn: 'শর্তাবলী ও নিয়মাবলী',
     titleEn: 'Terms & Conditions',
     badgeBn: 'Contract Act 1872',
     icon: <FileText className="h-3.5 w-3.5 text-pink-400" />
+  },
+  {
+    slug: 'refund-policy',
+    titleBn: 'রিফান্ড ও বাতিলকরণ নীতি',
+    titleEn: 'Refund Policy',
+    badgeBn: 'E-Commerce Rules',
+    icon: <RefreshCcw className="h-3.5 w-3.5 text-amber-400" />
   },
   {
     slug: 'data-deletion',
@@ -53,76 +61,6 @@ export const LEGAL_MENU_ITEMS: {
     titleEn: 'Account & Data Deletion',
     badgeBn: 'Right to Erasure',
     icon: <Trash2 className="h-3.5 w-3.5 text-rose-400" />
-  },
-  {
-    slug: 'grievance',
-    titleBn: 'অভিযোগ ও নোডাল অফিসার',
-    titleEn: 'Grievance / Privacy Contact',
-    badgeBn: 'IT Rules 2021',
-    icon: <Scale className="h-3.5 w-3.5 text-indigo-400" />
-  },
-  {
-    slug: 'refund-policy',
-    titleBn: 'রিফান্ড ও বাতিলকরণ নীতি',
-    titleEn: 'Refund & Cancellation Policy',
-    badgeBn: 'E-Commerce Rules',
-    icon: <RefreshCcw className="h-3.5 w-3.5 text-amber-400" />
-  },
-  {
-    slug: 'subscription-terms',
-    titleBn: 'সাবস্ক্রিপশন ও ২০ টাকা পাস',
-    titleEn: 'Subscription Terms',
-    badgeBn: 'RBI Non-AutoDebit',
-    icon: <CreditCard className="h-3.5 w-3.5 text-cyan-400" />
-  },
-  {
-    slug: 'community-guidelines',
-    titleBn: 'কমিউনিটি ও মন্তব্য নীতি',
-    titleEn: 'Community Guidelines',
-    badgeBn: 'IT Rules 3(1)(b)',
-    icon: <Users className="h-3.5 w-3.5 text-teal-400" />
-  },
-  {
-    slug: 'copyright-policy',
-    titleBn: 'কপিরাইট ও স্বত্বাধিকার',
-    titleEn: 'Copyright Policy',
-    badgeBn: 'Copyright Act 1957',
-    icon: <ShieldAlert className="h-3.5 w-3.5 text-red-400" />
-  },
-  {
-    slug: 'disclaimer',
-    titleBn: 'দাবিত্যাগ ও বিষয়বস্তু সতর্কতা',
-    titleEn: 'Disclaimer',
-    badgeBn: 'Art 19(1)(a)',
-    icon: <AlertTriangle className="h-3.5 w-3.5 text-orange-400" />
-  },
-  {
-    slug: 'third-party-services',
-    titleBn: 'তৃতীয় পক্ষের পরিষেবা',
-    titleEn: 'Third-Party Services',
-    badgeBn: 'Google & UPI Infra',
-    icon: <Server className="h-3.5 w-3.5 text-sky-400" />
-  },
-  {
-    slug: 'app-permissions',
-    titleBn: 'অ্যাপ পারমিশন ও ডেটা ব্যবহার',
-    titleEn: 'App Permissions & Data Usage',
-    badgeBn: 'Minimal Permissions',
-    icon: <Smartphone className="h-3.5 w-3.5 text-blue-400" />
-  },
-  {
-    slug: 'legal-info',
-    titleBn: 'আইনি সত্ত্বা ও বিচারিক এখতিয়ার',
-    titleEn: 'About / Legal Information',
-    badgeBn: 'Kolkata Jurisdiction',
-    icon: <Building className="h-3.5 w-3.5 text-yellow-400" />
-  },
-  {
-    slug: 'contact',
-    titleBn: 'যোগাযোগ ও সহায়তা',
-    titleEn: 'Contact Us & Support',
-    badgeBn: 'Direct Inbox',
-    icon: <Mail className="h-3.5 w-3.5 text-emerald-400" />
   }
 ];
 
@@ -133,9 +71,20 @@ export const LegalSupportDropdown: React.FC<LegalSupportDropdownProps> = ({
   onItemClick,
   theme = 'purple-light',
 }) => {
+  const { t, language } = useLanguage();
   const isLight = theme === 'purple-light' || theme === 'calm-green';
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const getPolicyTitle = (item: typeof LEGAL_MENU_ITEMS[0]) => {
+    switch (item.slug) {
+      case 'privacy-policy': return t('policy_privacy', item.titleBn);
+      case 'terms': return t('policy_terms', item.titleBn);
+      case 'refund-policy': return t('policy_refund', item.titleBn);
+      case 'data-deletion': return t('policy_data_deletion', item.titleBn);
+      default: return language === 'bn' ? item.titleBn : item.titleEn;
+    }
+  };
 
   // Close on click outside (only for floating dropdown mode)
   useEffect(() => {
@@ -174,7 +123,7 @@ export const LegalSupportDropdown: React.FC<LegalSupportDropdownProps> = ({
               : 'text-zinc-200 hover:bg-[#201533]'
           }`}
           aria-expanded={isOpen}
-          aria-label="আইন ও সহায়তা মেনু"
+          aria-label={t('legal_and_support', 'আইন ও সহায়তা')}
         >
           <div className="flex items-center gap-2.5">
             <div className={`flex h-7 w-7 items-center justify-center rounded-lg shrink-0 ${
@@ -185,14 +134,14 @@ export const LegalSupportDropdown: React.FC<LegalSupportDropdownProps> = ({
             <div>
               <div className="flex items-center gap-1.5">
                 <span className={`font-bold block ${isLight ? 'text-zinc-900' : 'text-white'}`}>
-                  আইন ও সহায়তা
+                  {t('legal_and_support', 'আইন ও সহায়তা')}
                 </span>
                 <span className="text-[9px] px-1.5 py-0.2 rounded-full font-mono bg-pink-500/20 text-pink-400 font-semibold">
-                  ১২+ পলিসি
+                  {t('policy_badge_count', '৪টি পলিসি')}
                 </span>
               </div>
               <span className={`text-[10px] block ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>
-                ভারতীয় ডিজিটাল ও সাংবিধানিক আইন অনুপালন
+                {t('legal_subtitle', 'ভারতীয় ডিজিটাল ও সাংবিধানিক আইন অনুপালন')}
               </span>
             </div>
           </div>
@@ -225,9 +174,11 @@ export const LegalSupportDropdown: React.FC<LegalSupportDropdownProps> = ({
                     {item.icon}
                   </div>
                   <div className="text-left min-w-0">
-                    <span className="font-medium block leading-tight truncate">{item.titleBn}</span>
+                    <span className="font-medium block leading-tight truncate">
+                      {getPolicyTitle(item)}
+                    </span>
                     <span className={`text-[9px] block leading-tight font-mono ${isLight ? 'text-zinc-500' : 'text-zinc-500'}`}>
-                      {item.titleEn}
+                      {language === 'bn' ? item.titleEn : item.titleBn}
                     </span>
                   </div>
                 </div>
@@ -262,12 +213,12 @@ export const LegalSupportDropdown: React.FC<LegalSupportDropdownProps> = ({
         }`}
         aria-expanded={isOpen}
         aria-haspopup="true"
-        aria-label="আইন ও সহায়তা মেনু খুলুন"
+        aria-label={t('legal_and_support', 'আইন ও সহায়তা')}
       >
         <Scale className={`h-3 w-3 shrink-0 ${isLight ? 'text-purple-600' : 'text-purple-400'}`} />
-        <span>আইন ও নীতিমালা</span>
-        <span className="text-[9px] px-1 py-0.2 rounded-full font-mono bg-pink-500/20 text-pink-400 font-semibold">
-          ১২+
+        <span>{t('legal_and_support', 'আইন ও সহায়তা')}</span>
+        <span className="text-[9px] px-1.5 py-0.2 rounded-full font-mono bg-pink-500/20 text-pink-400 font-semibold">
+          4
         </span>
         <ChevronDown
           className={`h-3 w-3 transition-transform duration-200 ${
@@ -290,7 +241,7 @@ export const LegalSupportDropdown: React.FC<LegalSupportDropdownProps> = ({
               <span className={`text-[10px] font-bold uppercase tracking-wider block ${
                 isLight ? 'text-zinc-700' : 'text-zinc-300'
               }`}>
-                আইন ও ভারতীয় বিধিমালার পেজ
+                {language === 'bn' ? 'আইন ও ভারতীয় বিধিমালার পেজ' : language === 'hi' ? 'भारतीय कानूनी और विनियामक अनुपालन' : 'Legal & Regulatory Compliances'}
               </span>
               <span className={`text-[9px] block ${isLight ? 'text-purple-600' : 'text-pink-400/80'}`}>
                 Indian Legal & Regulatory Compliances
@@ -322,10 +273,10 @@ export const LegalSupportDropdown: React.FC<LegalSupportDropdownProps> = ({
                     <p className={`text-[11px] font-medium truncate ${
                       isLight ? 'text-zinc-800 group-hover:text-purple-900' : 'text-zinc-200 group-hover:text-white'
                     }`}>
-                      {item.titleBn}
+                      {getPolicyTitle(item)}
                     </p>
                     <p className={`text-[9px] truncate font-mono ${isLight ? 'text-zinc-500' : 'text-zinc-500'}`}>
-                      {item.titleEn}
+                      {language === 'bn' ? item.titleEn : item.titleBn}
                     </p>
                   </div>
                 </div>

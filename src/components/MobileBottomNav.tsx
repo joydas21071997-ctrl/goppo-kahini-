@@ -1,6 +1,7 @@
 import React from 'react';
 import { Radio, CloudRain, Bookmark, Crown, Mic } from 'lucide-react';
 import { UserSubscription, AudienceUser, ThemeMode } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 export type MobileNavTab = 'stories' | 'lifestories' | 'ambience' | 'bookmarks' | 'subscription';
 
@@ -23,12 +24,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onRequireLogin,
   theme = 'purple-light',
 }) => {
+  const { t } = useLanguage();
   const isLight = theme === 'purple-light' || theme === 'calm-green';
   const isSubscribed = subscription?.status === 'active';
 
   const handleBookmarksClick = () => {
     if (!currentUser && onRequireLogin) {
-      onRequireLogin('বুকমার্ক ও সংরক্ষিত গল্প দেখতে অনুগ্রহ করে প্রথমে লগইন করুন।');
+      onRequireLogin(t('login_required_bookmarks', 'বুকমার্ক ও সংরক্ষিত গল্প দেখতে অনুগ্রহ করে প্রথমে লগইন করুন।'));
       return;
     }
     onSelectTab('bookmarks');
@@ -50,7 +52,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           }`}
         >
           <Radio className={`h-5 w-5 ${currentTab === 'stories' ? 'stroke-[2.5]' : ''}`} />
-          <span className="text-[10px] mt-0.5">গল্পঘর</span>
+          <span className="text-[10px] mt-0.5">{t('nav_stories', 'গল্পঘর')}</span>
         </button>
 
         {/* Tab 2: Life Stories Podcast (আমাদের কথা) */}
@@ -63,7 +65,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           }`}
         >
           <Mic className={`h-5 w-5 ${currentTab === 'lifestories' ? 'stroke-[2.5]' : ''}`} />
-          <span className="text-[10px] mt-0.5">জীবন কথা</span>
+          <span className="text-[10px] mt-0.5">{t('nav_life_stories', 'জীবন কথা')}</span>
           <span className="absolute -top-0.5 right-1 h-1.5 w-1.5 rounded-full bg-pink-500" />
         </button>
 
@@ -77,7 +79,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           }`}
         >
           <CloudRain className={`h-5 w-5 ${currentTab === 'ambience' ? 'stroke-[2.5]' : ''}`} />
-          <span className="text-[10px] mt-0.5">আবহ</span>
+          <span className="text-[10px] mt-0.5">{t('nav_ambience', 'আবহ')}</span>
         </button>
 
         {/* Tab 4: Bookmarks */}
@@ -90,7 +92,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           }`}
         >
           <Bookmark className={`h-5 w-5 ${currentTab === 'bookmarks' ? 'stroke-[2.5] fill-purple-400/20' : ''}`} />
-          <span className="text-[10px] mt-0.5">বুকমার্ক</span>
+          <span className="text-[10px] mt-0.5">{t('nav_bookmarks', 'বুকমার্ক')}</span>
           {bookmarkCount > 0 && (
             <span className="absolute top-0 right-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-pink-500 px-1 text-[9px] font-bold text-white">
               {bookmarkCount}
@@ -115,7 +117,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               <span className={`absolute -top-1 -right-1 flex h-2 w-2 rounded-full bg-pink-500 ring-2 ${isLight ? 'ring-white' : 'ring-black'}`} />
             )}
           </div>
-          <span className="text-[10px] mt-0.5">{isSubscribed ? 'আমার পাস' : '২০₹ পাস'}</span>
+          <span className="text-[10px] mt-0.5">{isSubscribed ? t('nav_my_pass', 'আমার পাস') : t('nav_pass', 'পাস')}</span>
         </button>
 
       </div>

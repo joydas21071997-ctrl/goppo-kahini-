@@ -23,12 +23,15 @@ import {
   User,
   FileText,
   Clock,
-  LogIn
+  LogIn,
+  Globe
 } from 'lucide-react';
 import { GoppoKahiniLogo } from './GoppoKahiniLogo';
 import { ThemeMode, CreatorSession, AudienceUser } from '../types';
 import { LegalSupportDropdown } from './legal/LegalSupportDropdown';
 import { LegalPolicySlug } from '../data/legalPolicies';
+import { useLanguage } from '../context/LanguageContext';
+import { LanguageSelector } from './LanguageSelector';
 
 interface NavbarProps {
   isSubscribed: boolean;
@@ -87,6 +90,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogoutUser,
   onSelectPolicy,
 }) => {
+  const { t } = useLanguage();
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -102,7 +106,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const handleProtectedLibraryAction = (actionCallback: () => void) => {
     if (!currentUser) {
       closeDrawer();
-      onOpenUserAuth('library', 'লাইব্রেরি ও ব্যক্তিগত ফিচার ব্যবহার করতে অনুগ্রহ করে প্রথমে লগইন করুন।');
+      onOpenUserAuth('library', t('library_login_prompt', 'লাইব্রেরি ও ব্যক্তিগত ফিচার ব্যবহার করতে অনুগ্রহ করে প্রথমে লগইন করুন।'));
       return;
     }
     closeDrawer();
@@ -120,9 +124,9 @@ export const Navbar: React.FC<NavbarProps> = ({
       }`}>
         <div className="mx-auto flex h-[52px] sm:h-16 max-w-7xl items-center justify-between px-2.5 sm:px-6 gap-1.5 sm:gap-4">
           
-          {/* Brand & Logo (গপ্পো কাহিনী) */}
+          {/* Brand & Logo (গপ্পো কাহিনী) - Small logo only on mobile to keep header clean and spacious */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
-            <GoppoKahiniLogo size="md" showSubtitle={true} isLight={isLight} theme={theme} />
+            <GoppoKahiniLogo size="md" showSubtitle={true} isLight={isLight} theme={theme} hideTextOnMobile={true} />
           </div>
 
           {/* Desktop Search Bar (খুঁজুন...) */}
@@ -133,7 +137,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`} />
               <input
                 type="text"
-                placeholder="গল্প, কথক বা লেখক খুঁজুন..."
+                placeholder={t('search_placeholder', 'গল্প, কথক বা লেখক খুঁজুন...')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={`w-full rounded-full border py-1.5 pl-9 pr-8 text-xs transition-all focus:outline-none ${
@@ -155,7 +159,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Action Header: Search (Mobile) + Pass (Desktop) + User Account / Login Chip + Single Theme Toggle + 3-Line Menu Button */}
+          {/* Action Header: Search (Mobile) + User Account / Login Chip + Desktop Language Selector + Single Theme Toggle + 3-Line Menu Button */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             
             {/* Mobile Search Button */}
@@ -166,19 +170,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                   ? 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100'
                   : 'bg-[#181224] border-purple-900/40 text-zinc-300 hover:text-white hover:border-pink-400'
               }`}
-              title="গল্প খুঁজুন"
-              aria-label="অনুসন্ধান"
+              title={t('search_aria', 'অনুসন্ধান')}
+              aria-label={t('search_aria', 'অনুসন্ধান')}
             >
               <Search className={`h-3.5 w-3.5 ${isLight ? 'text-purple-600' : 'text-purple-300'}`} />
-            </button>
-
-            {/* Quick ₹20 Pass Button (Desktop) */}
-            <button
-              onClick={isSubscribed ? onOpenSubscriptionManager : onOpenSubscriptionModal}
-              className="hidden sm:flex items-center gap-1.5 rounded-full bg-gradient-to-r from-purple-600/90 to-pink-600/90 hover:from-purple-500 hover:to-pink-500 border border-pink-500/30 px-3 py-1.5 text-xs font-bold text-white shadow-md transition-all active:scale-95"
-            >
-              <Crown className="h-3.5 w-3.5 fill-white" />
-              <span>{isSubscribed ? 'পাস সক্রিয়' : '₹২০ মাসিক পাস'}</span>
             </button>
 
             {/* User Account / Login Button */}
@@ -190,7 +185,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'border-purple-200 bg-purple-50/80 text-zinc-900 hover:bg-purple-100'
                     : 'border-purple-500/40 bg-[#1e132e] text-white hover:bg-[#28183c] hover:border-pink-400'
                 }`}
-                title="আমার অ্যাকাউন্ট ও প্রোফাইল"
+                title={t('my_account', 'আমার অ্যাকাউন্ট')}
               >
                 {currentUser.photoURL ? (
                   <img
@@ -222,17 +217,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }`}
               >
                 <LogIn className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-pink-400 shrink-0" />
-                <span className="text-[11px] sm:text-xs font-semibold">লগইন</span>
+                <span className="text-[11px] sm:text-xs font-semibold">{t('login', 'লগইন')}</span>
               </button>
             )}
+
+            {/* Language Selector (Pill Dropdown) - Shown on Desktop only; on Mobile it is accessible inside the 3-line Menu */}
+            <div className="hidden sm:block">
+              <LanguageSelector isLight={isLight} variant="compact-pill" />
+            </div>
 
             {/* Single Unified Theme Toggle Button (ডার্ক মোড চালু করুন / লাইট মোড চালু করুন) */}
             <button
               id="navbar-theme-toggle-btn"
               type="button"
               onClick={() => onToggleTheme(isLight ? 'purple-dark' : 'purple-light')}
-              title={isLight ? 'ডার্ক মোড চালু করুন' : 'লাইট মোড চালু করুন'}
-              aria-label={isLight ? 'ডার্ক মোড চালু করুন' : 'লাইট মোড চালু করুন'}
+              title={isLight ? t('theme_dark', 'ডার্ক মোড চালু করুন') : t('theme_light', 'লাইট মোড চালু করুন')}
+              aria-label={isLight ? t('theme_dark', 'ডার্ক মোড চালু করুন') : t('theme_light', 'লাইট মোড চালু করুন')}
               className={`flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-lg sm:rounded-xl border transition-all active:scale-95 shrink-0 touch-manipulation ${
                 isLight
                   ? 'border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-800 shadow-xs'
@@ -250,7 +250,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="main-hamburger-menu-btn"
               onClick={() => setIsMenuOpen(true)}
-              aria-label="মূল মেনু খুলুন"
+              aria-label={t('menu', 'মেনু')}
               className={`flex items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border px-2 sm:px-3.5 py-1 sm:py-2 text-xs font-bold transition-all shadow-sm active:scale-95 shrink-0 touch-manipulation ${
                 isLight
                   ? 'border-purple-200 bg-white hover:bg-purple-50 hover:border-purple-300 text-zinc-800'
@@ -264,7 +264,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className={`h-0.5 w-full rounded-full ${isLight ? 'bg-purple-700' : 'bg-purple-300'}`} />
               </div>
               <span className={`text-[11px] sm:text-xs font-medium ${isLight ? 'text-zinc-800' : 'text-zinc-200'}`}>
-                মেনু
+                {t('menu', 'মেনু')}
               </span>
 
               {(bookmarkCount > 0 || activeAmbientCount > 0) ? (
@@ -287,7 +287,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <input
                 type="text"
                 autoFocus
-                placeholder="গল্প, কথক বা লেখক খুঁজুন..."
+                placeholder={t('search_placeholder', 'গল্প, কথক বা লেখক খুঁজুন...')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={`w-full rounded-full border py-2 pl-9 pr-8 text-xs focus:outline-none ${
@@ -342,12 +342,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <h3 className={`text-sm font-bold font-serif-story leading-none ${
                     isLight ? 'text-zinc-900' : 'text-white'
                   }`}>
-                    গপ্পো কাহিনী মেনু
+                    {t('menu_title', 'গপ্পো কাহিনী মেনু')}
                   </h3>
                   <p className={`text-[10px] mt-0.5 ${
                     isLight ? 'text-zinc-500' : 'text-zinc-400'
                   }`}>
-                    রোমাঞ্চ • শান্তি • মানুষের জীবন কথা
+                    {t('app_subtitle', 'রোমাঞ্চ • শান্তি • মানুষের জীবন কথা')}
                   </p>
                 </div>
               </div>
@@ -359,7 +359,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'bg-purple-100/70 text-zinc-600 hover:text-zinc-950 hover:bg-purple-200/80 border-purple-200'
                     : 'bg-[#1d122b] text-zinc-400 hover:text-white hover:bg-[#27193a] border border-purple-900/30'
                 }`}
-                title="মেনু বন্ধ করুন"
+                title={t('close', 'বন্ধ করুন')}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -368,7 +368,34 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Drawer Body Items */}
             <div className="flex-1 p-5 space-y-4">
 
-              {/* 1. Theme Selector Card in Menu (থিম ও রঙ নির্বাচন) */}
+              {/* 1. Language Selector Card in Menu (ভাষা নির্বাচন) */}
+              <div className={`rounded-2xl border p-3.5 space-y-2.5 ${
+                isLight
+                  ? 'border-purple-200 bg-white shadow-sm'
+                  : 'border-purple-900/40 bg-[#1a1129]'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${
+                    isLight ? 'bg-purple-100 text-purple-700' : 'bg-purple-500/20 text-purple-300'
+                  }`}>
+                    <Globe className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>
+                      {t('select_language', 'ভাষা নির্বাচন')}
+                    </h4>
+                    <p className={`text-[10px] ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                      {t('select_language_sub', 'অ্যাপ ইন্টারফেসের ভাষা পরিবর্তন করুন')}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-1">
+                  <LanguageSelector variant="buttons" isLight={isLight} />
+                </div>
+              </div>
+
+              {/* 2. Theme Selector Card in Menu (থিম ও রঙ নির্বাচন) */}
               <div className={`rounded-2xl border p-3.5 space-y-2.5 ${
                 isLight
                   ? 'border-purple-200 bg-white shadow-sm'
@@ -382,10 +409,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
                   <div>
                     <h4 className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>
-                      থিম ও রঙ পরিবর্তন
+                      {t('theme_change', 'থিম ও রঙ পরিবর্তন')}
                     </h4>
                     <p className={`text-[10px] ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>
-                      লাইট নাকি ডার্ক — আপনার পছন্দ মতো বেছে নিন
+                      {t('theme_change_sub', 'লাইট নাকি ডার্ক — আপনার পছন্দ মতো বেছে নিন')}
                     </p>
                   </div>
                 </div>
@@ -407,9 +434,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </span>
                       {isLight && <CheckCircle2 className="h-3.5 w-3.5 text-purple-600" />}
                     </div>
-                    <span className="text-xs font-bold block leading-tight">পার্পল ও হোয়াইট</span>
+                    <span className="text-xs font-bold block leading-tight">{t('theme_purple_white', 'পার্পল ও হোয়াইট')}</span>
                     <span className={`text-[9px] block mt-0.5 ${isLight ? 'text-purple-700 font-medium' : 'text-zinc-500'}`}>
-                      পারফেক্ট লাইট মোড
+                      {t('theme_perfect_light', 'পারফেক্ট লাইট মোড')}
                     </span>
                   </button>
 
@@ -429,9 +456,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </span>
                       {!isLight && <CheckCircle2 className="h-3.5 w-3.5 text-pink-400" />}
                     </div>
-                    <span className="text-xs font-bold block leading-tight">পার্পল ও ব্ল্যাক</span>
+                    <span className="text-xs font-bold block leading-tight">{t('theme_purple_black', 'পার্পল ও ব্ল্যাক')}</span>
                     <span className={`text-[9px] block mt-0.5 ${!isLight ? 'text-pink-300 font-medium' : 'text-zinc-500'}`}>
-                      ডার্ক নাইট মোড
+                      {t('theme_dark_night', 'ডার্ক নাইট মোড')}
                     </span>
                   </button>
                 </div>
@@ -463,7 +490,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         </h4>
                         {isSubscribed && (
                           <span className="rounded-full bg-pink-500/20 px-1.5 py-0.2 text-[9px] font-bold text-pink-400 border border-pink-500/30">
-                            পাস সক্রিয়
+                            {t('badge_pass_active', 'পাস সক্রিয়')}
                           </span>
                         )}
                       </div>
@@ -486,7 +513,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       }`}
                     >
                       <User className="h-3.5 w-3.5 text-pink-500" />
-                      <span>প্রোফাইল ও পাস</span>
+                      <span>{t('profile_and_pass', 'প্রোফাইল ও পাস')}</span>
                     </button>
 
                     <button
@@ -501,7 +528,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       }`}
                     >
                       <LogOut className="h-3.5 w-3.5" />
-                      <span>লগআউট</span>
+                      <span>{t('logout', 'লগআউট')}</span>
                     </button>
                   </div>
                 </div>
@@ -517,10 +544,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                     <div>
                       <h4 className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>
-                        শ্রোতা একাউন্ট খুলুন বা লগইন করুন
+                        {t('account_prompt_title', 'শ্রোতা একাউন্ট খুলুন বা লগইন করুন')}
                       </h4>
                       <p className={`text-[10px] ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>
-                        লাইব্রেরি ফিচার ব্যবহার ও ২০ টাকার পাস সক্রিয় করতে
+                        {t('account_prompt_sub', 'লাইব্রেরি ফিচার ব্যবহার ও পাস সক্রিয় করতে')}
                       </p>
                     </div>
                   </div>
@@ -533,12 +560,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                     className="w-full mt-1 flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-pink-500 hover:opacity-95 py-2 px-3 text-xs font-bold text-white shadow-md transition-all active:scale-98"
                   >
                     <LogIn className="h-3.5 w-3.5" />
-                    <span>লগইন / নতুন অ্যাকাউন্ট</span>
+                    <span>{t('login_or_register', 'লগইন / নতুন অ্যাকাউন্ট')}</span>
                   </button>
                 </div>
               )}
 
-              {/* 3. Subscription Pass Card (₹20 Monthly Pass) */}
+              {/* 3. Subscription Pass Card (Monthly Pass) */}
               <div className={`rounded-2xl border p-4 shadow-sm ${
                 isLight
                   ? 'border-purple-200 bg-gradient-to-br from-purple-50 via-pink-50/40 to-white'
@@ -551,10 +578,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                     <div>
                       <h4 className={`text-xs font-bold ${isLight ? 'text-purple-900' : 'text-pink-300'}`}>
-                        {isSubscribed ? 'গপ্পো কাহিনী পাস (সক্রিয়)' : 'গপ্পো কাহিনী মাসিক পাস'}
+                        {isSubscribed ? t('pass_card_title_active', 'গপ্পো কাহিনী পাস (সক্রিয়)') : t('pass_card_title_inactive', 'গপ্পো কাহিনী মাসিক পাস')}
                       </h4>
                       <p className={`text-[10px] ${isLight ? 'text-zinc-600' : 'text-zinc-400'}`}>
-                        {isSubscribed ? 'সকল গল্প আনলিমিটেড উপভোগ করুন' : 'মাত্র ₹২০/মাস — সব গল্প আনলক'}
+                        {isSubscribed ? t('pass_card_sub_active', 'সকল গল্প আনলিমিটেড উপভোগ করুন') : t('pass_card_sub_inactive', 'মাত্র ₹২০/মাস — সব গল্প আনলক')}
                       </p>
                     </div>
                   </div>
@@ -578,12 +605,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {isSubscribed ? (
                     <>
                       <CheckCircle2 className="h-3.5 w-3.5 text-pink-200" />
-                      <span>পাস স্ট্যাটাস ও তথ্য</span>
+                      <span>{t('pass_status_info', 'পাস স্ট্যাটাস ও তথ্য')}</span>
                     </>
                   ) : (
                     <>
                       <Crown className="h-3.5 w-3.5 fill-white" />
-                      <span>₹২০ মাসিক পাস নিন</span>
+                      <span>{t('take_pass_btn', 'মাসিক পাস নিন')}</span>
                     </>
                   )}
                 </button>
@@ -595,7 +622,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span className={`text-[11px] font-semibold uppercase tracking-wider px-1 ${
                     isLight ? 'text-zinc-500' : 'text-zinc-400'
                   }`}>
-                    কন্টেন্ট বিভাগ
+                    {t('content_sections', 'কন্টেন্ট বিভাগ')}
                   </span>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -612,7 +639,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       }`}
                     >
                       <Radio className="h-3.5 w-3.5" />
-                      <span>গল্পঘর</span>
+                      <span>{t('nav_stories', 'গল্পঘর')}</span>
                     </button>
 
                     <button
@@ -629,7 +656,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       }`}
                     >
                       <Mic className="h-3.5 w-3.5" />
-                      <span>জীবন কথা</span>
+                      <span>{t('nav_life_stories', 'জীবন কথা')}</span>
                       <span className="flex h-1.5 w-1.5 rounded-full bg-pink-400" />
                     </button>
                   </div>
@@ -667,10 +694,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                     <div>
                       <span className={`font-bold block ${isLight ? 'text-zinc-900' : 'text-white'}`}>
-                        লাইব্রেরি ও অডিও ফিচার
+                        {t('library_features', 'লাইব্রেরি ও অডিও ফিচার')}
                       </span>
                       <span className={`text-[10px] block ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>
-                        {currentUser ? 'ইতিহাস, বুকমার্ক ও সাউন্ড মিক্সার' : 'লগইন আবশ্যক (User Only)'}
+                        {currentUser ? t('library_features_sub_user', 'ইতিহাস, বুকমার্ক ও সাউন্ড মিক্সার') : t('login_required_features', 'লগইন আবশ্যক (User Only)')}
                       </span>
                     </div>
                   </div>
@@ -681,7 +708,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         isLight ? 'bg-pink-100 border border-pink-300 text-pink-700' : 'bg-pink-950/50 border border-pink-500/30 text-pink-300'
                       }`}>
                         <Lock className="h-2.5 w-2.5" />
-                        লক
+                        {t('locked', 'লক')}
                       </span>
                     )}
                     <div className={`transition-transform duration-200 ${
@@ -715,7 +742,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         }`}>
                           <Clock className="h-3.5 w-3.5" />
                         </div>
-                        <span className="font-medium">শোনার ইতিহাস</span>
+                        <span className="font-medium">{t('listening_history', 'শোনার ইতিহাস')}</span>
                       </div>
                       {historyCount > 0 ? (
                         <span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold text-purple-700">
@@ -741,7 +768,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         }`}>
                           <Bookmark className="h-3.5 w-3.5" />
                         </div>
-                        <span className="font-medium">সংরক্ষিত গল্প (বুকমার্ক)</span>
+                        <span className="font-medium">{t('saved_bookmarks', 'সংরক্ষিত গল্প (বুকমার্ক)')}</span>
                       </div>
                       {bookmarkCount > 0 ? (
                         <span className="rounded-full bg-pink-500 px-2 py-0.5 text-[10px] font-bold text-white">
@@ -767,11 +794,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                         }`}>
                           <Sliders className="h-3.5 w-3.5" />
                         </div>
-                        <span className="font-medium">আবহ ধ্বনি মিক্সার (বৃষ্টি, নদী, বন)</span>
+                        <span className="font-medium">{t('ambient_mixer_title', 'আবহ ধ্বনি মিক্সার (বৃষ্টি, নদী, বন)')}</span>
                       </div>
                       {activeAmbientCount > 0 ? (
                         <span className="rounded-full bg-pink-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                          {activeAmbientCount} সক্রিয়
+                          {activeAmbientCount} {t('active_count', 'সক্রিয়')}
                         </span>
                       ) : (
                         <ChevronRight className="h-3.5 w-3.5 text-zinc-400 group-hover:text-zinc-700" />
@@ -782,8 +809,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <div className={`px-3 py-1.5 flex items-center justify-between text-[10px] border-t ${
                       isLight ? 'border-purple-100 text-zinc-500' : 'border-purple-900/30 text-zinc-500'
                     }`}>
-                      <span>অফলাইন অডিও ও স্লিপ টাইমার</span>
-                      <span className={isLight ? 'text-purple-600' : 'text-purple-400/70'}>শীঘ্রই আসছে</span>
+                      <span>{t('offline_sleep_timer', 'অফলাইন অডিও ও স্লিপ টাইমার')}</span>
+                      <span className={isLight ? 'text-purple-600' : 'text-purple-400/70'}>{t('coming_soon', 'শীঘ্রই আসছে')}</span>
                     </div>
 
                   </div>
@@ -815,10 +842,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                     <div>
                       <span className={`font-bold block ${isLight ? 'text-zinc-900' : 'text-white'}`}>
-                        কমিউনিটি ও তথ্য
+                        {t('community_info', 'কমিউনিটি ও তথ্য')}
                       </span>
                       <span className={`text-[10px] block ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>
-                        কথক অডিশন, পরিচিতি ও নীতি
+                        {t('community_info_sub', 'কথক অডিশন, পরিচিতি ও নীতি')}
                       </span>
                     </div>
                   </div>
@@ -854,7 +881,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         }`}>
                           <Mic className="h-3.5 w-3.5" />
                         </div>
-                        <span className="font-medium">কথক হিসেবে যোগ দিন (ভয়েস)</span>
+                        <span className="font-medium">{t('join_narrator', 'কথক হিসেবে যোগ দিন (ভয়েস)')}</span>
                       </div>
                       <ChevronRight className="h-3.5 w-3.5 text-zinc-400 group-hover:text-zinc-700" />
                     </button>
@@ -877,7 +904,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         }`}>
                           <Info className="h-3.5 w-3.5" />
                         </div>
-                        <span className="font-medium">আমাদের কথা ও উদ্দেশ্য</span>
+                        <span className="font-medium">{t('about_us', 'আমাদের কথা ও উদ্দেশ্য')}</span>
                       </div>
                       <ChevronRight className="h-3.5 w-3.5 text-zinc-400 group-hover:text-zinc-700" />
                     </button>
@@ -902,8 +929,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className={`pt-3 border-t flex items-center justify-between text-[11px] ${
                 isLight ? 'border-purple-200 text-zinc-500' : 'border-purple-950/40 text-zinc-500'
               }`}>
-                <span>গপ্পো কাহিনী অডিও প্ল্যাটফর্ম</span>
-                <span>© ২০২৬ • সর্বস্বত্ব সংরক্ষিত</span>
+                <span>{t('footer_platform', 'গপ্পো কাহিনী অডিও প্ল্যাটফর্ম')}</span>
+                <span>© 2026 • {t('footer_rights', 'সর্বস্বত্ব সংরক্ষিত')}</span>
               </div>
 
             </div>

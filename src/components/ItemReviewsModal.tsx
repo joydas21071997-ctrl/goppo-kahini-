@@ -18,6 +18,7 @@ import {
   submitOrUpdateStoryReview,
   calculateReviewStats,
 } from '../services/firestoreReviews';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ItemReviewsModalProps {
   isOpen: boolean;
@@ -40,6 +41,7 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
   onRequireLogin,
   onStoryStatsUpdated,
 }) => {
+  const { t, language } = useLanguage();
   const [reviewsList, setReviewsList] = useState<ItemReview[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [userRating, setUserRating] = useState<number>(5);
@@ -95,7 +97,7 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
 
   const stats = calculateReviewStats(reviewsList);
   const hasRating = stats.reviewsCount > 0;
-  const avgRatingDisplay = hasRating ? stats.rating.toFixed(1) : '০.০';
+  const avgRatingDisplay = hasRating ? stats.rating.toFixed(1) : (language === 'bn' ? '০.০' : '0.0');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,7 +105,7 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
 
     if (!currentUser) {
       if (onRequireLogin) {
-        onRequireLogin('গল্পে রেটিং ও মন্তব্য দেওয়ার জন্য অনুগ্রহ করে লগইন করুন');
+        onRequireLogin(t('review_login_prompt', 'গল্পে রেটিং ও মন্তব্য দেওয়ার জন্য অনুগ্রহ করে লগইন করুন'));
       }
       return;
     }
@@ -127,7 +129,7 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
       setTimeout(() => setSubmitSuccess(false), 3500);
     } catch (err: any) {
       console.error('Failed to submit review:', err);
-      setSubmitError(err?.message || 'রিভিউ সংরক্ষণ করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।');
+      setSubmitError(err?.message || t('review_save_error', 'রিভিউ সংরক্ষণ করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।'));
     } finally {
       setIsSubmitting(false);
     }
@@ -156,7 +158,7 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
         <button
           onClick={onClose}
           className="absolute top-4 right-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 text-zinc-400 hover:text-white transition-colors border border-purple-900/30"
-          title="বন্ধ করুন"
+          title={t('close', 'বন্ধ করুন')}
         >
           <X className="h-4 w-4" />
         </button>
@@ -167,13 +169,13 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
           <div className="space-y-1.5 pr-8">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-300 text-[11px] font-bold">
               <Sparkles className="h-3 w-3 text-pink-400" />
-              <span>{itemType === 'life_story' ? 'জীবন কথা পডকাস্ট' : 'অডিও গল্প'} রিভিউ</span>
+              <span>{itemType === 'life_story' ? t('review_podcast_badge', 'জীবন কথা পডকাস্ট') : t('review_story_badge', 'অডিও গল্প')} {t('reviews_tab', 'রিভিউ')}</span>
             </div>
             <h2 className="font-serif-story text-xl sm:text-2xl font-bold text-white leading-tight">
               {itemTitle}
             </h2>
             <p className="text-xs text-zinc-400">
-              শ্রোতাদের মতামত ও বাস্তব ৫-স্টার রেটিং সেকশন
+              {t('review_section_sub', 'শ্রোতাদের মতামত ও বাস্তব ৫-স্টার রেটিং সেকশন')}
             </p>
           </div>
 
@@ -198,14 +200,14 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
                 </div>
                 <div className="text-xs text-zinc-400 mt-1">
                   {hasRating
-                    ? `মোট ${stats.reviewsCount} জন শ্রোতার রেটিং`
-                    : 'এখনো কোনো রেটিং নেই • প্রথম রেটিংটি আপনি দিন!'}
+                    ? `মোট ${stats.reviewsCount} ${t('total_listeners_rated', 'জন শ্রোতার রেটিং')}`
+                    : t('no_ratings_yet', 'এখনো কোনো রেটিং নেই • প্রথম রেটিংটি আপনি দিন!')}
                 </div>
               </div>
             </div>
 
             <div className="hidden sm:block text-right text-[11px] text-pink-300 font-medium bg-pink-500/10 border border-pink-500/20 rounded-xl px-3 py-1.5">
-              ✓ যাচাইকৃত শ্রোতা রেটিং
+              ✓ {t('verified_listener_ratings', 'যাচাইকৃত শ্রোতা রেটিং')}
             </div>
           </div>
 
@@ -216,18 +218,18 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
                 <Star className="h-8 w-8 text-pink-400/80" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-white">গল্পটি শুনে কেমন লাগল?</h4>
+                <h4 className="text-sm font-bold text-white">{t('how_was_story', 'গল্পটি শুনে কেমন লাগল?')}</h4>
                 <p className="text-xs text-zinc-400 mt-1">
-                  রেটিং ও আপনার অনুভূতি জানাতে অনুগ্রহ করে আপনার অ্যাকাউন্টে লগইন করুন।
+                  {t('how_was_story_sub', 'রেটিং ও আপনার অনুভূতি জানাতে অনুগ্রহ করে আপনার অ্যাকাউন্টে লগইন করুন।')}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => onRequireLogin?.('গল্পে রেটিং ও মন্তব্য দেওয়ার জন্য অনুগ্রহ করে লগইন করুন')}
+                onClick={() => onRequireLogin?.(t('review_login_prompt', 'গল্পে রেটিং ও মন্তব্য দেওয়ার জন্য অনুগ্রহ করে লগইন করুন'))}
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-pink-500 px-5 py-2 text-xs font-bold text-white hover:opacity-95 transition-all shadow-md shadow-pink-950/40"
               >
                 <User className="h-3.5 w-3.5" />
-                <span>লগইন করে রেটিং দিন</span>
+                <span>{t('login_to_rate_btn', 'লগইন করে রেটিং দিন')}</span>
               </button>
             </div>
           ) : (
@@ -235,11 +237,11 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
               <div className="flex items-center justify-between">
                 <h3 className="text-xs sm:text-sm font-bold text-purple-200 flex items-center gap-1.5">
                   <MessageSquare className="h-3.5 w-3.5 text-pink-400" />
-                  <span>{userExistingReview ? 'আপনার রিভিউ আপডেট করুন' : 'আপনার রেটিং ও মন্তব্য দিন'}</span>
+                  <span>{userExistingReview ? t('update_review', 'আপনার রিভিউ আপডেট করুন') : t('give_rating_comment', 'আপনার রেটিং ও মন্তব্য দিন')}</span>
                 </h3>
                 {userExistingReview && (
                   <span className="text-[10px] text-pink-400 bg-pink-500/15 border border-pink-500/30 px-2 py-0.5 rounded-full font-medium">
-                    পূর্বের রেটিং: {userExistingReview.rating}★
+                    {t('previous_rating', 'পূর্বের রেটিং')}: {userExistingReview.rating}★
                   </span>
                 )}
               </div>
@@ -247,7 +249,7 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
               {submitSuccess && (
                 <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                  <span>আপনার রেটিং ও মন্তব্য সফলভাবে সংরক্ষিত হয়েছে!</span>
+                  <span>{t('review_success', 'আপনার রেটিং ও মন্তব্য সফলভাবে সংরক্ষিত হয়েছে!')}</span>
                 </div>
               )}
 
@@ -260,7 +262,7 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
 
               {/* Interactive 5-Star Selection */}
               <div className="flex items-center gap-3 bg-black/50 p-2.5 rounded-xl border border-purple-900/30">
-                <span className="text-xs text-zinc-300 font-medium">রেটিং বাছুন:</span>
+                <span className="text-xs text-zinc-300 font-medium">{t('select_rating', 'রেটিং বাছুন')}:</span>
                 <div className="flex items-center gap-1.5">
                   {[1, 2, 3, 4, 5].map((starVal) => {
                     const isHighlighted = (hoverRating || userRating) >= starVal;
@@ -272,7 +274,7 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
                         onMouseLeave={() => setHoverRating(0)}
                         onClick={() => setUserRating(starVal)}
                         className="p-1 hover:scale-125 transition-transform"
-                        title={`${starVal} স্টার`}
+                        title={`${starVal} Star`}
                       >
                         <Star
                           className={`h-5 w-5 ${
@@ -286,18 +288,18 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
                   })}
                 </div>
                 <span className="text-xs font-mono font-bold text-pink-300 ml-auto">
-                  {hoverRating || userRating} / ৫
+                  {hoverRating || userRating} / {language === 'bn' ? '৫' : '5'}
                 </span>
               </div>
 
               <div>
                 <label className="text-[11px] text-zinc-400 mb-1 block">
-                  মন্তব্যকারী: <strong className="text-zinc-200">{currentUser.displayName || currentUser.email?.split('@')[0]}</strong>
+                  {t('commenter', 'মন্তব্যকারী')}: <strong className="text-zinc-200">{currentUser.displayName || currentUser.email?.split('@')[0]}</strong>
                 </label>
                 <textarea
                   required
                   rows={3}
-                  placeholder="গল্পের অনুভূতি, সাউন্ড কোয়ালিটি বা আপনার অভিজ্ঞতা সম্পর্কে লিখুন..."
+                  placeholder={t('review_placeholder', 'গল্পের অনুভূতি, সাউন্ড কোয়ালিটি বা আপনার অভিজ্ঞতা সম্পর্কে লিখুন...')}
                   value={reviewComment}
                   onChange={(e) => setReviewComment(e.target.value)}
                   className="w-full rounded-xl border border-purple-900/30 bg-black/60 p-3 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none resize-none"
@@ -313,13 +315,13 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
                   {isSubmitting ? (
                     <>
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>সংরক্ষণ হচ্ছে...</span>
+                      <span>{t('saving', 'সংরক্ষণ হচ্ছে...')}</span>
                     </>
                   ) : (
                     <>
                       <Send className="h-3.5 w-3.5" />
                       <span>
-                        {userExistingReview ? 'রিভিউ আপডেট করুন' : 'মন্তব্য প্রকাশ করুন'}
+                        {userExistingReview ? t('update_review', 'রিভিউ আপডেট করুন') : t('publish_comment', 'মন্তব্য প্রকাশ করুন')}
                       </span>
                     </>
                   )}
@@ -331,16 +333,16 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
           {/* Comments List */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-              সকল মন্তব্য ({stats.reviewsCount})
+              {t('all_comments', 'সকল মন্তব্য')} ({stats.reviewsCount})
             </h3>
 
             {reviewsLoading ? (
               <div className="text-center py-6 border border-dashed border-purple-900/30 rounded-2xl text-xs text-zinc-500 animate-pulse">
-                মন্তব্য লোড হচ্ছে...
+                {t('reviews_loading', 'মন্তব্য লোড হচ্ছে...')}
               </div>
             ) : reviewsList.length === 0 ? (
               <div className="text-center py-6 border border-dashed border-purple-900/30 rounded-2xl text-xs text-zinc-500">
-                এখনো কোনো মন্তব্য নেই। প্রথম মন্তব্যটি আপনিই দিন!
+                {t('no_reviews_yet', 'এখনো কোনো মন্তব্য নেই। প্রথম মন্তব্যটি আপনিই দিন!')}
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -369,7 +371,7 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
                             <span className="text-xs font-bold text-white">{rev.userName}</span>
                             {isMyReview && (
                               <span className="text-[10px] font-bold text-pink-300 bg-pink-500/20 border border-pink-500/30 px-2 py-0.5 rounded-full ml-2">
-                                আপনার রিভিউ
+                                {t('your_review_badge', 'আপনার রিভিউ')}
                               </span>
                             )}
                             <span className="text-[10px] text-zinc-500 ml-2 font-mono">{rev.createdAt}</span>
@@ -390,7 +392,7 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
                                 setReviewComment(rev.comment);
                               }}
                               className="p-1 rounded text-zinc-400 hover:text-pink-300 transition-colors"
-                              title="আপনার রিভিউ এডিট করুন"
+                              title={t('edit_your_review', 'আপনার রিভিউ এডিট করুন')}
                             >
                               <Edit3 className="h-3.5 w-3.5" />
                             </button>
@@ -413,7 +415,7 @@ export const ItemReviewsModal: React.FC<ItemReviewsModalProps> = ({
                           }`}
                         >
                           <ThumbsUp className="h-3 w-3" />
-                          <span>ভালো লেগেছে ({displayLikes})</span>
+                          <span>{t('like_btn', 'ভালো লেগেছে')} ({displayLikes})</span>
                         </button>
                       </div>
                     </div>

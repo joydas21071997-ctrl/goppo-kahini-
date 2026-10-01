@@ -17,6 +17,7 @@ import {
   Phone
 } from 'lucide-react';
 import { Story, UpiConfig, PaymentTransaction, UserSubscription, AudienceUser } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 import {
   validateRealName,
@@ -55,6 +56,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   currentUser,
   onOpenUserAuth,
 }) => {
+  const { t, language } = useLanguage();
   // Plan selection (Default to ₹20 Monthly Pass)
   const isTargetMegaStory = targetStory?.lengthCategory === 'mega';
   const [selectedPlan, setSelectedPlan] = useState<'little_monthly' | 'little_annual' | 'single_story'>(
@@ -97,26 +99,26 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   // Pricing
   const planDetails = {
     little_monthly: {
-      name: 'গপ্পো কাহিনী ২০ টাকার মাসিক পাস',
+      name: t('pass_modal_title', 'গপ্পো কাহিনী ২০ টাকার মাসিক পাস'),
       price: 20,
-      period: 'মাস',
-      description: 'সব ভৌতিক, থ্রিলার ও নতুন অডিও গল্প আনলিমিটেড শুনুন',
-      validity: '৩০ দিন',
+      period: t('period_month', 'মাস'),
+      description: t('monthly_plan_desc', 'সব ভৌতিক, থ্রিলার ও নতুন অডিও গল্প আনলিমিটেড শুনুন'),
+      validity: t('days_30', '৩০ দিন'),
     },
     little_annual: {
-      name: 'গপ্পো কাহিনী বার্ষিক পাস',
+      name: t('annual_pass_name', 'গপ্পো কাহিনী বার্ষিক পাস'),
       price: 199,
-      period: 'বছর',
-      badge: 'সাশ্রয়ী (₹৪১ ছাড়)',
-      description: '১২ মাস সব গল্প, প্রিমিয়াম অধ্যায় ও আবহ সাউন্ডস্কেপ',
-      validity: '৩৬৫ দিন',
+      period: t('period_year', 'বছর'),
+      badge: t('annual_discount_badge', 'সাশ্রয়ী (₹৪১ ছাড়)'),
+      description: t('annual_plan_desc', '১২ মাস সব গল্প, প্রিমিয়াম অধ্যায় ও আবহ সাউন্ডস্কেপ'),
+      validity: t('days_365', '৩৬৫ দিন'),
     },
     single_story: {
-      name: targetStory ? `একক গল্প: ${targetStory.title}` : 'একক মেগা গল্প',
+      name: targetStory ? `${t('single_story_label', 'একক গল্প')}: ${targetStory.title}` : t('single_mega_story', 'একক মেগা গল্প'),
       price: targetStory?.singlePurchasePrice || 10,
-      period: 'আজীবন',
-      description: 'শুধুমাত্র এই গল্পটির আজীবন পূর্ণ এক্সেস',
-      validity: 'আজীবন',
+      period: t('lifetime_label', 'আজীবন'),
+      description: t('single_story_access_desc', 'শুধুমাত্র এই গল্পটির আজীবন পূর্ণ এক্সেস'),
+      validity: t('lifetime_label', 'আজীবন'),
     },
   };
 
@@ -151,7 +153,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
     if (!currentUser) {
       const nameCheck = validateRealName(userName);
       if (!nameCheck.isValid) {
-        setValidationError(nameCheck.errorMessage || 'অনুগ্রহ করে আপনার আসল নাম লিখুন।');
+        setValidationError(nameCheck.errorMessage || t('please_enter_real_name', 'অনুগ্রহ করে আপনার আসল নাম লিখুন।'));
         return false;
       }
     }
@@ -159,7 +161,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
     const cleanEmail = (currentUser?.email || userEmail).trim().toLowerCase();
     const emailCheck = validateRealEmail(cleanEmail);
     if (!emailCheck.isValid) {
-      setValidationError(emailCheck.errorMessage || 'অনুগ্রহ করে একটি সঠিক ও সক্রিয় ইমেইল আইডি দিন।');
+      setValidationError(emailCheck.errorMessage || t('please_enter_real_email', 'অনুগ্রহ করে একটি সঠিক ও সক্রিয় ইমেইল আইডি দিন।'));
       return false;
     }
 
@@ -169,13 +171,13 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
     ).trim();
 
     if (!phoneToValidate) {
-      setValidationError('অনুগ্রহ করে আপনার সক্রিয় মোবাইল নম্বর প্রদান করুন।');
+      setValidationError(t('please_enter_phone', 'অনুগ্রহ করে আপনার সক্রিয় মোবাইল নম্বর প্রদান করুন।'));
       return false;
     }
 
     const phoneCheck = validateRealPhone(phoneToValidate);
     if (!phoneCheck.isValid) {
-      setValidationError(phoneCheck.errorMessage || 'অনুগ্রহ করে আসল মোবাইল নম্বর দিন।');
+      setValidationError(phoneCheck.errorMessage || t('please_enter_valid_phone', 'অনুগ্রহ করে আসল মোবাইল নম্বর দিন।'));
       return false;
     }
 
@@ -202,7 +204,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
     }
     const expiryStr = expiryDate.toISOString().split('T')[0];
 
-    const finalName = currentUser?.displayName || userName.trim() || 'শ্রোতা';
+    const finalName = currentUser?.displayName || userName.trim() || t('listener_label', 'শ্রোতা');
     const finalEmail = (currentUser?.email || userEmail).trim().toLowerCase();
     const finalPhone =
       currentUser?.phoneNumber || `${userPhoneCountry}${userPhone.replace(/\D/g, '')}`;
@@ -224,7 +226,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
         paymentTime: timeStr,
         utrTransactionId: finalUtr,
         status: 'paid', // Auto-Approved so audience can listen immediately
-        approvedBy: 'অটো ভেরিফিকেশন (সরাসরি অ্যাক্টিভ)',
+        approvedBy: t('auto_verification', 'অটো ভেরিফিকেশন (সরাসরি অ্যাক্টিভ)'),
         approvedDate: `${dateStr} ${timeStr}`,
         subscriptionStartDate: dateStr,
         subscriptionExpiryDate: expiryStr,
@@ -251,9 +253,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             </div>
             <div>
               <h2 className="font-serif-story text-sm sm:text-base font-bold text-white">
-                গপ্পো কাহিনী ২০ টাকার পাস
+                {t('pass_modal_title', 'গপ্পো কাহিনী ২০ টাকার পাস')}
               </h2>
-              <p className="text-[11px] text-zinc-400">সরাসরি UPI পেমেন্ট • স্ক্রিনশট বা UTR টাইপ করার ঝামেলা নেই</p>
+              <p className="text-[11px] text-zinc-400">{t('pass_modal_sub', 'সরাসরি UPI পেমেন্ট • স্ক্রিনশট বা UTR টাইপ করার ঝামেলা নেই')}</p>
             </div>
           </div>
 
@@ -263,7 +265,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             className="flex items-center gap-1 rounded-xl bg-[#1c1228] border border-purple-900/40 px-2.5 py-1.5 text-xs text-zinc-300 hover:text-white hover:bg-[#251836] transition-colors"
           >
             <X className="h-4 w-4" />
-            <span className="hidden sm:inline">বন্ধ</span>
+            <span className="hidden sm:inline">{t('close_btn', 'বন্ধ')}</span>
           </button>
         </div>
 
@@ -279,34 +281,34 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
               <div>
                 <h3 className="font-serif-story text-xl font-bold text-white">
-                  অভিনন্দন! আপনার ২০ টাকার পাস সক্রিয় হয়েছে!
+                  {t('payment_success_title', 'অভিনন্দন! আপনার ২০ টাকার পাস সক্রিয় হয়েছে!')}
                 </h3>
                 <span className="inline-block mt-2 rounded-full bg-emerald-500/20 border border-emerald-500/40 px-3 py-1 text-xs font-bold text-emerald-300">
-                  স্ট্যাটাস: সক্রিয় (Active) • ৩০ দিন আনলিমিটেড
+                  {t('status_active_30d', 'স্ট্যাটাস: সক্রিয় (Active) • ৩০ দিন আনলিমিটেড')}
                 </span>
               </div>
 
               <div className="rounded-2xl border border-purple-900/40 bg-[#1a1226] p-4 text-xs text-zinc-300 text-left space-y-2 max-w-sm mx-auto">
                 <div className="flex justify-between border-b border-purple-900/30 pb-1.5">
-                  <span className="text-zinc-400">প্ল্যান:</span>
+                  <span className="text-zinc-400">{t('plan_label', 'প্ল্যান:')}</span>
                   <span className="font-bold text-pink-300">{currentPlan.name}</span>
                 </div>
                 <div className="flex justify-between border-b border-purple-900/30 pb-1.5">
-                  <span className="text-zinc-400">পরিশোধিত মূল্য:</span>
+                  <span className="text-zinc-400">{t('paid_amount_label', 'পরিশোধিত মূল্য:')}</span>
                   <span className="font-bold text-white">₹{amount}</span>
                 </div>
                 <div className="flex justify-between border-b border-purple-900/30 pb-1.5">
-                  <span className="text-zinc-400">অটো-ফেচড UTR:</span>
+                  <span className="text-zinc-400">{t('auto_fetched_utr', 'অটো-ফেচড UTR:')}</span>
                   <span className="font-mono text-amber-300">{autoUtr}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-zinc-400">মেয়াদ:</span>
-                  <span className="font-bold text-emerald-300">পরবর্তী ৩০ দিন পর্যন্ত</span>
+                  <span className="text-zinc-400">{t('validity_label', 'মেয়াদ:')}</span>
+                  <span className="font-bold text-emerald-300">{t('validity_next_30d', 'পরবর্তী ৩০ দিন পর্যন্ত')}</span>
                 </div>
               </div>
 
               <p className="text-xs text-purple-200/80 max-w-sm mx-auto">
-                এখন আপনি গপ্পো কাহিনীর সকল গল্প, মেগা এপিসোড এবং বিশেষ অধ্যায় কোনো বাধা ছাড়াই উপভোগ করতে পারবেন।
+                {t('pass_unlocked_desc', 'এখন আপনি গপ্পো কাহিনীর সকল গল্প, মেগা এপিসোড এবং বিশেষ অধ্যায় কোনো বাধা ছাড়াই উপভোগ করতে পারবেন।')}
               </p>
 
               <button
@@ -314,7 +316,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 onClick={onClose}
                 className="w-full max-w-xs mx-auto rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-pink-500 py-2.5 text-xs font-bold text-white shadow-lg hover:opacity-95 transition-all"
               >
-                গল্প শোনা শুরু করুন
+                {t('start_listening', 'গল্প শোনা শুরু করুন')}
               </button>
             </div>
           ) : (
@@ -326,9 +328,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 <div className="rounded-2xl border border-amber-500/40 bg-amber-950/30 p-3 flex items-start gap-2.5 text-xs text-amber-200">
                   <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <span className="font-semibold block mb-0.5">আপনি এখনো লগইন করেননি!</span>
+                    <span className="font-semibold block mb-0.5">{t('not_logged_in_warn', 'আপনি এখনো লগইন করেননি!')}</span>
                     <span className="text-[11px] text-amber-200/80">
-                      লগইন করলে আপনার পাস এবং হিস্ট্রি সবসময় সংরক্ষিত থাকবে।
+                      {t('login_benefit_note', 'লগইন করলে আপনার পাস এবং হিস্ট্রি সবসময় সংরক্ষিত থাকবে।')}
                     </span>
                     {onOpenUserAuth && (
                       <button
@@ -337,7 +339,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                         className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold text-pink-300 hover:text-white underline"
                       >
                         <User className="h-3 w-3" />
-                        <span>প্রথমে Google বা ইমেইল দিয়ে লগইন করুন</span>
+                        <span>{t('login_first_google_email', 'প্রথমে Google বা ইমেইল দিয়ে লগইন করুন')}</span>
                       </button>
                     )}
                   </div>
@@ -357,7 +359,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                     </div>
                   </div>
                   <span className="rounded-full bg-pink-500/20 px-2 py-0.5 text-[10px] text-pink-300 font-medium">
-                    লগইন সক্রিয়
+                    {t('login_active_badge', 'লগইন সক্রিয়')}
                   </span>
                 </div>
               )}
@@ -365,7 +367,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               {/* PLAN SELECTION */}
               <div className="space-y-2">
                 <span className="text-[11px] text-zinc-400 uppercase tracking-wider font-semibold block">
-                  সাবস্ক্রিপশন প্ল্যান নির্বাচন করুন
+                  {t('select_sub_plan', 'সাবস্ক্রিপশন প্ল্যান নির্বাচন করুন')}
                 </span>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -380,16 +382,18 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-pink-400">
-                        জনপ্রিয় পাস
+                        {t('popular_pass_badge', 'জনপ্রিয় পাস')}
                       </span>
                       <span className="rounded-full bg-pink-500/20 px-1.5 py-0.5 text-[9px] font-bold text-pink-300">
-                        ৩০ দিন
+                        {t('days_30', '৩০ দিন')}
                       </span>
                     </div>
-                    <div className="text-sm font-bold text-white">মাসিক পাস</div>
+                    <div className="text-sm font-bold text-white">{t('monthly_pass_card', 'মাসিক পাস')}</div>
                     <div className="mt-1 flex items-baseline gap-1">
-                      <span className="text-lg font-black text-pink-400 font-mono">₹২০</span>
-                      <span className="text-[10px] text-zinc-400">/ মাস</span>
+                      <span className="text-lg font-black text-pink-400 font-mono">
+                        {language === 'bn' ? '₹২০' : '₹20'}
+                      </span>
+                      <span className="text-[10px] text-zinc-400">{t('per_month', '/ মাস')}</span>
                     </div>
                   </div>
 
@@ -404,16 +408,18 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">
-                        বার্ষিক সাশ্রয়ী
+                        {t('annual_saver_badge', 'বার্ষিক সাশ্রয়ী')}
                       </span>
                       <span className="rounded-full bg-purple-500/20 px-1.5 py-0.5 text-[9px] font-bold text-purple-300">
-                        ৩৬৫ দিন
+                        {t('days_365', '৩৬৫ দিন')}
                       </span>
                     </div>
-                    <div className="text-sm font-bold text-white">১২ মাসের পাস</div>
+                    <div className="text-sm font-bold text-white">{t('annual_pass_card', '১২ মাসের পাস')}</div>
                     <div className="mt-1 flex items-baseline gap-1">
-                      <span className="text-lg font-black text-purple-300 font-mono">₹১৯৯</span>
-                      <span className="text-[10px] text-zinc-400">/ বছর</span>
+                      <span className="text-lg font-black text-purple-300 font-mono">
+                        {language === 'bn' ? '₹১৯৯' : '₹199'}
+                      </span>
+                      <span className="text-[10px] text-zinc-400">{t('per_year', '/ বছর')}</span>
                     </div>
                   </div>
                 </div>
@@ -435,7 +441,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                   <div className="flex-1 space-y-2 text-center sm:text-left w-full">
                     <div>
                       <span className="text-[10px] text-purple-300 uppercase tracking-wider font-semibold block">
-                        অফিসিয়াল UPI ID (জয় - গপ্পো কাহিনী)
+                        {t('official_upi_id', 'অফিসিয়াল UPI ID')}
                       </span>
                       <div className="flex items-center justify-between gap-2 mt-1 bg-[#10081a] px-3 py-1.5 rounded-xl border border-purple-900/40 font-mono text-xs text-pink-300">
                         <span className="font-bold truncate">{upiConfig.upiId}</span>
@@ -445,7 +451,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                           className="flex items-center gap-1 text-[11px] bg-pink-600 hover:bg-pink-500 text-white px-2 py-0.5 rounded-lg font-sans font-bold transition-all shrink-0"
                         >
                           <Copy className="h-3 w-3" />
-                          <span>{copiedUpi ? 'কপি হয়েছে' : 'কপি'}</span>
+                          <span>{copiedUpi ? t('copied', 'কপি হয়েছে') : t('copy', 'কপি')}</span>
                         </button>
                       </div>
                     </div>
@@ -457,7 +463,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                       className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-700 to-pink-600 py-1.5 px-3 text-xs font-semibold text-white hover:opacity-95 transition-all shadow"
                     >
                       <Smartphone className="h-3.5 w-3.5" />
-                      <span>যেকোনো UPI অ্যাপ দিয়ে পেমেন্ট করুন (GPay, PhonePe, Paytm)</span>
+                      <span>{t('upi_apps_hint', 'যেকোনো UPI অ্যাপ দিয়ে পেমেন্ট করুন (GPay, PhonePe, Paytm)')}</span>
                     </button>
                   </div>
                 </div>
@@ -465,15 +471,15 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 {/* AUTO-FETCHED / LINKED UTR DISPLAY */}
                 <div className="rounded-xl bg-[#0f0718] border border-purple-900/50 p-2.5">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-zinc-400">অটো-ডিটেক্টেড ট্রানজ্যাকশন আইডি (UTR):</span>
+                    <span className="text-zinc-400">{t('auto_detected_utr_label', 'অটো-ডিটেক্টেড ট্রানজ্যাকশন আইডি (UTR):')}</span>
                     <span className="text-emerald-400 font-mono font-bold flex items-center gap-1">
                       <Zap className="h-3 w-3 fill-emerald-400" />
-                      স্বয়ংক্রিয়ভাবে সংযুক্ত
+                      {t('auto_connected', 'স্বয়ংক্রিয়ভাবে সংযুক্ত')}
                     </span>
                   </div>
                   <div className="mt-1 flex items-center justify-between bg-black/50 px-2.5 py-1.5 rounded-lg font-mono text-xs text-amber-300 border border-purple-950">
                     <span className="font-bold tracking-wider">{autoUtr}</span>
-                    <span className="text-[10px] text-zinc-500">ইউজারকে টাইপ করতে হবে না</span>
+                    <span className="text-[10px] text-zinc-500">{t('user_no_type_hint', 'ইউজারকে টাইপ করতে হবে না')}</span>
                   </div>
                 </div>
 
@@ -484,14 +490,14 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 {!currentUser ? (
                   <>
                     <span className="text-[11px] font-semibold text-zinc-300 block">
-                      আপনার যোগাযোগের আসল তথ্য (ভুয়া তথ্য নিষিদ্ধ):
+                      {t('real_contact_info_label', 'আপনার যোগাযোগের আসল তথ্য (ভুয়া তথ্য নিষিদ্ধ):')}
                     </span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
                         <input
                           type="text"
                           required
-                          placeholder="আপনার আসল নাম (উদা: অনির্বাণ সেন)"
+                          placeholder={t('real_name_placeholder', 'আপনার আসল নাম (উদা: অনির্বাণ সেন)')}
                           value={userName}
                           onChange={(e) => setUserName(e.target.value)}
                           className="w-full rounded-xl border border-purple-900/40 bg-[#160e22] px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none"
@@ -501,7 +507,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                         <input
                           type="email"
                           required
-                          placeholder="আপনার আসল ইমেইল (Gmail/Yahoo)"
+                          placeholder={t('real_email_placeholder', 'আপনার আসল ইমেইল (Gmail/Yahoo)')}
                           value={userEmail}
                           onChange={(e) => setUserEmail(e.target.value)}
                           className="w-full rounded-xl border border-purple-900/40 bg-[#160e22] px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none"
@@ -523,7 +529,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                       <input
                         type="tel"
                         required
-                        placeholder="আসল মোবাইল নম্বর (৭-১৫ অঙ্ক)"
+                        placeholder={t('real_phone_placeholder', 'আসল মোবাইল নম্বর (৭-১৫ অঙ্ক)')}
                         value={userPhone}
                         onChange={(e) => setUserPhone(e.target.value)}
                         className="flex-1 rounded-xl border border-purple-900/40 bg-[#160e22] px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none"
@@ -533,7 +539,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 ) : !currentUser.phoneNumber ? (
                   <div>
                     <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
-                      পাস ভেরিফিকেশনের জন্য আপনার আসল মোবাইল নম্বর দিন:
+                      {t('enter_phone_for_verification', 'পাস ভেরিফিকেশনের জন্য আপনার আসল মোবাইল নম্বর দিন:')}
                     </label>
                     <div className="flex gap-2">
                       <select
@@ -550,7 +556,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                       <input
                         type="tel"
                         required
-                        placeholder="আপনার মোবাইল নম্বর"
+                        placeholder={t('your_phone_placeholder', 'আপনার মোবাইল নম্বর')}
                         value={userPhone}
                         onChange={(e) => setUserPhone(e.target.value)}
                         className="flex-1 rounded-xl border border-purple-900/40 bg-[#160e22] px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none"
@@ -572,7 +578,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               <div className="flex items-center gap-2 text-[11px] text-purple-300/80 bg-[#160e24] p-2.5 rounded-xl border border-purple-900/30">
                 <ShieldCheck className="h-4 w-4 text-pink-400 shrink-0" />
                 <span>
-                  কোনো স্ক্রিনশট বা জটিল ফর্ম পূরণ করার প্রয়োজন নেই। পেমেন্ট সম্পন্ন করে নিচের বাটনে চাপলেই আপনার ২০ টাকার পাস সাথে সাথে সক্রিয় হয়ে যাবে।
+                  {t('no_screenshot_needed_desc', 'কোনো স্ক্রিনশট বা জটিল ফর্ম পূরণ করার প্রয়োজন নেই। পেমেন্ট সম্পন্ন করে নিচের বাটনে চাপলেই আপনার ২০ টাকার পাস সাথে সাথে সক্রিয় হয়ে যাবে।')}
                 </span>
               </div>
 
@@ -583,11 +589,11 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 className="w-full rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-pink-500 hover:opacity-95 text-white font-black py-3 text-xs sm:text-sm transition-all shadow-xl shadow-pink-950/40 flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50"
               >
                 {isSubmitting ? (
-                  <span>পাস সক্রিয় হচ্ছে...</span>
+                  <span>{t('pass_activating', 'পাস সক্রিয় হচ্ছে...')}</span>
                 ) : (
                   <>
                     <Crown className="h-4 w-4 fill-white" />
-                    <span>পেমেন্ট সম্পন্ন করেছি — ২০ টাকার পাস সক্রিয় করুন</span>
+                    <span>{t('payment_done_activate_btn', 'পেমেন্ট সম্পন্ন করেছি — ২০ টাকার পাস সক্রিয় করুন')}</span>
                   </>
                 )}
               </button>

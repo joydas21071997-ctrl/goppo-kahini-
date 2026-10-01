@@ -1,5 +1,6 @@
 import React from 'react';
 import { ThemeMode } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -8,6 +9,7 @@ interface LogoProps {
   onClick?: () => void;
   theme?: ThemeMode;
   isLight?: boolean;
+  hideTextOnMobile?: boolean;
 }
 
 export const GoppoKahiniLogo: React.FC<LogoProps> = ({
@@ -17,8 +19,13 @@ export const GoppoKahiniLogo: React.FC<LogoProps> = ({
   onClick,
   theme,
   isLight: isLightProp,
+  hideTextOnMobile = false,
 }) => {
+  const { language } = useLanguage();
   const isLight = isLightProp ?? (theme ? theme === 'purple-light' || theme === 'calm-green' : false);
+
+  const brandPart1 = language === 'bn' ? 'গপ্পো' : 'Goppo';
+  const brandPart2 = language === 'bn' ? 'কাহিনী' : 'Kahini';
 
   const sizeClasses = {
     sm: 'h-8 w-8 sm:h-9 sm:w-9',
@@ -53,7 +60,7 @@ export const GoppoKahiniLogo: React.FC<LogoProps> = ({
           }`}>
             <img
               src="/logo.png"
-              alt="গপ্পো কাহিনী লোগো"
+              alt={language === 'bn' ? 'গপ্পো কাহিনী লোগো' : 'Goppo Kahini Logo'}
               className="h-full w-full object-contain object-center transition-transform duration-500 group-hover:scale-105"
               onError={(e) => {
                 // Graceful fallback to rich stylized emblem if image path fails
@@ -62,7 +69,7 @@ export const GoppoKahiniLogo: React.FC<LogoProps> = ({
                 if (target.parentElement) {
                   target.parentElement.innerHTML = `
                     <div class="h-full w-full flex items-center justify-center bg-gradient-to-br from-[#1a1226] to-black text-pink-400 font-serif-story font-bold text-xs">
-                      গপ্পো
+                      ${brandPart1}
                     </div>
                   `;
                 }
@@ -74,51 +81,44 @@ export const GoppoKahiniLogo: React.FC<LogoProps> = ({
         </div>
       </div>
 
-      {/* Brand Typography with High-Contrast Adaptive Outlining */}
-      {showSubtitle && (
-        <div className="flex flex-col leading-tight shrink-0">
-          <div className="flex items-center gap-1 sm:gap-1.5">
-            {isLight ? (
-              /* Light Mode: Crisp dark outline and intense contrasting tones so 'গপ্পো' never fades */
-              <span className={`font-serif-story font-black tracking-tight text-zinc-950 ${titleSizes[size]}`}
+      {/* Brand Typography - Clean, uncluttered, premium */}
+      <div className={`flex-col leading-none shrink-0 ${hideTextOnMobile ? 'hidden sm:flex' : 'flex'}`}>
+        <div className="flex items-center">
+          {isLight ? (
+            /* Light Mode: Crisp contrasting tones */
+            <span
+              className={`font-serif-story font-black tracking-tight text-zinc-950 ${titleSizes[size]}`}
+              style={{
+                textShadow: '0 0 1px rgba(0, 0, 0, 0.9), 0 1px 2px rgba(255, 255, 255, 0.8)',
+                WebkitTextStroke: '0.4px rgba(15, 8, 29, 0.85)',
+              }}
+            >
+              {brandPart1}{' '}
+              <span
+                className="bg-gradient-to-r from-purple-800 via-pink-600 to-purple-900 bg-clip-text text-transparent font-black"
                 style={{
-                  textShadow: '0 0 1px rgba(0, 0, 0, 0.9), 0 1px 2px rgba(255, 255, 255, 0.8)',
-                  WebkitTextStroke: '0.4px rgba(15, 8, 29, 0.85)',
+                  WebkitTextStroke: '0.2px rgba(120, 20, 100, 0.5)',
                 }}
               >
-                গপ্পো <span className="bg-gradient-to-r from-purple-800 via-pink-600 to-purple-900 bg-clip-text text-transparent font-black"
-                  style={{
-                    WebkitTextStroke: '0.2px rgba(120, 20, 100, 0.5)',
-                  }}
-                > কাহিনী</span>
+                {brandPart2}
               </span>
-            ) : (
-              /* Dark Mode: Luminescent text with white drop-shadow/outline */
-              <span className={`font-serif-story font-extrabold tracking-tight text-white ${titleSizes[size]}`}
-                style={{
-                  textShadow: '0 0 8px rgba(255, 255, 255, 0.35), 0 1px 3px rgba(0, 0, 0, 0.9)',
-                }}
-              >
-                গপ্পো <span className="bg-gradient-to-r from-purple-300 via-pink-400 to-pink-300 bg-clip-text text-transparent font-bold">কাহিনী</span>
-              </span>
-            )}
-
-            <span className={`hidden sm:inline-flex items-center rounded-full px-1.5 py-0.2 text-[9px] font-bold tracking-wide ${
-              isLight
-                ? 'bg-purple-100 border border-purple-300 text-purple-900 shadow-xs'
-                : 'bg-purple-500/20 border border-purple-500/40 text-pink-300'
-            }`}>
-              অরিজিনাল
             </span>
-          </div>
-
-          <span className={`hidden sm:block text-[10px] sm:text-[11px] font-semibold tracking-wide mt-0.5 ${
-            isLight ? 'text-purple-900' : 'text-purple-200/90'
-          }`}>
-            রোমাঞ্চ, শান্তি ও মানুষের জীবন কথা
-          </span>
+          ) : (
+            /* Dark Mode: Luminescent text with soft aura */
+            <span
+              className={`font-serif-story font-extrabold tracking-tight text-white ${titleSizes[size]}`}
+              style={{
+                textShadow: '0 0 8px rgba(255, 255, 255, 0.35), 0 1px 3px rgba(0, 0, 0, 0.9)',
+              }}
+            >
+              {brandPart1}{' '}
+              <span className="bg-gradient-to-r from-purple-300 via-pink-400 to-pink-300 bg-clip-text text-transparent font-bold">
+                {brandPart2}
+              </span>
+            </span>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

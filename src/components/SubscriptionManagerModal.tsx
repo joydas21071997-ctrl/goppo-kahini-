@@ -12,6 +12,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { UserSubscription, PaymentTransaction } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 interface SubscriptionManagerModalProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
   onRequestRefund,
   onOpenNewSubscription,
 }) => {
+  const { t, language } = useLanguage();
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
 
@@ -48,7 +50,7 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
   const isRefunded = userTransaction?.status === 'refunded';
 
   const handleConfirmCancel = () => {
-    onCancelSubscription(cancelReason || 'ব্যবহারকারী নিজ ইচ্ছায় বাতিল করেছেন।');
+    onCancelSubscription(cancelReason || t('cancelled_by_user_reason', 'ব্যবহারকারী নিজ ইচ্ছায় বাতিল করেছেন।'));
     setShowCancelModal(false);
   };
 
@@ -60,6 +62,12 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
     setRefundSubmitted(true);
     setTimeout(() => setRefundSubmitted(false), 4000);
   };
+
+  const periodLabel = subscription.period === 'year' 
+    ? t('period_year', 'বছর') 
+    : subscription.period === 'month' 
+      ? t('period_month', 'মাস') 
+      : t('lifetime_label', 'আজীবন');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/90 backdrop-blur-md overflow-y-auto animate-fadeIn">
@@ -73,7 +81,7 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
             </div>
             <div>
               <h2 className="font-serif-story text-sm sm:text-base font-bold text-white">
-                আমার সাবস্ক্রিপশন ও পাস
+                {t('my_sub_and_pass', 'আমার সাবস্ক্রিপশন ও পাস')}
               </h2>
               <p className="text-[11px] text-zinc-400">Goppo Kahini Entertainment</p>
             </div>
@@ -85,7 +93,7 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
             className="flex items-center gap-1 rounded-xl bg-zinc-900 border border-zinc-750 px-2.5 py-1.5 text-xs text-zinc-300 hover:text-white"
           >
             <X className="h-4 w-4" />
-            <span className="hidden sm:inline">বন্ধ</span>
+            <span className="hidden sm:inline">{t('close_btn', 'বন্ধ')}</span>
           </button>
         </div>
 
@@ -95,7 +103,7 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
           {/* NOTIFICATION: Refund submitted */}
           {refundSubmitted && (
             <div className="rounded-2xl border border-amber-500/40 bg-amber-950/40 p-3 text-xs text-amber-300 animate-fadeIn">
-              ✓ রিফান্ডের অনুরোধ সফলভাবে জমা হয়েছে! অ্যাডমিন ব্যাংক রেকর্ড যাচাই করে আপনার অ্যাকাউন্টে টাকা ফেরত পাঠাবেন।
+              {t('refund_submitted_alert', '✓ রিফান্ডের অনুরোধ সফলভাবে জমা হয়েছে! অ্যাডমিন ব্যাংক রেকর্ড যাচাই করে আপনার অ্যাকাউন্টে টাকা ফেরত পাঠাবেন।')}
             </div>
           )}
 
@@ -108,20 +116,20 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
                 <div className="flex items-center gap-2">
                   <Clock className="h-5 w-5 text-amber-400 animate-pulse" />
                   <h3 className="font-serif-story text-sm font-bold text-amber-300">
-                    যাচাইয়ের অপেক্ষায় (Pending Verification)
+                    {t('pending_verification', 'যাচাইয়ের অপেক্ষায় (Pending Verification)')}
                   </h3>
                 </div>
               </div>
 
               <p className="text-xs text-zinc-300 leading-relaxed">
-                আপনার পেমেন্ট UTR নম্বরটি অ্যাডমিনের কাছে সফলভাবে জমা আছে। অ্যাডমিন ব্যাংক স্টেটমেন্টে রিসিভ হওয়া নিশ্চিত করার সঙ্গে সঙ্গে আপনার পাস সক্রিয় (Approve) করে দেবেন।
+                {t('pending_verification_desc', 'আপনার পেমেন্ট UTR নম্বরটি অ্যাডমিনের কাছে সফলভাবে জমা আছে। অ্যাডমিন ব্যাংক স্টেটমেন্টে রিসিভ হওয়া নিশ্চিত করার সঙ্গে সঙ্গে আপনার পাস সক্রিয় (Approve) করে দেবেন।')}
               </p>
 
               <div className="bg-black/40 rounded-xl p-3 border border-zinc-800 text-[11px] space-y-1 font-mono text-zinc-300">
-                <div>প্ল্যান: <span className="font-bold text-white">{subscription.planName}</span></div>
-                <div>পরিশোধ: <span className="font-bold text-pink-400">₹{subscription.price}</span></div>
+                <div>{t('plan_label', 'প্ল্যান:')} <span className="font-bold text-white">{subscription.planName}</span></div>
+                <div>{t('paid_label', 'পরিশোধ:')} <span className="font-bold text-pink-400">₹{subscription.price}</span></div>
                 {subscription.pendingUtr && (
-                  <div>আপনার UTR: <span className="font-bold text-pink-300">{subscription.pendingUtr}</span></div>
+                  <div>{t('your_utr', 'আপনার UTR:')} <span className="font-bold text-pink-300">{subscription.pendingUtr}</span></div>
                 )}
               </div>
             </div>
@@ -132,21 +140,21 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
             <div className="rounded-2xl border border-purple-900/40 bg-black/60 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400">বর্তমান প্ল্যান</span>
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400">{t('current_plan_heading', 'বর্তমান প্ল্যান')}</span>
                   <h3 className="font-serif-story text-base font-bold text-white mt-0.5">
                     {subscription.planName}
                   </h3>
                 </div>
                 <span className="flex items-center gap-1 rounded-full bg-pink-500/20 border border-pink-500/30 px-2.5 py-0.5 text-xs font-bold text-pink-400">
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  সক্রিয় (Active)
+                  {t('active_badge_status', 'সক্রিয় (Active)')}
                 </span>
               </div>
 
               <div className="flex items-baseline gap-1 text-pink-400 font-serif-story text-xl font-bold">
                 ₹{subscription.price}
                 <span className="text-xs text-zinc-400 font-sans">
-                  / {subscription.period === 'year' ? 'বছর' : subscription.period === 'month' ? 'মাস' : 'আজীবন'}
+                  / {periodLabel}
                 </span>
               </div>
 
@@ -154,14 +162,14 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
                 <div className="flex justify-between">
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3.5 w-3.5 text-zinc-500" />
-                    শুরুর তারিখ:
+                    {t('start_date_label', 'শুরুর তারিখ:')}
                   </span>
                   <span className="text-white font-mono">{subscription.startDate}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3.5 w-3.5 text-zinc-500" />
-                    মেয়াদ শেষ / রিনিউয়াল:
+                    {t('expiry_renewal_label', 'মেয়াদ শেষ / রিনিউয়াল:')}
                   </span>
                   <span className="text-white font-mono">{subscription.subscriptionExpiryDate || subscription.nextBillingDate}</span>
                 </div>
@@ -174,10 +182,10 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
             <div className="rounded-2xl border border-purple-500/50 bg-purple-950/30 p-3.5 text-xs text-zinc-300 space-y-1.5">
               <div className="flex items-center gap-1.5 text-pink-300 font-bold">
                 <RotateCcw className="h-4 w-4" />
-                <span>রিফান্ডের অনুরোধ বিবেচনাধীন</span>
+                <span>{t('refund_pending_notice', 'রিফান্ডের অনুরোধ বিবেচনাধীন')}</span>
               </div>
               <p className="text-[11px] text-zinc-400 leading-relaxed">
-                আপনার রিফান্ডের অনুরোধটি অ্যাডমিনের কাছে জমা আছে। জয় (সুপার অ্যাডমিন) ব্যাংক অ্যাকাউন্ট থেকে রিফান্ড পাঠানোর পর স্ট্যাটাস &quot;Refunded&quot; হিসেবে আপডেট হবে।
+                {t('refund_pending_desc', 'আপনার রিফান্ডের অনুরোধটি অ্যাডমিনের কাছে জমা আছে। জয় (সুপার অ্যাডমিন) ব্যাংক অ্যাকাউন্ট থেকে রিফান্ড পাঠানোর পর স্ট্যাটাস "Refunded" হিসেবে আপডেট হবে।')}
               </p>
             </div>
           )}
@@ -187,10 +195,10 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
             <div className="rounded-2xl border border-purple-500/40 bg-purple-950/30 p-3.5 text-xs text-zinc-300 space-y-1">
               <div className="flex items-center gap-1.5 text-pink-400 font-bold">
                 <CheckCircle2 className="h-4 w-4" />
-                <span>রিফান্ড সম্পন্ন হয়েছে</span>
+                <span>{t('refund_completed_notice', 'রিফান্ড সম্পন্ন হয়েছে')}</span>
               </div>
               <p className="text-[11px] text-zinc-400">
-                আপনার পেমেন্ট ব্যাংক/UPI মাধ্যমে ফেরত পাঠানো হয়েছে।
+                {t('refund_completed_desc', 'আপনার পেমেন্ট ব্যাংক/UPI মাধ্যমে ফেরত পাঠানো হয়েছে।')}
               </p>
             </div>
           )}
@@ -199,10 +207,10 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
           {isCancelled && (
             <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 text-center space-y-2">
               <span className="inline-block rounded-full bg-rose-500/20 border border-rose-500/30 px-3 py-0.5 text-xs font-bold text-rose-300">
-                সাবস্ক্রিপশন বাতিলকৃত (Cancelled)
+                {t('sub_cancelled_notice', 'সাবস্ক্রিপশন বাতিলকৃত (Cancelled)')}
               </span>
               <p className="text-xs text-zinc-400">
-                আপনার বর্তমান সাবস্ক্রিপশন বাতিল করা হয়েছে। নতুন পাস নিতে নিচে ক্লিক করুন।
+                {t('sub_cancelled_desc', 'আপনার বর্তমান সাবস্ক্রিপশন বাতিল করা হয়েছে। নতুন পাস নিতে নিচে ক্লিক করুন।')}
               </p>
               <button
                 type="button"
@@ -212,7 +220,7 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
                 }}
                 className="rounded-xl bg-amber-500 hover:bg-amber-400 text-black px-4 py-2 text-xs font-bold transition-all"
               >
-                নতুন পাস সক্রিয় করুন
+                {t('activate_new_pass_btn', 'নতুন পাস সক্রিয় করুন')}
               </button>
             </div>
           )}
@@ -228,7 +236,7 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 font-bold transition-all"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
-                  <span>রিফান্ড চান?</span>
+                  <span>{t('want_refund_btn', 'রিফান্ড চান?')}</span>
                 </button>
 
                 {/* Cancel Subscription */}
@@ -238,7 +246,7 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-rose-400 hover:border-rose-500/40 transition-all"
                 >
                   <AlertTriangle className="h-3.5 w-3.5" />
-                  <span>পাস বাতিল করুন</span>
+                  <span>{t('cancel_pass_btn', 'পাস বাতিল করুন')}</span>
                 </button>
               </div>
             </div>
@@ -250,18 +258,18 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
               <div className="flex items-center justify-between text-xs font-bold text-amber-300">
                 <span className="flex items-center gap-1.5">
                   <RotateCcw className="h-4 w-4" />
-                  রিফান্ডের অনুরোধ ফর্ম
+                  {t('refund_form_title', 'রিফান্ডের অনুরোধ ফর্ম')}
                 </span>
                 <button
                   onClick={() => setShowRefundModal(false)}
                   className="text-zinc-400 hover:text-white"
                 >
-                  বাতিল
+                  {t('cancel', 'বাতিল')}
                 </button>
               </div>
 
               <div className="bg-black/50 p-2.5 rounded-xl border border-zinc-800 text-[11px] text-zinc-400 space-y-1">
-                <div>মূল পেমেন্ট: <span className="font-bold text-white">{subscription.planName} (₹{subscription.price})</span></div>
+                <div>{t('original_payment_label', 'মূল পেমেন্ট:')} <span className="font-bold text-white">{subscription.planName} (₹{subscription.price})</span></div>
                 {userTransaction?.utrTransactionId && (
                   <div>Transaction UTR: <span className="font-mono text-amber-300">{userTransaction.utrTransactionId}</span></div>
                 )}
@@ -270,12 +278,12 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
               <form onSubmit={handleConfirmRefund} className="space-y-2.5">
                 <div>
                   <label className="text-[11px] text-zinc-300 block mb-1">
-                    রিফান্ড চাওয়ার কারণ লিখুন *
+                    {t('refund_reason_label', 'রিফান্ড চাওয়ার কারণ লিখুন *')}
                   </label>
                   <textarea
                     required
                     rows={2}
-                    placeholder="উদা: ভুলবশত দুবার পেমেন্ট হয়েছে / সেবা সংক্রান্ত সমস্যা..."
+                    placeholder={t('refund_reason_placeholder', 'উদা: ভুলবশত দুবার পেমেন্ট হয়েছে / সেবা সংক্রান্ত সমস্যা...')}
                     value={refundReason}
                     onChange={(e) => setRefundReason(e.target.value)}
                     className="w-full rounded-xl border border-zinc-750 bg-black p-2.5 text-xs text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none"
@@ -288,13 +296,13 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
                     onClick={() => setShowRefundModal(false)}
                     className="rounded-xl bg-zinc-800 px-3 py-1.5 text-xs text-zinc-300"
                   >
-                    ফিরে যান
+                    {t('back', 'ফিরে যান')}
                   </button>
                   <button
                     type="submit"
                     className="rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold px-3.5 py-1.5 text-xs"
                   >
-                    অনুরোধ পাঠান
+                    {t('send_request_btn', 'অনুরোধ পাঠান')}
                   </button>
                 </div>
               </form>
@@ -306,20 +314,20 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
             <div className="rounded-2xl border border-rose-900/40 bg-rose-950/20 p-4 space-y-3 animate-fadeIn">
               <div className="flex items-center gap-2 text-rose-400 font-bold text-xs">
                 <AlertTriangle className="h-4 w-4" />
-                <span>আপনি কি নিশ্চিত যে পাসটি বাতিল করবেন?</span>
+                <span>{t('confirm_cancel_question', 'আপনি কি নিশ্চিত যে পাসটি বাতিল করবেন?')}</span>
               </div>
 
               <p className="text-[11px] text-zinc-400 leading-relaxed">
-                পাস বাতিল করলে আর স্বয়ংক্রিয় রিনিউয়াল হবে না।
+                {t('cancel_consequence_desc', 'পাস বাতিল করলে আর স্বয়ংক্রিয় রিনিউয়াল হবে না।')}
               </p>
 
               <div>
                 <label className="text-[11px] text-zinc-300 block mb-1">
-                  বাতিল করার কারণ (ঐচ্ছিক):
+                  {t('cancel_reason_label', 'বাতিল করার কারণ (ঐচ্ছিক):')}
                 </label>
                 <input
                   type="text"
-                  placeholder="উদা: কিছুদিনের জন্য গল্প শোনা বন্ধ রাখব"
+                  placeholder={t('cancel_reason_placeholder', 'উদা: কিছুদিনের জন্য গল্প শোনা বন্ধ রাখব')}
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
                   className="w-full rounded-xl border border-zinc-800 bg-black px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-rose-500 focus:outline-none"
@@ -332,14 +340,14 @@ export const SubscriptionManagerModal: React.FC<SubscriptionManagerModalProps> =
                   onClick={() => setShowCancelModal(false)}
                   className="rounded-xl bg-zinc-800 px-3 py-1.5 text-xs text-zinc-300 hover:text-white"
                 >
-                  না, রাখব
+                  {t('keep_pass_btn', 'না, রাখব')}
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmCancel}
                   className="rounded-xl bg-rose-600 hover:bg-rose-500 font-bold text-white px-3.5 py-1.5 text-xs shadow-md"
                 >
-                  হ্যাঁ, বাতিল করুন
+                  {t('yes_cancel_btn', 'হ্যাঁ, বাতিল করুন')}
                 </button>
               </div>
             </div>

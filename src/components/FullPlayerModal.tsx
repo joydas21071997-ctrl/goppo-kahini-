@@ -27,6 +27,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Story, UserSubscription, ItemReview, AudienceUser } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 import {
   subscribeStoryReviews,
   submitOrUpdateStoryReview,
@@ -85,6 +86,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
   onRequireLogin,
   onStoryRatingUpdated,
 }) => {
+  const { t, language } = useLanguage();
   // Mobile mode: 'player' (artwork + big controls), 'script' (justified reading view), 'chapters', 'reviews'
   const [mobileMode, setMobileMode] = useState<'player' | 'script' | 'chapters' | 'reviews'>('player');
   // Script mode: 'sync' (karaoke style transcript), 'full' (continuous story book view), 'reviews' (rating and comments)
@@ -181,7 +183,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
   // Real calculation from Firestore reviews
   const { averageRating: rawAvg, totalCount: reviewCount } = calculateReviewStats(reviewsList);
   const hasRating = reviewCount > 0;
-  const averageRating = hasRating ? rawAvg.toFixed(1) : '০.০';
+  const averageRating = hasRating ? rawAvg.toFixed(1) : (language === 'bn' ? '০.০' : '0.0');
 
   const handleSaveBookmark = (e: React.FormEvent) => {
     e.preventDefault();
@@ -207,14 +209,14 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
 
     if (!currentUser) {
       if (onRequireLogin) {
-        onRequireLogin('গল্পে রেটিং ও মন্তব্য প্রকাশ করার জন্য অনুগ্রহ করে লগইন করুন');
+        onRequireLogin(t('review_login_prompt', 'গল্পে রেটিং ও মন্তব্য প্রকাশ করার জন্য অনুগ্রহ করে লগইন করুন'));
       }
       return;
     }
 
     const trimmedComment = reviewComment.trim();
     if (!trimmedComment) {
-      setReviewError('অনুগ্রহ করে আপনার মূল্যবান মন্তব্য লিখুন।');
+      setReviewError(t('review_write_comment', 'অনুগ্রহ করে আপনার মূল্যবান মন্তব্য লিখুন।'));
       return;
     }
 
@@ -244,7 +246,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
     } catch (err: any) {
       console.error('Failed to submit review:', err);
       setIsSubmittingReview(false);
-      setReviewError(err?.message || 'রিভিউ সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
+      setReviewError(err?.message || t('review_save_error', 'রিভিউ সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।'));
     }
   };
 
@@ -280,11 +282,11 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
         <button
           onClick={onClose}
           type="button"
-          aria-label="হোমে ফিরুন"
+          aria-label={t('return_to_home', 'হোমে ফিরুন')}
           className="flex items-center gap-1.5 sm:gap-2 rounded-xl bg-black/60 border border-purple-900/40 hover:border-pink-500/50 px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs font-bold text-zinc-200 hover:text-white transition-all shadow-md active:scale-95 touch-manipulation"
         >
           <ArrowLeft className="h-4 w-4 text-pink-400 shrink-0" />
-          <span className="font-sans">হোমে ফিরুন</span>
+          <span className="font-sans">{t('return_to_home', 'হোমে ফিরুন')}</span>
         </button>
 
         {/* Story Title & Genre in Center */}
@@ -311,7 +313,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
             }}
             type="button"
             className="flex items-center gap-1 h-8 sm:h-9 px-2 sm:px-2.5 rounded-xl bg-black/60 border border-purple-900/40 text-pink-300 hover:text-white hover:border-pink-400 transition-colors text-xs font-bold"
-            title="রেটিং ও মন্তব্য"
+            title={t('reviews_tab', 'রেটিং ও মন্তব্য')}
           >
             <Star className={`h-3.5 w-3.5 ${hasRating ? 'fill-pink-400 text-pink-400' : 'text-zinc-500'}`} />
             <span className="font-mono">{hasRating ? averageRating : '০.০'}</span>
@@ -321,7 +323,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
             onClick={handleShare}
             type="button"
             className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-black/60 border border-purple-900/40 text-zinc-300 hover:text-pink-400 transition-colors"
-            title="লিংক কপি করুন"
+            title={t('share', 'শেয়ার করুন')}
           >
             {copiedLink ? <Check className="h-4 w-4 text-pink-400" /> : <Share2 className="h-4 w-4" />}
           </button>
@@ -332,7 +334,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
             className={`flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-black/60 border transition-colors ${
               isBookmarked ? 'text-pink-400 border-pink-500/40' : 'border-purple-900/40 text-zinc-300 hover:text-white'
             }`}
-            title="বুকমার্ক করুন"
+            title={t('bookmark', 'বুকমার্ক করুন')}
           >
             <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-pink-400' : ''}`} />
           </button>
@@ -342,7 +344,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
             onClick={onClose}
             type="button"
             className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 hover:bg-rose-500/20 transition-colors"
-            title="বন্ধ করুন"
+            title={t('close', 'বন্ধ করুন')}
           >
             <X className="h-4 w-4" />
           </button>
@@ -362,7 +364,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
             }`}
           >
             <Headphones className="h-3.5 w-3.5" />
-            <span>প্লেয়ার</span>
+            <span>{t('player_tab', 'প্লেয়ার')}</span>
           </button>
 
           <button
@@ -375,7 +377,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
             }`}
           >
             <FileText className="h-3.5 w-3.5" />
-            <span>স্ক্রিপ্ট</span>
+            <span>{t('script_tab', 'স্ক্রিপ্ট')}</span>
           </button>
 
           <button
@@ -388,7 +390,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
             }`}
           >
             <List className="h-3.5 w-3.5" />
-            <span>অধ্যায় ({story.chapters?.length || 0})</span>
+            <span>{t('chapters_tab', 'অধ্যায়')} ({story.chapters?.length || 0})</span>
           </button>
 
           <button
@@ -401,7 +403,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
             }`}
           >
             <Star className="h-3.5 w-3.5 fill-current text-pink-400" />
-            <span>রিভিউ</span>
+            <span>{t('reviews_tab', 'রিভিউ')}</span>
           </button>
         </div>
       </div>
@@ -411,18 +413,18 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
         <div className="relative z-30 mx-auto w-full max-w-md px-4 pt-2">
           <form onSubmit={handleSaveBookmark} className="rounded-2xl border border-purple-500/40 bg-[#160e22] p-3 shadow-2xl">
             <div className="text-xs font-semibold text-pink-300 mb-1.5 flex items-center justify-between">
-              <span>{formatTime(currentTime)}-এ নোট রাখুন</span>
+              <span>{formatTime(currentTime)}-এ {t('add_note_at', 'নোট রাখুন')}</span>
               <button
                 type="button"
                 onClick={() => setShowBookmarkInput(false)}
                 className="text-zinc-400 hover:text-zinc-200 text-xs"
               >
-                বাতিল
+                {t('cancel_btn', 'বাতিল')}
               </button>
             </div>
             <input
               type="text"
-              placeholder="একটি ছোট নোট লিখুন..."
+              placeholder={t('write_short_note', 'একটি ছোট নোট লিখুন...')}
               value={bookmarkNote}
               onChange={(e) => setBookmarkNote(e.target.value)}
               className="w-full rounded-xl border border-purple-900/30 bg-black/70 px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none"
@@ -433,7 +435,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                 type="submit"
                 className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1.5 text-xs font-bold text-white hover:opacity-90"
               >
-                সেভ করুন
+                {t('save_btn', 'সেভ করুন')}
               </button>
             </div>
           </form>
@@ -462,11 +464,11 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                 {story.isLittlePassOnly ? (
                   <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-2.5 py-1 text-xs font-bold text-white shadow-md">
                     <Sparkles className="h-3 w-3 fill-white" />
-                    ₹২০ পাস
+                    {t('pass_badge', '₹২০ পাস')}
                   </span>
                 ) : (
                   <span className="rounded-full bg-pink-500/20 border border-pink-500/40 px-2.5 py-0.5 text-xs font-bold text-pink-300">
-                    ফ্রি গল্প
+                    {t('free', 'ফ্রি গল্প')}
                   </span>
                 )}
               </div>
@@ -493,7 +495,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                 {story.title}
               </h1>
               <p className="text-xs text-zinc-400 mt-1">
-                রচনা: <span className="text-zinc-200 font-medium">{story.author}</span> • কণ্ঠে: <span className="text-pink-400 font-medium">{story.narrator}</span>
+                {t('author_label', 'রচনা')}: <span className="text-zinc-200 font-medium">{story.author}</span> • {t('narrator_label', 'কণ্ঠে')}: <span className="text-pink-400 font-medium">{story.narrator}</span>
               </p>
             </div>
 
@@ -517,7 +519,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
               </div>
               <span className="font-mono font-bold text-white">{hasRating ? averageRating : '০.০'}</span>
               <span className="text-zinc-400">
-                • {hasRating ? `(${reviewCount} রিভিউ)` : 'এখনো রেটিং নেই (মতামত দিন)'}
+                • {hasRating ? `(${reviewCount} ${t('reviews_tab', 'রিভিউ')})` : (language === 'bn' ? 'এখনো রেটিং নেই' : language === 'hi' ? 'अभी कोई रेटिंग नहीं' : 'No ratings yet')}
               </span>
             </button>
 
@@ -548,7 +550,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
             <div className="flex items-center justify-center gap-6 mt-3">
               <button
                 onClick={onSkipBack}
-                title="১৫ সেকেন্ড পেছনে"
+                title={t('sec_back', '১৫ সেকেন্ড পেছনে')}
                 className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-900 rounded-full transition-colors"
               >
                 <RotateCcw className="h-6 w-6" />
@@ -567,7 +569,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
 
               <button
                 onClick={onSkipForward}
-                title="১৫ সেকেন্ড সামনে"
+                title={t('sec_forward', '১৫ সেকেন্ড সামনে')}
                 className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-900 rounded-full transition-colors"
               >
                 <RotateCw className="h-6 w-6" />
@@ -581,15 +583,15 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                 className="flex items-center gap-1.5 rounded-full border border-purple-900/30 bg-black/60 px-3 py-1.5 hover:border-pink-500/40 hover:text-pink-300 transition-colors"
               >
                 <Sliders className="h-3.5 w-3.5 text-pink-400" />
-                <span>আবহ শব্দ</span>
+                <span>{t('ambient_sound', 'আবহ শব্দ')}</span>
               </button>
 
               <div className="flex items-center gap-1.5 rounded-full border border-purple-900/30 bg-black/60 px-3 py-1.5">
                 <Moon className="h-3.5 w-3.5 text-pink-400" />
                 <span>
                   {sleepTimerRemaining !== null
-                    ? `${Math.ceil(sleepTimerRemaining / 60)}মিনিট স্লিপ`
-                    : 'টাইমার বন্ধ'}
+                    ? `${Math.ceil(sleepTimerRemaining / 60)} ${t('minute_abbrev', 'মিনিট')}`
+                    : t('sleep_timer_off', 'টাইমার বন্ধ')}
                 </span>
               </div>
 
@@ -624,7 +626,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                   }`}
                 >
                   <FileText className="h-3.5 w-3.5" />
-                  <span>লাইভ স্ক্রিপ্ট</span>
+                  <span>{t('script_tab', 'লাইভ স্ক্রিপ্ট')}</span>
                 </button>
 
                 <button
@@ -636,7 +638,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                   }`}
                 >
                   <BookOpen className="h-3.5 w-3.5" />
-                  <span>বইয়ের পাতা</span>
+                  <span>{t('book_page', 'বইয়ের পাতা')}</span>
                 </button>
 
                 <button
@@ -648,7 +650,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                   }`}
                 >
                   <Star className="h-3.5 w-3.5 fill-pink-400 text-pink-400" />
-                  <span>রেটিং ও মন্তব্য ({reviewsList.length})</span>
+                  <span>{t('reviews_tab', 'রেটিং ও মন্তব্য')} ({reviewsList.length})</span>
                 </button>
               </div>
 
@@ -660,19 +662,19 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                     onClick={() => setFontSize('normal')}
                     className={`px-1.5 py-0.5 rounded ${fontSize === 'normal' ? 'text-pink-300 font-bold' : 'hover:text-white'}`}
                   >
-                    ছোট
+                    {language === 'bn' ? 'ছোট' : language === 'hi' ? 'छोटा' : 'Small'}
                   </button>
                   <button
                     onClick={() => setFontSize('large')}
                     className={`px-1.5 py-0.5 rounded ${fontSize === 'large' ? 'text-pink-300 font-bold' : 'hover:text-white'}`}
                   >
-                    মাঝারি
+                    {language === 'bn' ? 'মাঝারি' : language === 'hi' ? 'मध्यम' : 'Medium'}
                   </button>
                   <button
                     onClick={() => setFontSize('xlarge')}
                     className={`px-1.5 py-0.5 rounded ${fontSize === 'xlarge' ? 'text-pink-300 font-bold' : 'hover:text-white'}`}
                   >
-                    বড়
+                    {language === 'bn' ? 'বড়' : language === 'hi' ? 'बड़ा' : 'Large'}
                   </button>
                 </div>
               )}
@@ -711,7 +713,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                     );
                   })
                 ) : (
-                  <p className="text-zinc-400 italic">স্ক্রিপ্ট প্রস্তুত হচ্ছে...</p>
+                  <p className="text-zinc-400 italic">{t('script_loading', 'স্ক্রিপ্ট প্রস্তুত হচ্ছে...')}</p>
                 )
               )}
 
@@ -719,7 +721,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                 <div className="space-y-4 max-w-prose mx-auto">
                   <div className="border-b border-purple-900/30 pb-3 mb-4">
                     <h3 className="font-serif-story text-lg font-bold text-pink-300">{story.title}</h3>
-                    <p className="text-xs text-zinc-400 mt-0.5">লেখক: {story.author} • কথক: {story.narrator}</p>
+                    <p className="text-xs text-zinc-400 mt-0.5">{t('author_prefix', 'লেখক')}: {story.author} • {t('narrator_prefix', 'কথক')}: {story.narrator}</p>
                   </div>
                   {story.fullStoryText ? (
                     story.fullStoryText.split('\n\n').map((paragraph, pIdx) => (
@@ -760,8 +762,8 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                         </div>
                         <span className="text-xs text-zinc-400 mt-0.5 block">
                           {hasRating
-                            ? `মোট ${reviewCount} জন শ্রোতার রেটিং`
-                            : 'এখনো কোনো রেটিং নেই • প্রথম রেটিংটি আপনিই দিন!'}
+                            ? `মোট ${reviewCount} ${t('total_listeners_rated', 'জন শ্রোতার রেটিং')}`
+                            : t('no_ratings_yet', 'এখনো কোনো রেটিং নেই • প্রথম রেটিংটি আপনি দিন!')}
                         </span>
                       </div>
                     </div>
@@ -774,18 +776,18 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                         <Star className="h-8 w-8 text-pink-400/80" />
                       </div>
                       <div>
-                        <h4 className="text-sm font-bold text-white">গল্পটি শুনে কেমন লাগল?</h4>
+                        <h4 className="text-sm font-bold text-white">{t('how_was_story', 'গল্পটি শুনে কেমন লাগল?')}</h4>
                         <p className="text-xs text-zinc-400 mt-1">
-                          রেটিং ও আপনার মূল্যবান মন্তব্য জানাতে অনুগ্রহ করে আপনার অ্যাকাউন্টে লগইন করুন।
+                          {t('how_was_story_sub', 'রেটিং ও আপনার অনুভূতি জানাতে অনুগ্রহ করে আপনার অ্যাকাউন্টে লগইন করুন।')}
                         </p>
                       </div>
                       <button
                         type="button"
-                        onClick={() => onRequireLogin?.('গল্পে রেটিং ও মন্তব্য দেওয়ার জন্য অনুগ্রহ করে লগইন করুন')}
+                        onClick={() => onRequireLogin?.(t('review_login_prompt', 'গল্পে রেটিং ও মন্তব্য দেওয়ার জন্য অনুগ্রহ করে লগইন করুন'))}
                         className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-pink-500 px-5 py-2 text-xs font-bold text-white hover:opacity-95 transition-all shadow-md shadow-pink-950/40"
                       >
                         <User className="h-3.5 w-3.5" />
-                        <span>লগইন করে রেটিং দিন</span>
+                        <span>{t('login_to_rate_btn', 'লগইন করে রেটিং দিন')}</span>
                       </button>
                     </div>
                   ) : (
@@ -793,11 +795,11 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-pink-300 flex items-center gap-1.5">
                           <MessageSquare className="h-3.5 w-3.5" />
-                          {userExistingReview ? 'আপনার রিভিউ আপডেট করুন' : 'রেটিং ও মন্তব্য দিন'}
+                          {userExistingReview ? t('update_review', 'আপনার রিভিউ আপডেট করুন') : t('give_rating_comment', 'রেটিং ও মন্তব্য দিন')}
                         </span>
                         {userExistingReview && (
                           <span className="text-[10px] text-pink-400 bg-pink-500/10 border border-pink-500/20 px-2 py-0.5 rounded-full font-medium">
-                            পূর্বের রেটিং: {userExistingReview.rating}★
+                            {t('previous_rating', 'পূর্বের রেটিং')}: {userExistingReview.rating}★
                           </span>
                         )}
                       </div>
@@ -805,7 +807,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                       {reviewSuccess && (
                         <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
                           <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                          <span>আপনার রেটিং ও মন্তব্য সফলভাবে সংরক্ষিত হয়েছে!</span>
+                          <span>{t('review_success', 'আপনার রেটিং ও মন্তব্য সফলভাবে সংরক্ষিত হয়েছে!')}</span>
                         </div>
                       )}
 
@@ -817,7 +819,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                       )}
 
                       <div className="flex items-center gap-3 bg-zinc-950/70 p-2.5 rounded-xl border border-purple-900/30">
-                        <span className="text-xs text-zinc-400">রেটিং নির্বাচন করুন:</span>
+                        <span className="text-xs text-zinc-400">{t('select_rating', 'রেটিং নির্বাচন করুন')}:</span>
                         <div className="flex items-center gap-1">
                           {[1, 2, 3, 4, 5].map((starVal) => (
                             <button
@@ -839,14 +841,14 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                           ))}
                         </div>
                         <span className="text-xs font-mono font-bold text-pink-300 ml-auto">
-                          {hoverRating || userRating} / ৫
+                          {hoverRating || userRating} / {language === 'bn' ? '৫' : '5'}
                         </span>
                       </div>
 
                       <textarea
                         required
                         rows={2}
-                        placeholder="গল্পের অনুভূতি, আবহের মান বা সাউন্ড কোয়ালিটি নিয়ে আপনার মতামত লিখুন..."
+                        placeholder={t('review_placeholder', 'গল্পের অনুভূতি, আবহের মান বা সাউন্ড কোয়ালিটি নিয়ে আপনার মতামত লিখুন...')}
                         value={reviewComment}
                         onChange={(e) => setReviewComment(e.target.value)}
                         className="w-full rounded-xl border border-purple-900/30 bg-black/70 p-3 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none resize-none"
@@ -854,7 +856,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
 
                       <div className="flex items-center justify-between pt-1">
                         <span className="text-[11px] text-zinc-400">
-                          মন্তব্যকারী: <strong className="text-zinc-200">{currentUser.displayName || currentUser.email?.split('@')[0]}</strong>
+                          {t('commenter', 'মন্তব্যকারী')}: <strong className="text-zinc-200">{currentUser.displayName || currentUser.email?.split('@')[0]}</strong>
                         </span>
                         <button
                           type="submit"
@@ -864,10 +866,10 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                           <Send className="h-3 w-3" />
                           <span>
                             {isSubmittingReview
-                              ? 'সংরক্ষণ করা হচ্ছে...'
+                              ? t('saving', 'সংরক্ষণ হচ্ছে...')
                               : userExistingReview
-                              ? 'রিভিউ আপডেট করুন'
-                              : 'মন্তব্য প্রকাশ করুন'}
+                              ? t('update_review', 'রিভিউ আপডেট করুন')
+                              : t('publish_comment', 'মন্তব্য প্রকাশ করুন')}
                           </span>
                         </button>
                       </div>
@@ -877,16 +879,16 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                   {/* List of Reviews */}
                   <div className="space-y-2.5">
                     <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">
-                      শ্রোতাদের মন্তব্য ({reviewCount})
+                      {t('listeners_reviews', 'শ্রোতাদের মন্তব্য')} ({reviewCount})
                     </span>
 
                     {reviewsLoading ? (
                       <div className="text-center py-6 border border-dashed border-purple-900/30 rounded-2xl text-xs text-zinc-500 animate-pulse">
-                        মন্তব্য লোড হচ্ছে...
+                        {t('reviews_loading', 'মন্তব্য লোড হচ্ছে...')}
                       </div>
                     ) : reviewsList.length === 0 ? (
                       <div className="text-center py-6 border border-dashed border-purple-900/30 rounded-2xl text-xs text-zinc-500">
-                        এখনো কোনো মন্তব্য নেই। প্রথম রিভিউটি আপনিই দিন!
+                        {t('no_reviews_yet', 'এখনো কোনো মন্তব্য নেই। প্রথম রিভিউটি আপনিই দিন!')}
                       </div>
                     ) : (
                       reviewsList.map((rev) => {
@@ -911,7 +913,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                                 <span className="text-xs font-bold text-white">{rev.userName}</span>
                                 {isMyReview && (
                                   <span className="text-[10px] font-bold text-pink-300 bg-pink-500/20 border border-pink-500/30 px-2 py-0.5 rounded-full">
-                                    আপনার রিভিউ
+                                    {t('your_review_badge', 'আপনার রিভিউ')}
                                   </span>
                                 )}
                                 <span className="text-[10px] text-zinc-500 font-mono">{rev.createdAt}</span>
@@ -929,7 +931,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                                       setReviewComment(rev.comment);
                                     }}
                                     className="p-1 rounded text-zinc-400 hover:text-pink-300 transition-colors ml-1"
-                                    title="আপনার রিভিউ এডিট করুন"
+                                    title={t('edit_your_review', 'আপনার রিভিউ এডিট করুন')}
                                   >
                                     <Edit3 className="h-3.5 w-3.5" />
                                   </button>
@@ -946,7 +948,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                                 }`}
                               >
                                 <ThumbsUp className="h-3 w-3" />
-                                <span>ভালো লেগেছে ({rev.likes + (isLiked ? 1 : 0)})</span>
+                                <span>{t('like_btn', 'ভালো লেগেছে')} ({rev.likes + (isLiked ? 1 : 0)})</span>
                               </button>
                             </div>
                           </div>
@@ -981,11 +983,11 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                   {story.isLittlePassOnly ? (
                     <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-2.5 py-1 text-xs font-bold text-white shadow-md">
                       <Sparkles className="h-3 w-3 fill-white" />
-                      ₹২০ পাস
+                      {t('pass_badge', '₹২০ পাস')}
                     </span>
                   ) : (
                     <span className="rounded-full bg-pink-500/20 border border-pink-500/40 px-2.5 py-0.5 text-xs font-bold text-pink-300">
-                      ফ্রি গল্প
+                      {t('badge_free', 'ফ্রি গল্প')}
                     </span>
                   )}
                 </div>
@@ -1012,7 +1014,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                   {story.title}
                 </h1>
                 <p className="text-xs text-zinc-400 mt-1">
-                  রচনা: <span className="text-zinc-200">{story.author}</span> • কণ্ঠে: <span className="text-pink-400">{story.narrator}</span>
+                  {t('author_label', 'রচনা')}: <span className="text-zinc-200">{story.author}</span> • {t('narrator_label', 'কণ্ঠে')}: <span className="text-pink-400">{story.narrator}</span>
                 </p>
                 {/* Rating Pill on Mobile */}
                 <button
@@ -1023,7 +1025,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                   <Star className={`h-3 w-3 ${hasRating ? 'fill-pink-400 text-pink-400' : 'text-zinc-500'}`} />
                   <span className="font-mono font-bold text-white">{hasRating ? averageRating : '০.০'}</span>
                   <span className="text-zinc-400 font-normal">
-                    {hasRating ? `(${reviewCount} রিভিউ)` : '(এখনো রেটিং নেই • মতামত দিন)'}
+                    {hasRating ? `(${reviewCount} ${t('reviews_tab', 'রিভিউ')})` : `(${t('no_ratings_yet', 'এখনো রেটিং নেই')})`}
                   </span>
                 </button>
               </div>
@@ -1055,7 +1057,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
               <div className="flex items-center justify-center gap-7 pt-1">
                 <button
                   onClick={onSkipBack}
-                  title="১৫ সেকেন্ড পেছনে"
+                  title={t('sec_back', '১৫ সেকেন্ড পেছনে')}
                   className="p-2 text-zinc-400 hover:text-white rounded-full transition-colors active:scale-95"
                 >
                   <RotateCcw className="h-6 w-6" />
@@ -1074,7 +1076,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
 
                 <button
                   onClick={onSkipForward}
-                  title="১৫ সেকেন্ড সামনে"
+                  title={t('sec_forward', '১৫ সেকেন্ড সামনে')}
                   className="p-2 text-zinc-400 hover:text-white rounded-full transition-colors active:scale-95"
                 >
                   <RotateCw className="h-6 w-6" />
@@ -1089,7 +1091,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                   className="flex items-center gap-1.5 rounded-full border border-purple-500/40 bg-purple-950/40 px-3.5 py-1.5 text-xs font-bold text-pink-300 hover:bg-purple-900/40 transition-all shadow-sm"
                 >
                   <BookOpen className="h-3.5 w-3.5" />
-                  <span>স্ক্রিপ্ট পড়ুন</span>
+                  <span>{t('read_script', 'স্ক্রিপ্ট পড়ুন')}</span>
                 </button>
 
                 <button
@@ -1098,7 +1100,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                   className="flex items-center gap-1.5 rounded-full border border-pink-500/40 bg-pink-950/30 px-3.5 py-1.5 text-xs font-bold text-pink-300 hover:bg-pink-900/40 transition-all shadow-sm"
                 >
                   <Star className="h-3.5 w-3.5 fill-pink-400" />
-                  <span>রেটিং দিন</span>
+                  <span>{t('give_rating', 'রেটিং দিন')}</span>
                 </button>
               </div>
 
@@ -1109,15 +1111,15 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                   className="flex items-center gap-1.5 rounded-full border border-purple-900/30 bg-black/60 px-3 py-1.5"
                 >
                   <Sliders className="h-3.5 w-3.5 text-pink-400" />
-                  <span>আবহ</span>
+                  <span>{t('ambient_sound', 'আবহ')}</span>
                 </button>
 
                 <div className="flex items-center gap-1.5 rounded-full border border-purple-900/30 bg-black/60 px-3 py-1.5">
                   <Moon className="h-3.5 w-3.5 text-pink-400" />
                   <span>
                     {sleepTimerRemaining !== null
-                      ? `${Math.ceil(sleepTimerRemaining / 60)}মি.`
-                      : 'টাইমার বন্ধ'}
+                      ? `${Math.ceil(sleepTimerRemaining / 60)} ${t('minute_abbrev', 'মি.')}`
+                      : t('sleep_timer_off', 'টাইমার বন্ধ')}
                   </span>
                 </div>
               </div>
@@ -1137,7 +1139,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                       scriptViewType === 'sync' ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' : 'text-zinc-400'
                     }`}
                   >
-                    লাইভ স্ক্রিপ্ট
+                    {t('script_tab', 'লাইভ স্ক্রিপ্ট')}
                   </button>
                   <button
                     onClick={() => setScriptViewType('full')}
@@ -1145,29 +1147,29 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                       scriptViewType === 'full' ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' : 'text-zinc-400'
                     }`}
                   >
-                    বইয়ের পাতা
+                    {t('book_page', 'বইয়ের পাতা')}
                   </button>
                 </div>
 
                 <div className="flex items-center gap-1 bg-black/60 rounded-xl px-2 py-1 border border-purple-900/30">
-                  <span className="text-[11px] text-zinc-400 font-semibold mr-1">ফন্ট:</span>
+                  <span className="text-[11px] text-zinc-400 font-semibold mr-1">{t('font_size', 'ফন্ট')}:</span>
                   <button
                     onClick={() => setFontSize('normal')}
                     className={`px-1 rounded ${fontSize === 'normal' ? 'text-pink-300 font-bold' : 'text-zinc-400'}`}
                   >
-                    ক
+                    {language === 'bn' ? 'ক' : language === 'hi' ? 'क' : 'S'}
                   </button>
                   <button
                     onClick={() => setFontSize('large')}
                     className={`px-1 text-sm rounded ${fontSize === 'large' ? 'text-pink-300 font-bold' : 'text-zinc-400'}`}
                   >
-                    খ
+                    {language === 'bn' ? 'খ' : language === 'hi' ? 'ख' : 'M'}
                   </button>
                   <button
                     onClick={() => setFontSize('xlarge')}
                     className={`px-1 text-base rounded ${fontSize === 'xlarge' ? 'text-pink-300 font-bold' : 'text-zinc-400'}`}
                   >
-                    গ
+                    {language === 'bn' ? 'গ' : language === 'hi' ? 'ग' : 'L'}
                   </button>
                 </div>
               </div>
@@ -1207,7 +1209,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                   <div className="space-y-4">
                     <div className="border-b border-purple-900/30 pb-2 mb-2">
                       <h3 className="font-serif-story text-base font-bold text-pink-300">{story.title}</h3>
-                      <p className="text-xs text-zinc-400">{story.author} • পাঠে: {story.narrator}</p>
+                      <p className="text-xs text-zinc-400">{t('author_prefix', 'লেখক')}: {story.author} • {t('narrator_prefix', 'পাঠে')}: {story.narrator}</p>
                     </div>
                     {story.fullStoryText ? (
                       story.fullStoryText.split('\n\n').map((paragraph, pIdx) => (
@@ -1233,7 +1235,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
           {mobileMode === 'chapters' && (
             <div className="space-y-2 pb-28">
               <div className="text-xs font-semibold text-zinc-400 px-1 mb-2">
-                যেকোনো অধ্যায়ে ট্যাপ করে সরাসরি সেই অংশ থেকে শুনুন:
+                {t('chapter_tap_hint', 'যেকোনো অধ্যায়ে ট্যাপ করে সরাসরি সেই অংশ থেকে শুনুন:')}
               </div>
               {story.chapters.map((chap, idx) => {
                 const isCurrentChapter =
@@ -1255,7 +1257,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                   >
                     <div>
                       <span className="text-[10px] text-pink-400 uppercase font-mono">
-                        পর্ব {idx + 1}
+                        {t('episode_prefix', 'পর্ব')} {idx + 1}
                       </span>
                       <h4 className="text-xs sm:text-sm font-semibold text-white">{chap.title}</h4>
                     </div>
@@ -1292,8 +1294,8 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                     </div>
                     <span className="text-xs text-zinc-400 mt-0.5 block">
                       {hasRating
-                        ? `মোট ${reviewCount} জন শ্রোতার রেটিং`
-                        : 'এখনো কোনো রেটিং নেই • প্রথম রেটিংটি আপনিই দিন!'}
+                        ? `মোট ${reviewCount} ${t('total_listeners_rated', 'জন শ্রোতার রেটিং')}`
+                        : t('no_ratings_yet', 'এখনো কোনো রেটিং নেই • প্রথম রেটিংটি আপনিই দিন!')}
                     </span>
                   </div>
                 </div>
@@ -1306,18 +1308,18 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                     <Star className="h-8 w-8 text-pink-400/80" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-white">গল্পটি শুনে কেমন লাগল?</h4>
+                    <h4 className="text-sm font-bold text-white">{t('how_was_story', 'গল্পটি শুনে কেমন লাগল?')}</h4>
                     <p className="text-xs text-zinc-400 mt-1">
-                      রেটিং ও আপনার অনুভূতি জানাতে অনুগ্রহ করে লগইন করুন।
+                      {t('how_was_story_sub', 'রেটিং ও আপনার অনুভূতি জানাতে অনুগ্রহ করে লগইন করুন।')}
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => onRequireLogin?.('গল্পে রেটিং ও মন্তব্য দেওয়ার জন্য অনুগ্রহ করে লগইন করুন')}
+                    onClick={() => onRequireLogin?.(t('review_login_prompt', 'গল্পে রেটিং ও মন্তব্য দেওয়ার জন্য অনুগ্রহ করে লগইন করুন'))}
                     className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-pink-500 px-5 py-2 text-xs font-bold text-white hover:opacity-95 transition-all shadow-md shadow-pink-950/40"
                   >
                     <User className="h-3.5 w-3.5" />
-                    <span>লগইন করে রেটিং দিন</span>
+                    <span>{t('login_to_rate_btn', 'লগইন করে রেটিং দিন')}</span>
                   </button>
                 </div>
               ) : (
@@ -1325,11 +1327,11 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-pink-300 flex items-center gap-1.5">
                       <MessageSquare className="h-3.5 w-3.5" />
-                      {userExistingReview ? 'আপনার রিভিউ আপডেট করুন' : 'রেটিং ও মন্তব্য দিন'}
+                      {userExistingReview ? t('update_review', 'আপনার রিভিউ আপডেট করুন') : t('give_rating_comment', 'রেটিং ও মন্তব্য দিন')}
                     </span>
                     {userExistingReview && (
                       <span className="text-[10px] text-pink-400 bg-pink-500/10 border border-pink-500/20 px-2 py-0.5 rounded-full font-medium">
-                        পূর্বের রেটিং: {userExistingReview.rating}★
+                        {t('previous_rating', 'পূর্বের রেটিং')}: {userExistingReview.rating}★
                       </span>
                     )}
                   </div>
@@ -1337,7 +1339,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                   {reviewSuccess && (
                     <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                      <span>আপনার রেটিং ও মন্তব্য সফলভাবে সংরক্ষিত হয়েছে!</span>
+                      <span>{t('review_success', 'আপনার রেটিং ও মন্তব্য সফলভাবে সংরক্ষিত হয়েছে!')}</span>
                     </div>
                   )}
 
@@ -1349,7 +1351,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                   )}
 
                   <div className="flex items-center gap-2 bg-black/60 p-2.5 rounded-xl border border-purple-900/30">
-                    <span className="text-xs text-zinc-400">রেটিং:</span>
+                    <span className="text-xs text-zinc-400">{t('select_rating', 'রেটিং')}:</span>
                     <div className="flex items-center gap-1">
                       {[1, 2, 3, 4, 5].map((starVal) => (
                         <button
@@ -1367,14 +1369,14 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                       ))}
                     </div>
                     <span className="text-xs font-mono font-bold text-pink-300 ml-auto">
-                      {userRating} / ৫
+                      {userRating} / {language === 'bn' ? '৫' : '5'}
                     </span>
                   </div>
 
                   <textarea
                     required
                     rows={2}
-                    placeholder="গল্পের অনুভূতি বা অডিও অভিজ্ঞতা সম্পর্কে আপনার মতামত লিখুন..."
+                    placeholder={t('review_placeholder', 'গল্পের অনুভূতি বা অডিও অভিজ্ঞতা সম্পর্কে আপনার মতামত লিখুন...')}
                     value={reviewComment}
                     onChange={(e) => setReviewComment(e.target.value)}
                     className="w-full rounded-xl border border-purple-900/30 bg-black/60 p-3 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none resize-none"
@@ -1382,7 +1384,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
 
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-[11px] text-zinc-400">
-                      শ্রোতা: <strong className="text-zinc-200">{currentUser.displayName || currentUser.email?.split('@')[0]}</strong>
+                      {t('commenter', 'শ্রোতা')}: <strong className="text-zinc-200">{currentUser.displayName || currentUser.email?.split('@')[0]}</strong>
                     </span>
                     <button
                       type="submit"
@@ -1392,10 +1394,10 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                       <Send className="h-3 w-3" />
                       <span>
                         {isSubmittingReview
-                          ? 'সংরক্ষণ হচ্ছে...'
+                          ? t('saving', 'সংরক্ষণ হচ্ছে...')
                           : userExistingReview
-                          ? 'রিভিউ আপডেট করুন'
-                          : 'মন্তব্য প্রকাশ করুন'}
+                          ? t('update_review', 'রিভিউ আপডেট করুন')
+                          : t('publish_comment', 'মন্তব্য প্রকাশ করুন')}
                       </span>
                     </button>
                   </div>
@@ -1405,16 +1407,16 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
               {/* Reviews List */}
               <div className="space-y-2.5">
                 <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">
-                  সকল মন্তব্য ({reviewCount})
+                  {t('all_comments', 'সকল মন্তব্য')} ({reviewCount})
                 </span>
 
                 {reviewsLoading ? (
                   <div className="text-center py-6 border border-dashed border-purple-900/30 rounded-2xl text-xs text-zinc-500 animate-pulse">
-                    মন্তব্য লোড হচ্ছে...
+                    {t('reviews_loading', 'মন্তব্য লোড হচ্ছে...')}
                   </div>
                 ) : reviewsList.length === 0 ? (
                   <div className="text-center py-6 border border-dashed border-purple-900/30 rounded-2xl text-xs text-zinc-500">
-                    এখনো কোনো মন্তব্য নেই। প্রথম মন্তব্যটি আপনিই দিন!
+                    {t('no_reviews_yet', 'এখনো কোনো মন্তব্য নেই। প্রথম মন্তব্যটি আপনিই দিন!')}
                   </div>
                 ) : (
                   reviewsList.map((rev) => {
@@ -1439,7 +1441,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                             <span className="text-xs font-bold text-white">{rev.userName}</span>
                             {isMyReview && (
                               <span className="text-[10px] font-bold text-pink-300 bg-pink-500/20 border border-pink-500/30 px-2 py-0.5 rounded-full">
-                                আপনার রিভিউ
+                                {t('your_review_badge', 'আপনার রিভিউ')}
                               </span>
                             )}
                             <span className="text-[10px] text-zinc-500 font-mono">{rev.createdAt}</span>
@@ -1457,7 +1459,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                                   setReviewComment(rev.comment);
                                 }}
                                 className="p-1 rounded text-zinc-400 hover:text-pink-300 transition-colors ml-1"
-                                title="আপনার রিভিউ এডিট করুন"
+                                title={t('edit_your_review', 'আপনার রিভিউ এডিট করুন')}
                               >
                                 <Edit3 className="h-3.5 w-3.5" />
                               </button>
@@ -1474,7 +1476,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
                             }`}
                           >
                             <ThumbsUp className="h-3 w-3" />
-                            <span>ভালো লেগেছে ({rev.likes + (isLiked ? 1 : 0)})</span>
+                            <span>{t('like_btn', 'ভালো লেগেছে')} ({rev.likes + (isLiked ? 1 : 0)})</span>
                           </button>
                         </div>
                       </div>
@@ -1512,7 +1514,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
               <button
                 onClick={onSkipBack}
                 className="p-1.5 text-zinc-400 hover:text-white"
-                title="১৫ সেকেন্ড পেছনে"
+                title={t('sec_back', '১৫ সেকেন্ড পেছনে')}
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
@@ -1525,7 +1527,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
               <button
                 onClick={onSkipForward}
                 className="p-1.5 text-zinc-400 hover:text-white"
-                title="১৫ সেকেন্ড সামনে"
+                title={t('sec_forward', '১৫ সেকেন্ড সামনে')}
               >
                 <RotateCw className="h-4 w-4" />
               </button>
@@ -1541,7 +1543,7 @@ export const FullPlayerModal: React.FC<FullPlayerModalProps> = ({
         className="sm:hidden fixed bottom-14 right-4 z-40 flex items-center gap-1.5 rounded-full bg-black/80 border border-purple-900/40 px-3 py-1.5 text-[11px] font-bold text-white shadow-xl backdrop-blur-md active:scale-95"
       >
         <ArrowLeft className="h-3 w-3 text-pink-400" />
-        <span>হোমে যান</span>
+        <span>{t('return_to_home', 'হোমে যান')}</span>
       </button>
 
     </div>

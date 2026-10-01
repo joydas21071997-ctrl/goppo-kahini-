@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, CloudRain, Flame, Waves, Trees, Music, Volume2, VolumeX, Sparkles } from 'lucide-react';
 import { AmbientTrack } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 interface AmbientMixerModalProps {
   isOpen: boolean;
@@ -21,6 +22,8 @@ export const AmbientMixerModal: React.FC<AmbientMixerModalProps> = ({
   onApplyPreset,
   onStopAll,
 }) => {
+  const { t, language } = useLanguage();
+
   if (!isOpen) return null;
 
   const getIcon = (iconName: string) => {
@@ -40,22 +43,38 @@ export const AmbientMixerModal: React.FC<AmbientMixerModalProps> = ({
     }
   };
 
-  const getTrackBengaliName = (id: string, defName: string) => {
+  const getTrackName = (id: string, defName: string) => {
     switch (id) {
-      case 'rain': return 'ঝুম বৃষ্টি (Rain)';
-      case 'campfire': return 'অগ্নিকুণ্ডের শব্দ (Campfire)';
-      case 'ocean': return 'সমুদ্রের ঢেউ (Ocean Waves)';
-      case 'wind': return 'রাতের বাতাস ও ঝিঁঝিঁ (Night Woods)';
-      case 'drone': return 'শান্ত সুর (Lo-Fi Drone)';
+      case 'rain': return t('soundscape_rain', 'ঝুম বৃষ্টি');
+      case 'campfire': return t('soundscape_campfire', 'অগ্নিকুণ্ডের শব্দ');
+      case 'ocean': return t('soundscape_ocean', 'সমুদ্রের ঢেউ');
+      case 'wind': return t('soundscape_wind', 'রাতের বাতাস ও ঝিঁঝিঁ');
+      case 'drone': return t('soundscape_drone', 'শান্ত সুর');
       default: return defName;
     }
   };
 
   const presets = [
-    { name: 'বৃষ্টি ও আগুন', desc: 'ঝুম বৃষ্টি + কাঠের অগ্নিকুণ্ড', applyName: 'Rainy Hearth' },
-    { name: 'গভীর ঘুম', desc: 'মৃদু বৃষ্টি + লো-ফাই মিষ্টি সুর', applyName: 'Deep Slumber' },
-    { name: 'নিঝুম রাত', desc: 'রাতের বাতাস + সমুদ্রের ঢেউ', applyName: 'Midnight Coast' },
-    { name: 'পাহাড়ি কুটির', desc: 'কাঠের আগুন + বনের শব্দ', applyName: 'Cabin Retreat' },
+    {
+      name: t('preset_rain_hearth', 'বৃষ্টি ও আগুন'),
+      desc: t('preset_rain_hearth_desc', 'ঝুম বৃষ্টি + কাঠের অগ্নিকুণ্ড'),
+      applyName: 'Rainy Hearth',
+    },
+    {
+      name: t('preset_deep_slumber', 'গভীর ঘুম'),
+      desc: t('preset_deep_slumber_desc', 'মৃদু বৃষ্টি + লো-ফাই মিষ্টি সুর'),
+      applyName: 'Deep Slumber',
+    },
+    {
+      name: t('preset_midnight_coast', 'নিঝুম রাত'),
+      desc: t('preset_midnight_coast_desc', 'রাতের বাতাস + সমুদ্রের ঢেউ'),
+      applyName: 'Midnight Coast',
+    },
+    {
+      name: t('preset_cabin_retreat', 'পাহাড়ি কুটির'),
+      desc: t('preset_cabin_retreat_desc', 'কাঠের আগুন + বনের শব্দ'),
+      applyName: 'Cabin Retreat',
+    },
   ];
 
   const anyPlaying = tracks.some((t) => t.isPlaying);
@@ -79,13 +98,13 @@ export const AmbientMixerModal: React.FC<AmbientMixerModalProps> = ({
             <div>
               <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
                 <Sparkles className="h-3.5 w-3.5" />
-                <span>আবহ সঙ্গীত ও সাউন্ডস্কেপ</span>
+                <span>{t('soundscape_badge', 'আবহ সঙ্গীত ও সাউন্ডস্কেপ')}</span>
               </div>
               <h2 className="font-serif-story text-xl font-bold text-white mt-0.5">
-                ব্যাকগ্রাউন্ড সাউন্ড মিক্সার
+                {t('ambient_mixer_heading', 'ব্যাকগ্রাউন্ড সাউন্ড মিক্সার')}
               </h2>
               <p className="text-xs text-zinc-400">
-                গল্প শোনার সময় ব্যাকগ্রাউন্ডে নিজের পছন্দমতো পরিবেশ তৈরি করুন।
+                {t('ambient_mixer_desc', 'গল্প শোনার সময় ব্যাকগ্রাউন্ডে নিজের পছন্দমতো পরিবেশ তৈরি করুন।')}
               </p>
             </div>
 
@@ -95,7 +114,7 @@ export const AmbientMixerModal: React.FC<AmbientMixerModalProps> = ({
                 className="flex items-center gap-1 rounded-xl border border-zinc-700 bg-zinc-850 px-2.5 py-1 text-xs text-zinc-300 hover:text-rose-400 transition-colors"
               >
                 <VolumeX className="h-3.5 w-3.5" />
-                <span>সব বন্ধ</span>
+                <span>{t('stop_all', 'সব বন্ধ')}</span>
               </button>
             )}
           </div>
@@ -104,7 +123,7 @@ export const AmbientMixerModal: React.FC<AmbientMixerModalProps> = ({
           <div className="mb-4 grid grid-cols-2 gap-2">
             {presets.map((preset) => (
               <button
-                key={preset.name}
+                key={preset.applyName}
                 onClick={() => onApplyPreset(preset.applyName)}
                 className="text-left rounded-xl border border-zinc-800 bg-black/60 p-2.5 hover:border-amber-500/50 hover:bg-zinc-900 transition-all group"
               >
@@ -145,10 +164,10 @@ export const AmbientMixerModal: React.FC<AmbientMixerModalProps> = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className={`font-semibold truncate ${track.isPlaying ? 'text-white' : 'text-zinc-400'}`}>
-                      {getTrackBengaliName(track.id, track.name)}
+                      {getTrackName(track.id, track.name)}
                     </span>
                     <span className="text-[10px] font-mono text-zinc-500">
-                      {track.isPlaying ? `${Math.round(track.volume * 100)}%` : 'বন্ধ'}
+                      {track.isPlaying ? `${Math.round(track.volume * 100)}%` : t('ambient_off', 'বন্ধ')}
                     </span>
                   </div>
 
@@ -172,7 +191,7 @@ export const AmbientMixerModal: React.FC<AmbientMixerModalProps> = ({
               onClick={onClose}
               className="rounded-xl bg-zinc-800 px-6 py-2 text-xs font-semibold text-white hover:bg-zinc-700 transition-colors"
             >
-              ঠিক আছে
+              {t('done_btn', 'ঠিক আছে')}
             </button>
           </div>
 

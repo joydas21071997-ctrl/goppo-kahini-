@@ -21,6 +21,8 @@ import { GoppoKahiniLogo } from './GoppoKahiniLogo';
 import { UserContactMessage, AboutMissionData, TeamMember } from '../types';
 import { INITIAL_ABOUT_MISSION_DATA } from '../data/aboutMission';
 import { submitContactMessage } from '../services/firestoreInbox';
+import { useLanguage } from '../context/LanguageContext';
+import { useCountry } from '../utils/country';
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -40,6 +42,8 @@ export const AboutModal: React.FC<AboutModalProps> = ({
   isAdmin = false,
   onOpenAdminTeamEdit,
 }) => {
+  const { t } = useLanguage();
+  const { country } = useCountry();
   const [activeTab, setActiveTab] = useState<'about' | 'contact'>('about');
 
   // Load latest about data from props or localStorage
@@ -113,7 +117,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
         <button
           onClick={onClose}
           className="absolute top-4 right-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 text-zinc-400 hover:text-white transition-colors border border-zinc-800"
-          title="বন্ধ করুন"
+          title={t('close', 'বন্ধ করুন')}
         >
           <X className="h-4 w-4" />
         </button>
@@ -124,7 +128,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
           <div className="flex flex-col items-center text-center">
             <GoppoKahiniLogo size="md" showSubtitle={true} />
             <p className="mt-3 text-xs sm:text-sm text-purple-200/90 max-w-lg leading-relaxed">
-              {aboutData.missionTitle} — বাংলার ঐতিহ্যবাহী অডিও কাহিনী, রোমাঞ্চ ও মানুষের সত্য জীবন কথা।
+              {aboutData.missionTitle} — {t('about_sub_tagline', 'বাংলার ঐতিহ্যবাহী অডিও কাহিনী, রোমাঞ্চ ও মানুষের সত্য জীবন কথা।')}
             </p>
           </div>
 
@@ -139,7 +143,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
               }`}
             >
               <Users className="h-3.5 w-3.5 text-green-300" />
-              <span>আমাদের উদ্দেশ্য ও টিম ({aboutData.teamMembers.length})</span>
+              <span>{t('about_tab_mission', 'আমাদের উদ্দেশ্য ও টিম')} ({aboutData.teamMembers.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('contact')}
@@ -150,7 +154,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
               }`}
             >
               <MessageSquare className="h-3.5 w-3.5 text-green-300" />
-              <span>সরাসরি যোগাযোগ ও মতামত</span>
+              <span>{t('about_tab_contact', 'সরাসরি যোগাযোগ ও মতামত')}</span>
             </button>
           </div>
 
@@ -162,7 +166,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-green-500/15 border border-green-500/30 text-green-300 text-[11px] font-bold">
                     <Sparkles className="h-3 w-3" />
-                    <span>আমাদের লক্ষ্য ও দৃষ্টিভঙ্গি</span>
+                    <span>{t('our_vision', 'আমাদের লক্ষ্য ও দৃষ্টিভঙ্গি')}</span>
                   </div>
 
                   {isAdmin && onOpenAdminTeamEdit && (
@@ -174,7 +178,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                       className="flex items-center gap-1 text-[11px] font-bold text-purple-300 hover:text-white bg-purple-500/20 border border-purple-500/30 rounded-lg px-2.5 py-1 transition-all"
                     >
                       <Edit3 className="h-3 w-3" />
-                      <span>অ্যাডমিন প্যানেলে এডিট করুন</span>
+                      <span>{t('edit_in_admin', 'অ্যাডমিন প্যানেলে এডিট করুন')}</span>
                     </button>
                   )}
                 </div>
@@ -191,7 +195,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
-                    <span>আমাদের ইউটিউব শ্রোতাদের জন্য বিশেষ বার্তা</span>
+                    <span>{t('youtube_message_title', 'আমাদের ইউটিউব শ্রোতাদের জন্য বিশেষ বার্তা')}</span>
                     <Heart className="h-3.5 w-3.5 fill-green-400 text-green-400" />
                   </h4>
                   <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
@@ -205,10 +209,10 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                     <Users className="h-4 w-4 text-green-400" />
-                    <span>আমাদের দল ও প্রতিষ্ঠাতা পরিষদ</span>
+                    <span>{t('our_team', 'আমাদের দল ও প্রতিষ্ঠাতা পরিষদ')}</span>
                   </h3>
                   <span className="text-[11px] text-zinc-400">
-                    {aboutData.teamMembers.length} জন সদস্য যুক্ত আছেন
+                    {aboutData.teamMembers.length} {t('members_connected', 'জন সদস্য যুক্ত আছেন')}
                   </span>
                 </div>
 
@@ -240,7 +244,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                             </h4>
                             {member.isFounder && (
                               <span className="rounded-full bg-purple-500/20 border border-purple-500/40 px-2 py-0.5 text-[9px] font-bold text-purple-300">
-                                প্রতিষ্ঠাতা
+                                {t('founder', 'প্রতিষ্ঠাতা')}
                               </span>
                             )}
                           </div>
@@ -249,7 +253,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                           </p>
                           {member.joinedDate && (
                             <p className="text-[10px] text-zinc-400 mt-0.5">
-                              যুক্ত হয়েছেন: {member.joinedDate}
+                              {t('joined_label', 'যুক্ত হয়েছেন:')} {member.joinedDate}
                             </p>
                           )}
                         </div>
@@ -288,7 +292,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                   className="text-xs text-green-300 hover:text-green-200 flex items-center gap-1.5 underline"
                 >
                   <MessageSquare className="h-3.5 w-3.5" />
-                  <span>কোনো পরামর্শ বা বক্তব্য আছে? সরাসরি লিখুন</span>
+                  <span>{t('have_feedback_prompt', 'কোনো পরামর্শ বা বক্তব্য আছে? সরাসরি লিখুন')}</span>
                 </button>
 
                 <button
@@ -298,7 +302,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                   }}
                   className="w-full sm:w-auto rounded-full bg-gradient-to-r from-purple-500 via-emerald-400 to-green-400 px-5 py-2 text-xs font-bold text-black hover:opacity-95 transition-all shadow-md"
                 >
-                  মাত্র ₹২০-তে পাস নিন
+                  {country === 'BD' ? t('pass_cta_bd', '৳25-এ Pass নিন') : t('pass_cta_in', '₹20-তে Pass নিন')}
                 </button>
               </div>
             </div>
@@ -308,10 +312,10 @@ export const AboutModal: React.FC<AboutModalProps> = ({
               <div className="rounded-2xl bg-zinc-900/60 border border-zinc-800 p-4">
                 <h4 className="text-sm font-bold text-white flex items-center gap-2">
                   <MessageSquare className="h-4 w-4 text-green-400" />
-                  <span>সরাসরি টিম ও জয়-এর সাথে যোগাযোগ</span>
+                  <span>{t('contact_admin_title', 'সরাসরি যোগাযোগ ও মতামত')}</span>
                 </h4>
                 <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                  আপনার যেকোনো অনুভূতি, পরামর্শ বা কাহিনীর অনুরোধ সরাসরি লিখুন। এটি সরাসরি অ্যাডমিন প্যানেলে জমা হবে।
+                  {t('contact_admin_sub', 'আপনার যেকোনো অনুভূতি, পরামর্শ বা কাহিনীর অনুরোধ সরাসরি লিখুন। এটি সরাসরি অ্যাডমিন প্যানেলে জমা হবে।')}
                 </p>
               </div>
 
@@ -320,29 +324,29 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                   <div className="h-12 w-12 rounded-full bg-green-500/20 text-green-400 border border-green-500/40 flex items-center justify-center mx-auto">
                     <CheckCircle2 className="h-6 w-6" />
                   </div>
-                  <h4 className="text-base font-bold text-white">আপনার বার্তা সফলভাবে পৌঁছেছে!</h4>
+                  <h4 className="text-base font-bold text-white">{t('msg_sent_success', 'আপনার বার্তা সফলভাবে পৌঁছেছে!')}</h4>
                   <p className="text-xs text-zinc-300 max-w-md mx-auto leading-relaxed">
-                    ধন্যবাদ! আপনার বার্তা সরাসরি অ্যাডমিন ইনবক্সে যুক্ত হয়েছে। জয় ও টিম আপনার মেসেজটি পড়ে শীঘ্রই যোগাযোগ করবেন।
+                    {t('msg_sent_desc', 'ধন্যবাদ! আপনার বার্তা সরাসরি অ্যাডমিন ইনবক্সে যুক্ত হয়েছে।')}
                   </p>
                   <button
                     type="button"
                     onClick={() => setSubmitSuccess(false)}
                     className="rounded-full bg-green-500 px-4 py-1.5 text-xs font-bold text-black"
                   >
-                    আরেকটি বার্তা পাঠান
+                    {t('send_another_msg', 'আরেকটি বার্তা পাঠান')}
                   </button>
                 </div>
               ) : (
                 <form onSubmit={handleContactSubmit} className="space-y-3.5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-300">আপনার নাম *</label>
+                      <label className="text-[11px] font-semibold text-zinc-300">{t('your_name', 'আপনার নাম *')}</label>
                       <div className="relative mt-1">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
                         <input
                           type="text"
                           required
-                          placeholder="আপনার সম্পূর্ণ নাম"
+                          placeholder={t('your_name_placeholder', 'আপনার সম্পূর্ণ নাম')}
                           value={senderName}
                           onChange={(e) => setSenderName(e.target.value)}
                           className="w-full rounded-xl border border-zinc-800 bg-black/60 py-2 pl-9 pr-3 text-xs text-white focus:border-purple-400 focus:outline-none"
@@ -351,7 +355,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-semibold text-zinc-300">ইমেইল ঠিকানা *</label>
+                      <label className="text-[11px] font-semibold text-zinc-300">{t('your_email', 'ইমেইল ঠিকানা *')}</label>
                       <div className="relative mt-1">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
                         <input
@@ -367,11 +371,11 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-semibold text-zinc-300">বার্তা বা মন্তব্য *</label>
+                    <label className="text-[11px] font-semibold text-zinc-300">{t('your_message', 'বার্তা বা মন্তব্য *')}</label>
                     <textarea
                       required
                       rows={4}
-                      placeholder="আপনার মনের কথা বিস্তারিতভাবে লিখুন..."
+                      placeholder={t('message_placeholder', 'আপনার মনের কথা বিস্তারিতভাবে লিখুন...')}
                       value={messageText}
                       onChange={(e) => setMessageText(e.target.value)}
                       className="mt-1 w-full rounded-xl border border-zinc-800 bg-black/60 p-3 text-xs text-white focus:border-purple-400 focus:outline-none resize-none"
@@ -384,7 +388,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                     className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 via-emerald-400 to-green-400 py-2.5 text-xs font-bold text-black shadow-md hover:opacity-95 transition-all"
                   >
                     <Send className="h-3.5 w-3.5" />
-                    <span>{isSubmitting ? 'পাঠানো হচ্ছে...' : 'বার্তা পাঠান'}</span>
+                    <span>{isSubmitting ? t('sending', 'পাঠানো হচ্ছে...') : t('send_message_btn', 'বার্তা পাঠান')}</span>
                   </button>
                 </form>
               )}

@@ -34,6 +34,7 @@ import {
   validateStrongPassword
 } from '../utils/validation';
 import { WORLD_COUNTRY_CODES } from '../data/countryCodes';
+import { useLanguage } from '../context/LanguageContext';
 
 interface UserAuthModalProps {
   isOpen: boolean;
@@ -50,6 +51,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
   initialMessage,
   triggerReason = 'general',
 }) => {
+  const { t, language } = useLanguage();
   const [tab, setTab] = useState<'login' | 'register'>('login');
 
   // Login state
@@ -88,13 +90,13 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
     setLoading(true);
     try {
       const res = await signInWithGoogle();
-      setSuccessNotice('Google অ্যাকাউন্টে সফলভাবে লগইন হয়েছে!');
+      setSuccessNotice(t('auth_google_login_success', 'Google অ্যাকাউন্টে সফলভাবে লগইন হয়েছে!'));
       setTimeout(() => {
         onLoginSuccess(res.user);
         onClose();
       }, 500);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Google লগইনে ত্রুটি হয়েছে।';
+      const message = err instanceof Error ? err.message : t('auth_google_login_error', 'Google লগইনে ত্রুটি হয়েছে।');
       setError(message);
     } finally {
       setLoading(false);
@@ -107,13 +109,13 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
     setLoading(true);
     try {
       const user = await loginWithEmail(loginEmail, loginPassword);
-      setSuccessNotice('স্বাগতম! সফলভাবে লগইন সম্পন্ন হয়েছে।');
+      setSuccessNotice(t('auth_login_success', 'স্বাগতম! সফলভাবে লগইন সম্পন্ন হয়েছে।'));
       setTimeout(() => {
         onLoginSuccess(user);
         onClose();
       }, 400);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'লগইন ব্যর্থ হয়েছে।';
+      const message = err instanceof Error ? err.message : t('auth_login_error', 'লগইন ব্যর্থ হয়েছে।');
       setError(message);
     } finally {
       setLoading(false);
@@ -127,14 +129,14 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
     // 1. Strict Name Validation
     const nameCheck = validateRealName(registerName);
     if (!nameCheck.isValid) {
-      setError(nameCheck.errorMessage || 'অনুগ্রহ করে আসল নাম লিখুন।');
+      setError(nameCheck.errorMessage || t('auth_enter_real_name', 'অনুগ্রহ করে আসল নাম লিখুন।'));
       return;
     }
 
     // 2. Strict Email Validation
     const emailCheck = validateRealEmail(registerEmail);
     if (!emailCheck.isValid) {
-      setError(emailCheck.errorMessage || 'অনুগ্রহ করে আসল ও সক্রিয় ইমেইল আইডি দিন।');
+      setError(emailCheck.errorMessage || t('auth_enter_real_email', 'অনুগ্রহ করে আসল ও সক্রিয় ইমেইল আইডি দিন।'));
       return;
     }
 
@@ -142,20 +144,20 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
     const fullPhone = `${registerPhoneCountry}${registerPhone.replace(/\D/g, '')}`;
     const phoneCheck = validateRealPhone(fullPhone);
     if (!phoneCheck.isValid) {
-      setError(phoneCheck.errorMessage || 'অনুগ্রহ করে আসল মোবাইল নম্বর দিন।');
+      setError(phoneCheck.errorMessage || t('auth_enter_real_phone', 'অনুগ্রহ করে আসল মোবাইল নম্বর দিন।'));
       return;
     }
 
     // 4. Strict Password Validation
     const passCheck = validateStrongPassword(registerPassword);
     if (!passCheck.isValid) {
-      setError(passCheck.errorMessage || 'শক্তিশালী পাসওয়ার্ড দিন।');
+      setError(passCheck.errorMessage || t('auth_enter_strong_password', 'শক্তিশালী পাসওয়ার্ড দিন।'));
       return;
     }
 
     // 5. Confirm Password Check
     if (registerPassword !== registerConfirmPassword) {
-      setError('পাসওয়ার্ড এবং কনফার্ম পাসওয়ার্ড মেলেনি। অনুগ্রহ করে আবার টাইপ করুন।');
+      setError(t('auth_passwords_mismatch', 'পাসওয়ার্ড এবং কনফার্ম পাসওয়ার্ড মেলেনি। অনুগ্রহ করে আবার টাইপ করুন।'));
       return;
     }
 
@@ -171,16 +173,16 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
       if (verificationSent) {
         setPendingUser(user);
         setAwaitingVerification(true);
-        setSuccessNotice('আপনার জিমেইল/ইমেইলে একটি ভেরিফিকেশন লিঙ্ক পাঠানো হয়েছে!');
+        setSuccessNotice(t('auth_verification_sent', 'আপনার জিমেইল/ইমেইলে একটি ভেরিফিকেশন লিঙ্ক পাঠানো হয়েছে!'));
       } else {
-        setSuccessNotice('অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে!');
+        setSuccessNotice(t('auth_account_created', 'অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে!'));
         setTimeout(() => {
           onLoginSuccess(user);
           onClose();
         }, 500);
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'রেজিস্ট্রেশন ব্যর্থ হয়েছে।';
+      const message = err instanceof Error ? err.message : t('auth_register_failed', 'রেজিস্ট্রেশন ব্যর্থ হয়েছে।');
       setError(message);
     } finally {
       setLoading(false);
@@ -193,7 +195,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
     try {
       const res = await checkCurrentUserEmailVerification();
       if (res.isVerified) {
-        setSuccessNotice('অভিনন্দন! আপনার ইমেইল সফলভাবে ভেরিফাইড হয়েছে।');
+        setSuccessNotice(t('auth_email_verified_congrats', 'অভিনন্দন! আপনার ইমেইল সফলভাবে ভেরিফাইড হয়েছে।'));
         const userToLog = res.user || (pendingUser ? { ...pendingUser, emailVerified: true } : null);
         if (userToLog) {
           setTimeout(() => {
@@ -202,10 +204,10 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
           }, 600);
         }
       } else {
-        setError('এখনো ইমেইলটি ভেরিফাই করা হয়নি। আপনার ইনবক্স অথবা স্প্যাম ফোল্ডারের লিঙ্কে ক্লিক করে ভেরিফাই করুন।');
+        setError(t('auth_email_not_yet_verified', 'এখনো ইমেইলটি ভেরিফাই করা হয়নি। আপনার ইনবক্স অথবা স্প্যাম ফোল্ডারের লিঙ্কে ক্লিক করে ভেরিফাই করুন।'));
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'ভেরিফিকেশন চেক করতে সমস্যা হয়েছে।';
+      const message = err instanceof Error ? err.message : t('auth_check_verify_error', 'ভেরিফিকেশন চেক করতে সমস্যা হয়েছে।');
       setError(message);
     } finally {
       setCheckingVerification(false);
@@ -217,9 +219,9 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
     setResendingEmail(true);
     try {
       await resendVerificationEmail();
-      setSuccessNotice('পুনরায় ভেরিফিকেশন লিঙ্ক পাঠানো হয়েছে! ইনবক্স অথবা স্প্যাম ফোল্ডার চেক করুন।');
+      setSuccessNotice(t('auth_resend_verify_success', 'পুনরায় ভেরিফিকেশন লিঙ্ক পাঠানো হয়েছে! ইনবক্স অথবা স্প্যাম ফোল্ডার চেক করুন।'));
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'লিঙ্ক পাঠাতে ব্যর্থ হয়েছে।';
+      const message = err instanceof Error ? err.message : t('auth_resend_verify_error', 'লিঙ্ক পাঠাতে ব্যর্থ হয়েছে।');
       setError(message);
     } finally {
       setResendingEmail(false);
@@ -239,15 +241,21 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
     setSuccessNotice('');
     const targetEmail = (resetEmail || loginEmail).trim();
     if (!targetEmail) {
-      setError('অনুগ্রহ করে আপনার অ্যাকাউন্টের ইমেইল আইডি দিন।');
+      setError(t('auth_enter_account_email', 'অনুগ্রহ করে আপনার অ্যাকাউন্টের ইমেইল আইডি দিন।'));
       return;
     }
     setLoading(true);
     try {
       await sendPasswordReset(targetEmail);
-      setSuccessNotice(`আপনার ইমেইলে (${targetEmail}) পাসওয়ার্ড রিসেট করার একটি লিংক পাঠানো হয়েছে! ইনবক্স অথবা স্প্যাম ফোল্ডার চেক করুন।`);
+      setSuccessNotice(
+        language === 'hi'
+          ? `आपके ईमेल (${targetEmail}) पर पासवर्ड रीसेट लिंक भेजा गया है! इनबॉक्स या स्पैम फ़ोल्डर देखें।`
+          : language === 'en'
+          ? `A password reset link was sent to your email (${targetEmail})! Check inbox or spam folder.`
+          : `আপনার ইমেইলে (${targetEmail}) পাসওয়ার্ড রিসেট করার একটি লিংক পাঠানো হয়েছে! ইনবক্স অথবা স্প্যাম ফোল্ডার চেক করুন।`
+      );
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'পাসওয়ার্ড রিসেট লিংক পাঠাতে সমস্যা হয়েছে।';
+      const message = err instanceof Error ? err.message : t('auth_reset_link_error', 'পাসওয়ার্ড রিসেট লিংক পাঠাতে সমস্যা হয়েছে।');
       setError(message);
     } finally {
       setLoading(false);
@@ -265,7 +273,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
         <button
           onClick={onClose}
           className="absolute top-4 right-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-[#201432] text-zinc-400 hover:text-white transition-colors border border-purple-900/40"
-          title="বন্ধ করুন"
+          title={t('close', 'বন্ধ করুন')}
         >
           <X className="h-4 w-4" />
         </button>
@@ -279,21 +287,21 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
             </div>
             
             <h2 className="font-serif-story text-xl font-bold text-white">
-              শ্রোতা লগইন ও একাউন্ট
+              {t('auth_title', 'শ্রোতা লগইন ও একাউন্ট')}
             </h2>
             
             <p className="text-xs text-purple-200/80 leading-relaxed">
               {initialMessage ||
                 (triggerReason === 'play_story'
-                  ? 'গল্প শুনতে এবং ২০ টাকার মাসিক পাস সক্রিয় করতে প্রথমে আপনার একাউন্টে লগইন করুন।'
-                  : 'গপ্পো কাহিনীতে স্বাগতম! লগইন করুন এবং মাত্র ২০ টাকার পাসে সীমাহীন গল্প শুনুন।')}
+                  ? t('auth_prompt_listen', 'গল্প শুনতে এবং ২০ টাকার মাসিক পাস সক্রিয় করতে প্রথমে আপনার একাউন্টে লগইন করুন।')
+                  : t('auth_welcome', 'গপ্পো কাহিনীতে স্বাগতম! লগইন করুন এবং মাত্র ২০ টাকার পাসে সীমাহীন গল্প শুনুন।'))}
             </p>
           </div>
 
           {/* Prompt banner for 20 Taka pass */}
           <div className="mt-3 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-[11px] text-amber-200">
             <Crown className="h-4 w-4 text-amber-400 shrink-0" />
-            <span>লগইন শেষেই আপনি সরাসরি <strong>২০ টাকার মাসিক পাস</strong> নিয়ে সব গল্প শুনতে পারবেন।</span>
+            <span>{t('auth_pass_banner', 'লগইন শেষেই আপনি সরাসরি ২০ টাকার মাসিক পাস নিয়ে সব গল্প শুনতে পারবেন।')}</span>
           </div>
 
           {/* Screen 1: Awaiting Email Verification */}
@@ -305,20 +313,22 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-bold text-white">ইমেইল ভেরিফিকেশন পাঠানো হয়েছে</h3>
+                  <h3 className="text-sm font-bold text-white">{t('auth_email_verification_sent', 'ইমেইল ভেরিফিকেশন পাঠানো হয়েছে')}</h3>
                   <p className="text-xs text-pink-200/90 mt-1">
-                    আমরা <strong className="text-white underline">{registerEmail}</strong> ঠিকানায় একটি অফিশিয়াল ভেরিফিকেশন লিংক পাঠিয়েছি।
+                    {language === 'bn' ? 'আমরা ' : language === 'hi' ? 'हमने ' : 'We sent a verification link to '}
+                    <strong className="text-white underline">{registerEmail}</strong>
+                    {language === 'bn' ? ' ঠিকানায় একটি অফিশিয়াল ভেরিফিকেশন লিংক পাঠিয়েছি।' : language === 'hi' ? ' पते पर एक आधिकारिक सत्यापन लिंक भेजा है।' : '.'}
                   </p>
                 </div>
 
                 <div className="rounded-xl bg-black/40 p-2.5 text-[11px] text-zinc-300 text-left space-y-1 border border-pink-900/40">
                   <div className="flex items-center gap-1.5 text-pink-300 font-semibold">
                     <ShieldCheck className="h-3.5 w-3.5 text-pink-400" />
-                    <span>ভেরিফিকেশন নির্দেশনা:</span>
+                    <span>{language === 'bn' ? 'ভেরিফিকেশন নির্দেশনা:' : language === 'hi' ? 'सत्यापन निर्देश:' : 'Verification Instructions:'}</span>
                   </div>
-                  <p>১. আপনার জিমেইল / ইমেইল ইনবক্স (বা স্প্যাম ফোল্ডার) খুলুন।</p>
-                  <p>২. ফায়ারবেস থেকে পাঠানো লিঙ্কে ক্লিক করে ইমেইল নিশ্চিত করুন।</p>
-                  <p>৩. এরপর নিচের বোতামে ক্লিক করে ভেরিফিকেশন চেক করুন।</p>
+                  <p>{language === 'bn' ? '১. আপনার জিমেইল / ইমেইল ইনবক্স (বা স্প্যাম ফোল্ডার) খুলুন।' : language === 'hi' ? '1. अपना ईमेल इनबॉक्स (या स्पैम फ़ोल्डर) खोलें।' : '1. Open your email inbox (or spam folder).'}</p>
+                  <p>{language === 'bn' ? '২. পাঠানো লিঙ্কে ক্লিক করে ইমেইল নিশ্চিত করুন।' : language === 'hi' ? '2. भेजे गए लिंक पर क्लिक करके ईमेल सत्यापित करें।' : '2. Click the link to verify your email.'}</p>
+                  <p>{language === 'bn' ? '৩. এরপর নিচের বোতামে ক্লিক করে ভেরিফিকেশন চেক করুন।' : language === 'hi' ? '3. इसके बाद नीचे दिए गए बटन पर क्लिक करके स्थिति जांचें।' : '3. Then click the button below to check status.'}</p>
                 </div>
               </div>
 
@@ -345,7 +355,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                   className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 py-2.5 text-xs font-bold text-white shadow-lg hover:opacity-95 transition-all disabled:opacity-50 active:scale-98"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${checkingVerification ? 'animate-spin' : ''}`} />
-                  <span>{checkingVerification ? 'যাচাই করা হচ্ছে...' : 'আমি ভেরিফাই করেছি / স্ট্যাটাস চেক করুন'}</span>
+                  <span>{checkingVerification ? (language === 'bn' ? 'যাচাই করা হচ্ছে...' : language === 'hi' ? 'जाँच हो रही है...' : 'Checking...') : t('auth_verify_check_btn', 'আমি ভেরিফাই করেছি / স্ট্যাটাস চেক করুন')}</span>
                 </button>
 
                 <div className="flex gap-2">
@@ -356,7 +366,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                     className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-purple-900/50 bg-[#1c112b] py-2 text-xs font-semibold text-purple-200 hover:text-white hover:bg-purple-900/30 transition-all disabled:opacity-50"
                   >
                     <Mail className="h-3 w-3 text-pink-400" />
-                    <span>{resendingEmail ? 'পাঠানো হচ্ছে...' : 'পুনরায় লিঙ্ক পাঠান'}</span>
+                    <span>{resendingEmail ? (language === 'bn' ? 'পাঠানো হচ্ছে...' : language === 'hi' ? 'भेजा जा रहा है...' : 'Sending...') : t('auth_resend_verification', 'পুনরায় লিঙ্ক পাঠান')}</span>
                   </button>
 
                   <button
@@ -364,7 +374,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                     onClick={handleCancelVerification}
                     className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-zinc-800 bg-[#140c20] py-2 text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition-all"
                   >
-                    <span>← ফর্মে ফিরে যান</span>
+                    <span>{t('auth_back_to_form', '← ফর্মে ফিরে যান')}</span>
                   </button>
                 </div>
               </div>
@@ -397,10 +407,10 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                       d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
                     />
                   </svg>
-                  <span>Google / আসল জিমেইল দিয়ে সরাসরি লগইন</span>
+                  <span>{t('auth_google_login', 'Google দিয়ে সরাসরি লগইন')}</span>
                 </button>
                 <div className="mt-1 text-center">
-                  <span className="text-[10px] text-emerald-400 font-medium">✓ ১০০% ভেরিফায়েড গুগল অ্যাকাউন্ট সুরক্ষা</span>
+                  <span className="text-[10px] text-emerald-400 font-medium">{t('auth_google_verified', '✓ ১০০% ভেরিফায়েড গুগল অ্যাকাউন্ট সুরক্ষা')}</span>
                 </div>
               </div>
 
@@ -410,7 +420,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                   <div className="w-full border-t border-purple-900/40" />
                 </div>
                 <span className="relative bg-[#140c20] px-3 text-[10px] text-zinc-500 uppercase tracking-wider">
-                  অথবা ইমেইল ও পাসওয়ার্ড
+                  {t('auth_or_email', 'অথবা ইমেইল ও পাসওয়ার্ড')}
                 </span>
               </div>
 
@@ -431,7 +441,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                   }`}
                 >
                   <LogIn className="h-3.5 w-3.5" />
-                  <span>লগইন করুন</span>
+                  <span>{t('auth_login_tab', 'লগইন করুন')}</span>
                 </button>
 
                 <button
@@ -449,14 +459,14 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                   }`}
                 >
                   <UserPlus className="h-3.5 w-3.5" />
-                  <span>নতুন একাউন্ট খুলুন</span>
+                  <span>{t('auth_signup_tab', 'নতুন একাউন্ট খুলুন')}</span>
                 </button>
               </div>
 
               {/* Anti-Fraud Notice */}
               <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-purple-950/40 px-2.5 py-1.5 border border-purple-900/30 text-[10px] text-purple-300">
                 <ShieldCheck className="h-3.5 w-3.5 text-pink-400 shrink-0" />
-                <span>নিরাপত্তা নিশ্চিত করতে ফেক জিমেইল, সাময়িক ইনবক্স বা ফেক ফোন নম্বর সম্পূর্ণ নিষিদ্ধ।</span>
+                <span>{t('auth_fraud_notice', 'নিরাপত্তা নিশ্চিত করতে ফেক জিমেইল, সাময়িক ইনবক্স বা ফেক ফোন নম্বর সম্পূর্ণ নিষিদ্ধ।')}</span>
               </div>
 
               {/* Alerts */}
@@ -478,15 +488,15 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
               {isForgotPassword ? (
                 <form onSubmit={handleResetPassword} className="mt-4 space-y-3">
                   <div className="rounded-xl border border-purple-500/30 bg-purple-950/30 p-3 text-xs text-purple-200">
-                    <p className="font-semibold text-white mb-1">পাসওয়ার্ড ভুলে গেছেন?</p>
+                    <p className="font-semibold text-white mb-1">{t('auth_forgot_pass', 'পাসওয়ার্ড ভুলে গেছেন?')}</p>
                     <p className="text-[11px] text-purple-300/80">
-                      আপনার নিবন্ধিত আসল ইমেইল আইডি দিন। আমরা Firebase-এর মাধ্যমে পাসওয়ার্ড রিসেট করার লিংক পাঠিয়ে দেব।
+                      {t('auth_forgot_desc', 'আপনার নিবন্ধিত আসল ইমেইল আইডি দিন। আমরা Firebase-এর মাধ্যমে পাসওয়ার্ড রিসেট করার লিংক পাঠিয়ে দেব।')}
                     </p>
                   </div>
 
                   <div>
                     <label className="text-[11px] font-semibold text-purple-200 block mb-1">
-                      আপনার নিবন্ধিত ইমেইল আইডি *
+                      {t('auth_email_label', 'আপনার ইমেইল আইডি *')}
                     </label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-purple-400" />
@@ -510,7 +520,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                     className="w-full mt-2 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-pink-500 py-2.5 text-xs font-bold text-white shadow-lg hover:opacity-95 transition-all active:scale-98 disabled:opacity-50"
                   >
                     <Mail className="h-3.5 w-3.5" />
-                    <span>{loading ? 'লিংক পাঠানো হচ্ছে...' : 'পাসওয়ার্ড রিসেট লিংক পাঠান'}</span>
+                    <span>{loading ? (language === 'bn' ? 'লিংক পাঠানো হচ্ছে...' : language === 'hi' ? 'भेजा जा रहा है...' : 'Sending link...') : t('auth_send_reset_btn', 'পাসওয়ার্ড রিসেট লিংক পাঠান')}</span>
                   </button>
 
                   <div className="pt-2 text-center">
@@ -523,7 +533,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                       }}
                       className="text-xs text-purple-300 hover:text-white transition-colors underline"
                     >
-                      ← লগইন ফর্মে ফিরে যান
+                      {t('auth_back_to_login', '← লগইন ফর্মে ফিরে যান')}
                     </button>
                   </div>
                 </form>
@@ -532,7 +542,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                 <form onSubmit={handleEmailLogin} className="mt-4 space-y-3">
                   <div>
                     <label className="text-[11px] font-semibold text-purple-200 block mb-1">
-                      আপনার ইমেইল আইডি *
+                      {t('auth_email_label', 'আপনার ইমেইল আইডি *')}
                     </label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-purple-400" />
@@ -549,14 +559,14 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
 
                   <div>
                     <label className="text-[11px] font-semibold text-purple-200 block mb-1">
-                      পাসওয়ার্ড *
+                      {t('auth_password_label', 'পাসওয়ার্ড *')}
                     </label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-purple-400" />
                       <input
                         type={showLoginPassword ? 'text' : 'password'}
                         required
-                        placeholder="আপনার গোপন পাসওয়ার্ড"
+                        placeholder="••••••••"
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
                         className="w-full rounded-xl border border-purple-900/40 bg-black/50 py-2.5 pl-9 pr-9 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none"
@@ -580,7 +590,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                         }}
                         className="text-[11px] text-purple-300 hover:text-pink-300 transition-colors font-medium"
                       >
-                        পাসওয়ার্ড ভুলে গেছেন?
+                        {t('auth_forgot_pass', 'পাসওয়ার্ড ভুলে গেছেন?')}
                       </button>
                     </div>
                   </div>
@@ -591,7 +601,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                     className="w-full mt-2 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-pink-500 py-2.5 text-xs font-bold text-white shadow-lg hover:opacity-95 transition-all active:scale-98 disabled:opacity-50"
                   >
                     <LogIn className="h-3.5 w-3.5" />
-                    <span>{loading ? 'লগইন হচ্ছে...' : 'লগইন করুন ও এগিয়ে যান'}</span>
+                    <span>{loading ? (language === 'bn' ? 'লগইন হচ্ছে...' : language === 'hi' ? 'लॉगिन हो रहा है...' : 'Logging in...') : t('auth_login_btn', 'লগইন করুন ও এগিয়ে যান')}</span>
                   </button>
                 </form>
               ) : (
@@ -599,14 +609,14 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                 <form onSubmit={handleEmailRegister} className="mt-4 space-y-3">
                   <div>
                     <label className="text-[11px] font-semibold text-pink-300 block mb-1">
-                      আপনার পুরো ও আসল নাম *
+                      {t('auth_name_label', 'আপনার পুরো ও আসল নাম *')}
                     </label>
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-pink-400" />
                       <input
                         type="text"
                         required
-                        placeholder="উদা: অনির্বাণ সেন (কমপক্ষে ৩ অক্ষর)"
+                        placeholder={language === 'bn' ? 'উদা: অনির্বাণ সেন (কমপক্ষে ৩ অক্ষর)' : language === 'hi' ? 'उदा: अनिरुद्ध शर्मा (कम से कम 3 अक्षर)' : 'e.g. John Doe (min 3 chars)'}
                         value={registerName}
                         onChange={(e) => setRegisterName(e.target.value)}
                         className="w-full rounded-xl border border-purple-900/40 bg-black/50 py-2.5 pl-9 pr-3 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none"
@@ -616,27 +626,24 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
 
                   <div>
                     <label className="text-[11px] font-semibold text-pink-300 block mb-1">
-                      আসল জিমেইল / ইমেইল আইডি *
+                      {t('auth_email_label', 'আপনার ইমেইল আইডি *')}
                     </label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-pink-400" />
                       <input
                         type="email"
                         required
-                        placeholder="আপনার আসল ইমেইল (উদা: yourname@gmail.com)"
+                        placeholder="yourname@gmail.com"
                         value={registerEmail}
                         onChange={(e) => setRegisterEmail(e.target.value)}
                         className="w-full rounded-xl border border-purple-900/40 bg-black/50 py-2.5 pl-9 pr-3 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none"
                       />
                     </div>
-                    <span className="text-[10px] text-zinc-400 mt-0.5 block">
-                      অস্থায়ী/ফেক মেইল নিষিদ্ধ। নিশ্চিতকরণের জন্য একটি লিঙ্ক পাঠানো হবে।
-                    </span>
                   </div>
 
                   <div>
                     <label className="text-[11px] font-semibold text-pink-300 block mb-1">
-                      সক্রিয় মোবাইল নম্বর *
+                      {t('auth_phone_label', 'সক্রিয় মোবাইল নম্বর *')}
                     </label>
                     <div className="flex gap-2">
                       <select
@@ -657,10 +664,10 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                           required
                           placeholder={
                             registerPhoneCountry === '+91'
-                              ? '১০ অঙ্কের নম্বর (উদা: 9830xxxxxx)'
+                              ? '9830xxxxxx'
                               : registerPhoneCountry === '+880'
-                              ? '১১ অঙ্কের নম্বর (উদা: 017xxxxxxxx)'
-                              : 'আপনার মোবাইল নম্বর দিন'
+                              ? '017xxxxxxxx'
+                              : 'Mobile Number'
                           }
                           value={registerPhone}
                           onChange={(e) => setRegisterPhone(e.target.value)}
@@ -672,7 +679,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
 
                   <div>
                     <label className="text-[11px] font-semibold text-pink-300 block mb-1">
-                      শক্তিশালী পাসওয়ার্ড (কমপক্ষে ৮ অক্ষর) *
+                      {t('auth_strong_pass_label', 'শক্তিশালী পাসওয়ার্ড (কমপক্ষে ৮ অক্ষর) *')}
                     </label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-pink-400" />
@@ -680,7 +687,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                         type={showRegisterPassword ? 'text' : 'password'}
                         required
                         minLength={8}
-                        placeholder="কমপক্ষে ৮ অক্ষর (ইংরেজি বর্ণ ও সংখ্যা)"
+                        placeholder="••••••••"
                         value={registerPassword}
                         onChange={(e) => setRegisterPassword(e.target.value)}
                         className="w-full rounded-xl border border-purple-900/40 bg-black/50 py-2.5 pl-9 pr-9 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none"
@@ -697,7 +704,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
 
                   <div>
                     <label className="text-[11px] font-semibold text-pink-300 block mb-1">
-                      পাসওয়ার্ড নিশ্চিত করুন *
+                      {t('auth_confirm_pass_label', 'পাসওয়ার্ড নিশ্চিত করুন *')}
                     </label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-pink-400" />
@@ -705,7 +712,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                         type={showRegisterPassword ? 'text' : 'password'}
                         required
                         minLength={8}
-                        placeholder="একই পাসওয়ার্ড পুনরায় টাইপ করুন"
+                        placeholder="••••••••"
                         value={registerConfirmPassword}
                         onChange={(e) => setRegisterConfirmPassword(e.target.value)}
                         className="w-full rounded-xl border border-purple-900/40 bg-black/50 py-2.5 pl-9 pr-3 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none"
@@ -719,14 +726,14 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
                     className="w-full mt-2 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 py-2.5 text-xs font-bold text-white shadow-lg hover:opacity-95 transition-all active:scale-98 disabled:opacity-50"
                   >
                     <UserPlus className="h-3.5 w-3.5" />
-                    <span>{loading ? 'ভেরিফিকেশন যাচাই ও অ্যাকাউন্ট তৈরি হচ্ছে...' : 'অ্যাকাউন্ট খুলুন ও এগিয়ে যান'}</span>
+                    <span>{loading ? (language === 'bn' ? 'অ্যাকাউন্ট তৈরি হচ্ছে...' : language === 'hi' ? 'खाता बनाया जा रहा है...' : 'Creating account...') : t('auth_signup_btn', 'অ্যাকাউন্ট খুলুন ও এগিয়ে যান')}</span>
                   </button>
                 </form>
               )}
 
               <div className="mt-4 text-center">
                 <p className="text-[10px] text-zinc-500 leading-relaxed">
-                  লগইন সম্পন্ন হলে আপনার পছন্দের গল্প, ইতিহাস এবং ২০ টাকার পাস অ্যাকাউন্টে সংরক্ষিত থাকবে।
+                  {language === 'bn' ? 'লগইন সম্পন্ন হলে আপনার পছন্দের গল্প, ইতিহাস এবং ২০ টাকার পাস অ্যাকাউন্টে সংরক্ষিত থাকবে।' : language === 'hi' ? 'लॉगिन पूर्ण होने पर आपकी पसंदीदा कहानियाँ, इतिहास और पास आपके खाते में सुरक्षित रहेंगे।' : 'Once logged in, your favorite stories, history, and pass remain saved in your account.'}
                 </p>
               </div>
             </>

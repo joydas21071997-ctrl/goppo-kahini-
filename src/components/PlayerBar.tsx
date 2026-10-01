@@ -13,6 +13,7 @@ import {
   X
 } from 'lucide-react';
 import { Story, ThemeMode } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 interface PlayerBarProps {
   currentStory: Story | null;
@@ -53,6 +54,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   onDismissPlayer,
   theme = 'purple-light',
 }) => {
+  const { t, language } = useLanguage();
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [showSleepMenu, setShowSleepMenu] = useState(false);
   const isLight = theme === 'purple-light' || theme === 'calm-green';
@@ -85,11 +87,11 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
 
   const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
   const sleepPresets = [
-    { label: 'বন্ধ', val: null },
-    { label: '১৫ মিনিট', val: 15 },
-    { label: '৩০ মিনিট', val: 30 },
-    { label: '৪৫ মিনিট', val: 45 },
-    { label: '৬০ মিনিট', val: 60 },
+    { label: t('sleep_timer_off', 'বন্ধ'), val: null },
+    { label: `15 ${t('minute_abbrev', 'মিনিট')}`, val: 15 },
+    { label: `30 ${t('minute_abbrev', 'মিনিট')}`, val: 30 },
+    { label: `45 ${t('minute_abbrev', 'মিনিট')}`, val: 45 },
+    { label: `60 ${t('minute_abbrev', 'মিনিট')}`, val: 60 },
   ];
 
   return (
@@ -158,7 +160,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           {/* Skip Back 15s */}
           <button
             onClick={onSkipBack}
-            title="১৫ সেকেন্ড পেছনে"
+            title={t('sec_back', '১৫ সেকেন্ড পেছনে')}
             className={`p-1.5 transition-colors ${isLight ? 'text-zinc-500 hover:text-purple-900' : 'text-zinc-400 hover:text-white'}`}
           >
             <RotateCcw className="h-4 w-4" />
@@ -180,7 +182,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           {/* Desktop Only: Skip Forward 15s */}
           <button
             onClick={onSkipForward}
-            title="১৫ সেকেন্ড সামনে"
+            title={t('sec_forward', '১৫ সেকেন্ড সামনে')}
             className={`hidden sm:inline-flex p-1.5 transition-colors ${isLight ? 'text-zinc-500 hover:text-purple-900' : 'text-zinc-400 hover:text-white'}`}
           >
             <RotateCw className="h-4 w-4" />
@@ -190,7 +192,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           <button
             onClick={onOpenFullPlayer}
             className={`sm:hidden p-1.5 ${isLight ? 'text-zinc-600 hover:text-purple-950' : 'text-zinc-400 hover:text-white'}`}
-            title="সম্পূর্ণ প্লেয়ার খুলুন"
+            title={t('fullscreen_player', 'সম্পূর্ণ প্লেয়ার খুলুন')}
           >
             <ChevronUp className="h-4 w-4" />
           </button>
@@ -204,7 +206,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                   ? 'bg-purple-50 border-purple-200 text-zinc-600 hover:text-rose-600 hover:border-rose-300'
                   : 'bg-zinc-900 border-zinc-750 text-zinc-400 hover:text-rose-400 hover:border-rose-800/60'
               }`}
-              title="প্লেয়ার বন্ধ করুন ও ইন্টারফেস পরিষ্কার করুন"
+              title={t('dismiss_player', 'প্লেয়ার বন্ধ করুন')}
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -225,7 +227,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           <div className="relative">
             <button
               onClick={() => setShowSleepMenu(!showSleepMenu)}
-              title="স্লিপ টাইমার"
+              title={t('sleep_timer', 'স্লিপ টাইমার')}
               className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition-colors ${
                 sleepTimerRemaining !== null
                   ? isLight
@@ -253,7 +255,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                 <div className={`px-2 py-1 text-[10px] uppercase font-bold border-b ${
                   isLight ? 'text-zinc-500 border-purple-100' : 'text-zinc-400 border-purple-900/30'
                 }`}>
-                  স্লিপ টাইমার
+                  {t('sleep_timer', 'স্লিপ টাইমার')}
                 </div>
                 {sleepPresets.map((preset) => (
                   <button
@@ -345,7 +347,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           {/* Full Screen Player Expand Button */}
           <button
             onClick={onOpenFullPlayer}
-            title="ফুল স্ক্রিন প্লেয়ার"
+            title={t('fullscreen_player', 'ফুল স্ক্রিন প্লেয়ার')}
             className={`p-1.5 rounded-lg transition-colors ${
               isLight ? 'text-zinc-500 hover:text-purple-950 hover:bg-purple-50' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
             }`}
@@ -357,7 +359,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           {onDismissPlayer && (
             <button
               onClick={onDismissPlayer}
-              title="প্লেয়ার বন্ধ করুন ও ইন্টারফেস সম্পূর্ণ পরিষ্কার রাখুন"
+              title={t('dismiss_player', 'প্লেয়ার বন্ধ করুন')}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all shrink-0 ml-1 border ${
                 isLight
                   ? 'bg-purple-50 hover:bg-rose-50 text-zinc-600 hover:text-rose-600 border-purple-200 hover:border-rose-300'
@@ -365,7 +367,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
               }`}
             >
               <X className="h-3.5 w-3.5" />
-              <span>বন্ধ করুন</span>
+              <span>{t('close', 'বন্ধ করুন')}</span>
             </button>
           )}
         </div>

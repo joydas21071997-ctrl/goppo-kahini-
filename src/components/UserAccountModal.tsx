@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { AudienceUser, UserSubscription } from '../types';
 import { sendPasswordReset, changeUserPassword } from '../services/firebaseAuth';
+import { useLanguage } from '../context/LanguageContext';
 
 interface UserAccountModalProps {
   isOpen: boolean;
@@ -47,6 +48,7 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
   onOpenHistory,
   onUpdateSubscriptionExpiry,
 }) => {
+  const { t, language } = useLanguage();
   // Tabs within User Account
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
@@ -65,7 +67,7 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
   const expiryDateString = subscription?.subscriptionExpiryDate || subscription?.nextBillingDate || '';
   
   let daysRemaining = 0;
-  let formattedExpiry = 'নির্ধারিত নেই';
+  let formattedExpiry = language === 'hi' ? 'निर्धारित नहीं' : language === 'en' ? 'Not set' : 'নির্ধারিত নেই';
 
   if (expiryDateString) {
     const expiry = new Date(expiryDateString);
@@ -74,7 +76,8 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
     daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     try {
-      formattedExpiry = expiry.toLocaleDateString('bn-BD', {
+      const locale = language === 'hi' ? 'hi-IN' : language === 'en' ? 'en-US' : 'bn-BD';
+      formattedExpiry = expiry.toLocaleDateString(locale, {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
@@ -92,18 +95,18 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
     setPasswordStatus(null);
 
     if (newPassword.length < 6) {
-      setPasswordStatus({ type: 'error', message: 'নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' });
+      setPasswordStatus({ type: 'error', message: t('password_min_chars', 'নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।') });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordStatus({ type: 'error', message: 'নতুন পাসওয়ার্ড ও কনফার্ম পাসওয়ার্ড মিলছে না।' });
+      setPasswordStatus({ type: 'error', message: t('password_mismatch', 'নতুন পাসওয়ার্ড ও কনফার্ম পাসওয়ার্ড মিলছে না।') });
       return;
     }
 
     try {
       await changeUserPassword(newPassword);
-      setPasswordStatus({ type: 'success', message: 'পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!' });
+      setPasswordStatus({ type: 'success', message: t('password_changed_success', 'পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!') });
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -112,7 +115,7 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
         setPasswordStatus(null);
       }, 2000);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'পাসওয়ার্ড পরিবর্তন ব্যর্থ হয়েছে।';
+      const msg = err instanceof Error ? err.message : t('password_change_failed', 'পাসওয়ার্ড পরিবর্তন ব্যর্থ হয়েছে।');
       setPasswordStatus({ type: 'error', message: msg });
     }
   };
@@ -152,16 +155,16 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
             </div>
             <div>
               <h2 className="font-serif-story text-base font-bold text-white">
-                শ্রোতা অ্যাকাউন্ট ও প্রোফাইল
+                {t('account_title', 'শ্রোতা অ্যাকাউন্ট ও প্রোফাইল')}
               </h2>
-              <p className="text-[11px] text-zinc-400">আপনার সাবস্ক্রিপশন, পাস ও ব্যক্তিগত তথ্য</p>
+              <p className="text-[11px] text-zinc-400">{t('account_sub', 'আপনার সাবস্ক্রিপশন, পাস ও ব্যক্তিগত তথ্য')}</p>
             </div>
           </div>
 
           <button
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1f132e] text-zinc-400 hover:text-white border border-purple-900/30 transition-colors"
-            title="বন্ধ করুন"
+            title={t('close', 'বন্ধ করুন')}
           >
             <X className="h-4 w-4" />
           </button>
@@ -186,7 +189,7 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                 </div>
               )}
               {isSubscribed && (
-                <span className="absolute -top-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-pink-500 text-white shadow-md ring-2 ring-[#140c20]" title="প্রিমিয়াম পাস সক্রিয়">
+                <span className="absolute -top-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-pink-500 text-white shadow-md ring-2 ring-[#140c20]" title="Premium Pass">
                   <Crown className="h-3.5 w-3.5 fill-white" />
                 </span>
               )}
@@ -199,7 +202,7 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                   {currentUser.displayName}
                 </h3>
                 <span className="rounded-full bg-purple-500/20 border border-purple-500/30 px-2 py-0.5 text-[10px] font-semibold text-purple-300">
-                  {currentUser.provider === 'google' ? 'Google Account' : 'ইমেইল অ্যাকাউন্ট'}
+                  {currentUser.provider === 'google' ? 'Google Account' : (language === 'bn' ? 'ইমেইল অ্যাকাউন্ট' : language === 'hi' ? 'ईमेल खाता' : 'Email Account')}
                 </span>
               </div>
 
@@ -209,7 +212,7 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
               </div>
 
               <div className="pt-1 flex items-center justify-center sm:justify-start gap-2 text-[11px] text-zinc-500">
-                <span>যোগদান: {new Date(currentUser.createdAt).toLocaleDateString('bn-BD')}</span>
+                <span>{language === 'bn' ? 'যোগদান: ' : language === 'hi' ? 'शामिल हुए: ' : 'Joined: '}{new Date(currentUser.createdAt).toLocaleDateString(language === 'bn' ? 'bn-BD' : language === 'hi' ? 'hi-IN' : 'en-US')}</span>
               </div>
             </div>
           </div>
@@ -232,20 +235,24 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <h4 className="text-sm font-bold text-white">
-                      গপ্পো কাহিনী ২০ টাকার মাসিক পাস
+                      {language === 'bn' ? 'গপ্পো কাহিনী মাসিক পাস' : 'Goppo Kahini Monthly Pass'}
                     </h4>
                     {isSubscribed ? (
                       <span className="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300">
-                        ACTIVE (সক্রিয়)
+                        {language === 'bn' ? 'ACTIVE (সক্রিয়)' : language === 'hi' ? 'सक्रिय (ACTIVE)' : 'ACTIVE'}
                       </span>
                     ) : (
                       <span className="rounded-full bg-rose-500/20 border border-rose-500/40 px-2.5 py-0.5 text-[10px] font-bold text-rose-300">
-                        {subscription?.status === 'expired' ? 'EXPIRED (মেয়াদোত্তীর্ণ)' : 'FREE (পাস নেই)'}
+                        {subscription?.status === 'expired' 
+                          ? (language === 'bn' ? 'EXPIRED (মেয়াদোত্তীর্ণ)' : language === 'hi' ? 'समाप्त (EXPIRED)' : 'EXPIRED')
+                          : (language === 'bn' ? 'FREE (পাস নেই)' : language === 'hi' ? 'FREE (पास नहीं है)' : 'FREE')}
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-zinc-300 mt-0.5">
-                    {isSubscribed ? 'প্রিমিয়াম অডিও গল্প, নতুন রিলিজ ও পূর্ণ গল্প শুনুন' : 'প্রিমিয়াম গল্প শুনতে পাস সক্রিয় করুন'}
+                    {isSubscribed 
+                      ? (language === 'bn' ? 'প্রিমিয়াম অডিও গল্প, নতুন রিলিজ ও পূর্ণ গল্প শুনুন' : language === 'hi' ? 'प्रीमियम ऑडियो कहानियाँ, नए रिलीज़ और पूरी कहानियाँ सुनें' : 'Listen to premium stories, new releases, and full audiobooks')
+                      : (language === 'bn' ? 'প্রিমিয়াম গল্প শুনতে পাস সক্রিয় করুন' : language === 'hi' ? 'प्रीमियम कहानियाँ सुनने के लिए पास सक्रिय करें' : 'Activate pass to unlock all premium audio stories')}
                   </p>
                 </div>
               </div>
@@ -256,7 +263,7 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
               <div className="flex items-center justify-between text-xs">
                 <span className="text-zinc-400 flex items-center gap-1">
                   <Calendar className="h-3.5 w-3.5 text-purple-400" />
-                  Pass Active Until (মেয়াদ শেষ):
+                  {language === 'bn' ? 'মেয়াদ শেষ:' : language === 'hi' ? 'वैधता समाप्त:' : 'Valid Until:'}
                 </span>
                 <span className="font-semibold text-white">
                   {formattedExpiry}
@@ -267,10 +274,10 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-zinc-400 flex items-center gap-1">
                     <Clock className="h-3.5 w-3.5 text-pink-400" />
-                    অবশিষ্ট সময়:
+                    {language === 'bn' ? 'অবশিষ্ট সময়:' : language === 'hi' ? 'शेष समय:' : 'Time Remaining:'}
                   </span>
                   <span className={`font-bold ${daysRemaining <= 3 ? 'text-rose-400' : daysRemaining <= 7 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                    {daysRemaining > 0 ? `${daysRemaining} দিন বাকি` : 'আজই শেষ দিন'}
+                    {daysRemaining > 0 ? `${daysRemaining} ${t('account_days_remaining', 'দিন বাকি')}` : t('account_today_last_day', 'আজই শেষ দিন')}
                   </span>
                 </div>
               )}
@@ -281,14 +288,14 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                   <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
                   <div className="flex-1">
                     <p className="font-semibold">
-                      {daysRemaining === 1
-                        ? 'আপনার Monthly Pass-এর মেয়াদ আর ১ দিন পরে শেষ হবে।'
-                        : daysRemaining <= 3
+                      {language === 'bn' 
                         ? `আপনার Monthly Pass-এর মেয়াদ আর ${daysRemaining} দিন পরে শেষ হবে।`
-                        : `আপনার Monthly Pass-এর মেয়াদ আর ${daysRemaining} দিন পরে শেষ হবে।`}
+                        : language === 'hi'
+                        ? `आपके Monthly Pass की वैधता ${daysRemaining} दिनों में समाप्त हो जाएगी।`
+                        : `Your Monthly Pass will expire in ${daysRemaining} day(s).`}
                     </p>
                     <p className="text-[11px] text-amber-300/80 mt-0.5">
-                      নির্বিঘ্নে গল্প উপভোগ চালিয়ে যেতে এখনই আপনার পাস রিনিউ করে নিন।
+                      {language === 'bn' ? 'নির্বিঘ্নে গল্প উপভোগ চালিয়ে যেতে এখনই আপনার পাস রিনিউ করে নিন।' : language === 'hi' ? 'निर्बाध कहानियों का आनंद लेने के लिए अभी अपना पास रिन्यू करें।' : 'Renew your pass now to continue uninterrupted listening.'}
                     </p>
                   </div>
                 </div>
@@ -300,10 +307,10 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                   <AlertTriangle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="font-semibold">
-                      আপনার Premium Pass-এর মেয়াদ শেষ হয়েছে (অথবা এখনও সক্রিয় করা হয়নি)।
+                      {language === 'bn' ? 'আপনার Premium Pass-এর মেয়াদ শেষ হয়েছে (অথবা এখনও সক্রিয় করা হয়নি)।' : language === 'hi' ? 'आपके Premium Pass की अवधि समाप्त हो चुकी है (या अभी सक्रिय नहीं है)।' : 'Your Premium Pass has expired (or has not been activated yet).'}
                     </p>
                     <p className="text-[11px] text-rose-300/80 mt-0.5">
-                      আপনার অ্যাকাউন্ট ও সংরক্ষিত বুকমার্ক বহাল আছে। প্রিমিয়াম গল্প শুনতে ₹২০-তে পাস সক্রিয় করুন।
+                      {language === 'bn' ? 'আপনার অ্যাকাউন্ট ও সংরক্ষিত বুকমার্ক বহাল আছে। প্রিমিয়াম গল্প শুনতে পাস সক্রিয় করুন।' : language === 'hi' ? 'आपका खाता और बुकमार्क सुरक्षित हैं। प्रीमियम कहानियों के लिए पास सक्रिय करें।' : 'Your account and bookmarks are safe. Activate pass to listen to premium stories.'}
                     </p>
                   </div>
                 </div>
@@ -319,49 +326,49 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                 className="w-full mt-2 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-pink-500 py-2.5 px-4 text-xs font-bold text-white shadow-lg hover:opacity-95 transition-all active:scale-98"
               >
                 <Sparkles className="h-4 w-4 fill-white" />
-                <span>{isSubscribed ? 'Renew Pass (₹২০ দিয়ে মেয়াদ বৃদ্ধি করুন)' : 'Renew for ₹20 (₹২০-তে পাস সক্রিয় করুন)'}</span>
+                <span>{isSubscribed ? t('account_renew_pass', 'পাস রিনিউ করুন') : t('take_pass_btn', 'মাসিক পাস নিন')}</span>
               </button>
             </div>
 
             {/* Quick Simulation Bar (To preview 30 days, 7 days, 3 days, 1 day, Expired) */}
             {onUpdateSubscriptionExpiry && (
               <div className="mt-3 pt-2.5 border-t border-purple-900/30 flex flex-wrap items-center justify-between gap-1 text-[10px]">
-                <span className="text-zinc-500">রিমাইন্ডার টেস্ট প্রিভিউ:</span>
+                <span className="text-zinc-500">{t('reminder_test_preview', 'রিমাইন্ডার টেস্ট প্রিভিউ:')}</span>
                 <div className="flex gap-1">
                   <button
                     type="button"
                     onClick={() => setSimulatedDays(30)}
                     className="px-1.5 py-0.5 rounded bg-purple-900/40 hover:bg-purple-800 text-purple-300 transition-colors"
                   >
-                    ৩০ দিন
+                    {t('days_30', '৩০ দিন')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setSimulatedDays(7)}
                     className="px-1.5 py-0.5 rounded bg-amber-900/40 hover:bg-amber-800 text-amber-300 transition-colors"
                   >
-                    ৭ দিন
+                    {t('days_7', '৭ দিন')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setSimulatedDays(3)}
                     className="px-1.5 py-0.5 rounded bg-amber-900/40 hover:bg-amber-800 text-amber-300 transition-colors"
                   >
-                    ৩ দিন
+                    {t('days_3', '৩ দিন')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setSimulatedDays(1)}
                     className="px-1.5 py-0.5 rounded bg-rose-900/40 hover:bg-rose-800 text-rose-300 transition-colors"
                   >
-                    ১ দিন
+                    {t('days_1', '১ দিন')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setSimulatedDays(-1)}
                     className="px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
                   >
-                    মেয়াদ শেষ
+                    {t('expired_label', 'মেয়াদ শেষ')}
                   </button>
                 </div>
               </div>
@@ -371,7 +378,7 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
           {/* 3. Shortcuts: Bookmarks & Listening History */}
           <div className="space-y-2">
             <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider px-1">
-              আমার লাইব্রেরি শর্টকাট
+              {language === 'bn' ? 'আমার লাইব্রেরি শর্টকাট' : language === 'hi' ? 'मेरी लाइब्रेरी शॉर्टकट' : 'My Library Shortcuts'}
             </span>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -386,8 +393,8 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                   <Bookmark className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="font-semibold text-white">সংরক্ষিত গল্প</p>
-                  <p className="text-[10px] text-zinc-400">আমার বুকমার্ক</p>
+                  <p className="font-semibold text-white">{t('saved_bookmarks', 'সংরক্ষিত গল্প')}</p>
+                  <p className="text-[10px] text-zinc-400">{language === 'bn' ? 'আমার বুকমার্ক' : language === 'hi' ? 'मेरे बुकमार्क' : 'My Bookmarks'}</p>
                 </div>
               </button>
 
@@ -403,8 +410,8 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                   <Headphones className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="font-semibold text-white">শোনার ইতিহাস</p>
-                  <p className="text-[10px] text-zinc-400">পূর্বে যা শুনেছেন</p>
+                  <p className="font-semibold text-white">{t('listening_history', 'শোনার ইতিহাস')}</p>
+                  <p className="text-[10px] text-zinc-400">{language === 'bn' ? 'পূর্বে যা শুনেছেন' : language === 'hi' ? 'पहले जो सुना' : 'Previously heard'}</p>
                 </div>
               </button>
             </div>
@@ -415,7 +422,7 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <KeyRound className="h-4 w-4 text-purple-400" />
-                <span className="text-xs font-bold text-white">অ্যাকাউন্ট সিকিউরিটি</span>
+                <span className="text-xs font-bold text-white">{language === 'bn' ? 'অ্যাকাউন্ট সিকিউরিটি' : language === 'hi' ? 'खाता सुरक्षा' : 'Account Security'}</span>
               </div>
               
               <button
@@ -423,7 +430,7 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                 onClick={() => setShowChangePassword(!showChangePassword)}
                 className="text-xs font-medium text-pink-400 hover:text-pink-300"
               >
-                {showChangePassword ? 'বাতিল' : 'পাসওয়ার্ড পরিবর্তন'}
+                {showChangePassword ? (language === 'bn' ? 'বাতিল' : language === 'hi' ? 'रद्द करें' : 'Cancel') : t('account_change_password', 'পাসওয়ার্ড পরিবর্তন')}
               </button>
             </div>
 
@@ -431,39 +438,39 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
             {showChangePassword && (
               <form onSubmit={handleChangePassword} className="space-y-2.5 pt-2 border-t border-purple-900/30 animate-fadeIn">
                 <div>
-                  <label className="text-[11px] text-zinc-400 block mb-1">পুরাতন পাসওয়ার্ড</label>
+                  <label className="text-[11px] text-zinc-400 block mb-1">{language === 'bn' ? 'পুরাতন পাসওয়ার্ড' : language === 'hi' ? 'पुराना पासवर्ड' : 'Current Password'}</label>
                   <input
                     type={showPasswordText ? 'text' : 'password'}
                     value={oldPassword}
                     onChange={(e) => setOldPassword(e.target.value)}
                     required
-                    placeholder="বর্তমান পাসওয়ার্ড"
+                    placeholder="••••••••"
                     className="w-full rounded-xl border border-purple-900/50 bg-black/40 px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[11px] text-zinc-400 block mb-1">নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label>
+                  <label className="text-[11px] text-zinc-400 block mb-1">{language === 'bn' ? 'নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)' : language === 'hi' ? 'नया पासवर्ड (कम से कम 6 अक्षर)' : 'New Password (min 6 chars)'}</label>
                   <input
                     type={showPasswordText ? 'text' : 'password'}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
                     minLength={6}
-                    placeholder="নতুন পাসওয়ার্ড দিন"
+                    placeholder="••••••••"
                     className="w-full rounded-xl border border-purple-900/50 bg-black/40 px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[11px] text-zinc-400 block mb-1">নতুন পাসওয়ার্ড নিশ্চিত করুন</label>
+                  <label className="text-[11px] text-zinc-400 block mb-1">{language === 'bn' ? 'নতুন পাসওয়ার্ড নিশ্চিত করুন' : language === 'hi' ? 'नए पासवर्ड की पुष्टि करें' : 'Confirm New Password'}</label>
                   <input
                     type={showPasswordText ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     minLength={6}
-                    placeholder="আবার লিখুন"
+                    placeholder="••••••••"
                     className="w-full rounded-xl border border-purple-900/50 bg-black/40 px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-pink-400 focus:outline-none"
                   />
                 </div>
@@ -475,14 +482,14 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
                     className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-white"
                   >
                     {showPasswordText ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                    <span>{showPasswordText ? 'পাসওয়ার্ড লুকান' : 'পাসওয়ার্ড দেখুন'}</span>
+                    <span>{showPasswordText ? (language === 'bn' ? 'পাসওয়ার্ড লুকান' : language === 'hi' ? 'पासवर्ड छुपाएं' : 'Hide Password') : (language === 'bn' ? 'পাসওয়ার্ড দেখুন' : language === 'hi' ? 'पासवर्ड देखें' : 'Show Password')}</span>
                   </button>
 
                   <button
                     type="submit"
                     className="rounded-xl bg-purple-600 hover:bg-purple-500 px-4 py-1.5 text-xs font-bold text-white transition-all shadow-md"
                   >
-                    পাসওয়ার্ড সংরক্ষণ
+                    {language === 'bn' ? 'পাসওয়ার্ড সংরক্ষণ' : language === 'hi' ? 'पासवर्ड सहेजें' : 'Save Password'}
                   </button>
                 </div>
 
@@ -501,20 +508,20 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
 
             {/* Forgot Password trigger */}
             <div className="pt-2 border-t border-purple-900/30 flex items-center justify-between text-xs">
-              <span className="text-zinc-400">পাসওয়ার্ড ভুলে গেছেন?</span>
+              <span className="text-zinc-400">{t('auth_forgot_pass', 'পাসওয়ার্ড ভুলে গেছেন?')}</span>
               <button
                 type="button"
                 onClick={handleForgotPassword}
                 className="text-purple-300 hover:text-pink-300 font-medium"
               >
-                রিসেট লিংক পাঠান
+                {language === 'bn' ? 'রিসেট লিংক পাঠান' : language === 'hi' ? 'रीसेट लिंक भेजें' : 'Send Reset Link'}
               </button>
             </div>
 
             {forgotPasswordSent && (
               <div className="rounded-xl bg-purple-950/50 border border-purple-500/40 p-2.5 text-xs text-purple-200 flex items-center gap-2">
                 <Send className="h-4 w-4 text-pink-400 shrink-0" />
-                <span>আপনার ইমেইলে ({currentUser.email}) পাসওয়ার্ড রিসেট করার নির্দেশনা পাঠানো হয়েছে।</span>
+                <span>{language === 'bn' ? `আপনার ইমেইলে (${currentUser.email}) পাসওয়ার্ড রিসেট করার নির্দেশনা পাঠানো হয়েছে।` : language === 'hi' ? `आपके ईमेल (${currentUser.email}) पर पासवर्ड रीसेट निर्देश भेजे गए हैं।` : `Password reset instructions sent to ${currentUser.email}.`}</span>
               </div>
             )}
           </div>
@@ -530,10 +537,10 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({
               className="w-full flex items-center justify-center gap-2 rounded-xl border border-rose-900/40 bg-rose-950/20 hover:bg-rose-950/40 py-2.5 px-4 text-xs font-semibold text-rose-300 hover:text-rose-200 transition-all"
             >
               <LogOut className="h-4 w-4" />
-              <span>অ্যাকাউন্ট থেকে লগআউট করুন</span>
+              <span>{t('logout', 'অ্যাকাউন্ট থেকে লগআউট করুন')}</span>
             </button>
             <p className="text-center text-[10px] text-zinc-500 mt-2">
-              লগআউট করলেও আপনার সংরক্ষিত সাবস্ক্রিপশন ও ডেটা মুছে যাবে না। পুনরায় লগইন করলেই ফেরত পাবেন।
+              {language === 'bn' ? 'লগআউট করলেও আপনার সংরক্ষিত সাবস্ক্রিপশন ও ডেটা মুছে যাবে না।' : language === 'hi' ? 'लॉगआउट करने पर भी आपकी सदस्यता और डेटा सुरक्षित रहेगा।' : 'Logging out will not delete your saved subscription or bookmarks.'}
             </p>
           </div>
 

@@ -13,6 +13,7 @@ import {
   Flame
 } from 'lucide-react';
 import { Story, UserSubscription, ThemeMode } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 interface StoryCardProps {
   story: Story;
@@ -34,6 +35,7 @@ interface StoryCardProps {
   theme?: ThemeMode;
   compact?: boolean;
   rankingNumber?: number;
+  isNew?: boolean;
 }
 
 export const StoryCard: React.FC<StoryCardProps> = ({
@@ -56,7 +58,9 @@ export const StoryCard: React.FC<StoryCardProps> = ({
   theme = 'purple-light',
   compact = false,
   rankingNumber,
+  isNew = false,
 }) => {
+  const { t, language } = useLanguage();
   const isLight = theme === 'purple-light' || theme === 'calm-green';
   const isCurrentlyPlaying = Boolean(isPlayingThis ?? isPlaying);
   const isSubscribed = Boolean(isSubscribedProp ?? (subscription?.status === 'active'));
@@ -75,7 +79,8 @@ export const StoryCard: React.FC<StoryCardProps> = ({
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
-    return `${mins} মি.`;
+    const unit = language === 'en' ? 'm' : language === 'hi' ? 'मि.' : 'মি.';
+    return `${mins} ${unit}`;
   };
 
   const handleActionClick = (e: React.MouseEvent) => {
@@ -143,16 +148,26 @@ export const StoryCard: React.FC<StoryCardProps> = ({
                 <span>#{rankingNumber}</span>
               </span>
             )}
-            {story.isLittlePassOnly ? (
+            {isNew && (
+              <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-white shadow-sm ring-1 ring-white/20">
+                <Sparkles className="h-2.5 w-2.5 fill-white" />
+                <span>{t('badge_new', 'নতুন')}</span>
+              </span>
+            )}
+            {isUnlockedIndividually ? (
+              <span className="flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-white shadow-sm">
+                <span>{language === 'en' ? 'Purchased' : language === 'hi' ? 'खरीदा हुआ' : 'কেনা হয়েছে'}</span>
+              </span>
+            ) : story.isLittlePassOnly ? (
               story.lengthCategory === 'mega' ? (
                 <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-white shadow-sm">
                   <Crown className="h-2.5 w-2.5 fill-white" />
-                  <span>মেগা পাস</span>
+                  <span>{t('badge_mega', 'মেগা পাস')}</span>
                 </span>
               ) : (
                 <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-white shadow-sm">
-                  <Sparkles className="h-2.5 w-2.5 fill-white" />
-                  <span>₹২০ পাস</span>
+                  <Crown className="h-2.5 w-2.5 fill-white" />
+                  <span>{t('badge_pass', 'পাস গল্প')}</span>
                 </span>
               )
             ) : (
@@ -161,7 +176,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
                   ? 'bg-emerald-50 text-emerald-800 border border-emerald-300'
                   : 'bg-emerald-500/20 backdrop-blur-md text-emerald-300 border border-emerald-500/40'
               }`}>
-                ✓ ফ্রি গল্প
+                ✓ {t('badge_free', 'ফ্রি গল্প')}
               </span>
             )}
           </div>
@@ -179,7 +194,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
                   ? 'bg-white/90 text-zinc-600 hover:bg-white hover:text-purple-700 shadow-xs'
                   : 'bg-black/70 text-zinc-300 hover:bg-zinc-800 hover:text-pink-300'
               }`}
-              title="বুকমার্ক করুন"
+              title={t('bookmark', 'বুকমার্ক করুন')}
             >
               <Bookmark
                 className={`h-3.5 w-3.5 ${
@@ -219,7 +234,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
           </span>
 
           <span className="rounded-md bg-black/80 backdrop-blur-xs px-1.5 py-0.5 text-[9px] font-medium text-purple-200 border border-white/10">
-            {story.lengthCategory === 'mini' ? 'মিনি' : story.lengthCategory === 'medium' ? 'মাঝারি' : 'মেগা'}
+            {story.lengthCategory === 'mini' ? t('dur_mini_badge', 'মিনি') : story.lengthCategory === 'medium' ? t('dur_med_badge', 'মাঝারি') : t('dur_mega_badge', 'মেগা')}
           </span>
         </div>
       </div>
@@ -236,7 +251,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
               {story.genre}
             </span>
             <span className={`text-[9px] ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>
-              • {story.chapters.length} পর্ব
+              • {story.chapters.length} {t('episodes', 'পর্ব')}
             </span>
           </div>
 
@@ -275,7 +290,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
                 ? 'bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-900'
                 : 'bg-black/60 hover:bg-purple-950/40 border-purple-500/30 hover:border-pink-400 text-zinc-200'
             }`}
-            title="রেটিং ও মন্তব্য"
+            title={t('rating_reviews', 'রেটিং ও মন্তব্য')}
           >
             <Star className={`h-2.5 w-2.5 ${
               story.rating && story.rating > 0 
@@ -283,7 +298,7 @@ export const StoryCard: React.FC<StoryCardProps> = ({
                 : (isLight ? 'text-zinc-400' : 'text-zinc-500')
             }`} />
             <span className="font-bold text-[10px] font-mono">
-              {story.rating && story.rating > 0 ? story.rating.toFixed(1) : 'নতুন'}
+              {story.rating && story.rating > 0 ? story.rating.toFixed(1) : t('badge_new', 'নতুন')}
             </span>
             <span className="text-[9px] opacity-70">
               ({story.reviewsCount || 0})

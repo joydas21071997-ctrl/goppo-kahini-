@@ -16,7 +16,7 @@ import {
   Mail,
   Phone
 } from 'lucide-react';
-import { Story, UpiConfig, PaymentTransaction, UserSubscription, AudienceUser } from '../types';
+import { Story, Series, Episode, UpiConfig, PaymentTransaction, UserSubscription, AudienceUser } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 
 import {
@@ -33,6 +33,8 @@ interface SubscriptionModalProps {
   onSubmitPayment: (transaction: Omit<PaymentTransaction, 'id'>) => void;
   existingTransactions: PaymentTransaction[];
   targetStory?: Story | null;
+  targetEpisode?: Episode | null;
+  targetSeries?: Series | null;
   currentSubscription?: UserSubscription;
   currentUser?: AudienceUser | null;
   onOpenUserAuth?: () => void;
@@ -52,15 +54,18 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   onSubmitPayment,
   existingTransactions,
   targetStory,
+  targetEpisode,
+  targetSeries,
   currentSubscription,
   currentUser,
   onOpenUserAuth,
 }) => {
   const { t, language } = useLanguage();
-  // Plan selection (Default to ₹20 Monthly Pass)
+  // Plan selection (Default to single_story if purchasing single episode or mega story)
   const isTargetMegaStory = targetStory?.lengthCategory === 'mega';
+  const isTargetSingleItem = Boolean(targetEpisode || isTargetMegaStory);
   const [selectedPlan, setSelectedPlan] = useState<'little_monthly' | 'little_annual' | 'single_story'>(
-    isTargetMegaStory ? 'single_story' : 'little_monthly'
+    isTargetSingleItem ? 'single_story' : 'little_monthly'
   );
 
   // Auto-generate UTR on modal open
@@ -114,10 +119,16 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
       validity: t('days_365', '৩৬৫ দিন'),
     },
     single_story: {
-      name: targetStory ? `${t('single_story_label', 'একক গল্প')}: ${targetStory.title}` : t('single_mega_story', 'একক মেগা গল্প'),
-      price: targetStory?.singlePurchasePrice || 10,
+      name: targetEpisode
+        ? `পর্ব ${targetEpisode.episodeNumber}: ${targetEpisode.title}`
+        : targetStory
+        ? `${t('single_story_label', 'একক গল্প')}: ${targetStory.title}`
+        : t('single_mega_story', 'একক মেগা গল্প'),
+      price: targetEpisode ? (targetEpisode.price || 5) : (targetStory?.singlePurchasePrice || 10),
       period: t('lifetime_label', 'আজীবন'),
-      description: t('single_story_access_desc', 'শুধুমাত্র এই গল্পটির আজীবন পূর্ণ এক্সেস'),
+      description: targetEpisode
+        ? `ধারাবাহিক "${targetSeries?.title || 'সিরিজ'}" এর পর্ব ${targetEpisode.episodeNumber} আনলক টিকিট`
+        : t('single_story_access_desc', 'শুধুমাত্র এই গল্পটির আজীবন পূর্ণ এক্সেস'),
       validity: t('lifetime_label', 'আজীবন'),
     },
   };
@@ -230,7 +241,9 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
         approvedDate: `${dateStr} ${timeStr}`,
         subscriptionStartDate: dateStr,
         subscriptionExpiryDate: expiryStr,
-        targetStoryId: selectedPlan === 'single_story' ? targetStory?.id : undefined,
+        targetStoryId: selectedPlan === 'single_story' ? (targetEpisode ? targetEpisode.id : targetStory?.id) : undefined,
+        targetEpisodeId: selectedPlan === 'single_story' && targetEpisode ? targetEpisode.id : undefined,
+        targetSeriesId: selectedPlan === 'single_story' && targetEpisode ? targetEpisode.seriesId : undefined,
       });
 
       setIsSubmitting(false);

@@ -90,9 +90,14 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
     setLoading(true);
     try {
       const res = await signInWithGoogle();
+      if (res.cancelled || !res.user) {
+        // User closed or cancelled the popup - reset state smoothly without treating as an error
+        setLoading(false);
+        return;
+      }
       setSuccessNotice(t('auth_google_login_success', 'Google অ্যাকাউন্টে সফলভাবে লগইন হয়েছে!'));
       setTimeout(() => {
-        onLoginSuccess(res.user);
+        onLoginSuccess(res.user!);
         onClose();
       }, 500);
     } catch (err: unknown) {

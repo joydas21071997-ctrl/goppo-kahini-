@@ -20,6 +20,7 @@ import {
 export type AdminTab =
   | 'overview'
   | 'stories'
+  | 'series'
   | 'podcasts'
   | 'payments'
   | 'crm'

@@ -365,6 +365,15 @@
       "schema": "StoryEpisode",
       "description": "Episodes belonging to a story"
     },
+    "/series/{seriesId}": {
+      "description": "Multi-episode audio series metadata and master records"
+    },
+    "/series/{seriesId}/episodes/{episodeId}": {
+      "description": "Episodes belonging to a series with individual pricing, duration, and audio"
+    },
+    "/system_notifications/{notifId}": {
+      "description": "System release notifications for new stories and episodes"
+    },
     "/transactions/{transactionId}": {
       "schema": "PaymentTransaction",
       "description": "Payment logs and subscription purchases"

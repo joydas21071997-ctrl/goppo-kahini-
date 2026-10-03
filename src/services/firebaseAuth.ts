@@ -95,7 +95,7 @@ export function saveAudienceUser(user: AudienceUser | null) {
 }
 
 // Real Firebase Google Sign-In with popup (no mock or demo fallbacks)
-export async function signInWithGoogle(): Promise<{ user: AudienceUser }> {
+export async function signInWithGoogle(): Promise<{ user?: AudienceUser; cancelled?: boolean }> {
   const auth = getGoppoAuth();
   if (!auth) {
     throw new Error('Firebase Authentication সিস্টেম এই মুহূর্তে সংযোগযোগ্য নয়। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।');
@@ -121,7 +121,19 @@ export async function signInWithGoogle(): Promise<{ user: AudienceUser }> {
     return { user: audienceUser };
   } catch (err: unknown) {
     const error = err as { code?: string; message?: string };
-    console.error('Firebase Google Auth popup error:', error?.code, error?.message);
+    
+    // User voluntarily closed or cancelled the popup - expected user interaction, not a runtime exception
+    if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request') {
+      console.info('[Auth] Google Sign-In popup closed by user.');
+      return { cancelled: true };
+    }
+
+    if (error?.code === 'auth/popup-blocked') {
+      console.warn('[Auth] Google Sign-In popup was blocked by browser.');
+      throw new Error(translateAuthError('auth/popup-blocked'));
+    }
+
+    console.warn('Firebase Google Auth notice:', error?.code, error?.message);
     throw new Error(translateAuthError(error?.code || ''));
   }
 }

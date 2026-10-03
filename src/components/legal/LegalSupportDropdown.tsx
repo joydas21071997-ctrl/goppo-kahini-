@@ -4,16 +4,8 @@ import {
   Shield,
   FileText,
   RefreshCcw,
-  AlertTriangle,
-  Mail,
   Scale,
-  Trash2,
-  CreditCard,
-  Users,
-  ShieldAlert,
-  Server,
-  Smartphone,
-  Building
+  Trash2
 } from 'lucide-react';
 import { LegalPolicySlug } from '../../data/legalPolicies';
 import { ThemeMode } from '../../types';

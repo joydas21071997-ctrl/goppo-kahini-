@@ -16,8 +16,7 @@ import {
   Phone,
   MessageSquare,
   ChevronDown,
-  ChevronUp,
-  AlertCircle
+  ChevronUp
 } from 'lucide-react';
 import {
   LEGAL_POLICIES_DATA,

@@ -228,7 +228,7 @@ export async function ensureAdminFirebaseAuth(): Promise<boolean> {
  * Sign in Admin with Google directly using Firebase Auth popup.
  * Guarantees that Firebase Storage and Firestore see a verified token for joydas.21071997@gmail.com.
  */
-export async function signInAdminWithGoogle(): Promise<{ success: boolean; email?: string; error?: string }> {
+export async function signInAdminWithGoogle(): Promise<{ success: boolean; email?: string; error?: string; cancelled?: boolean }> {
   const auth = getGoppoAuth();
   if (!auth) return { success: false, error: 'Firebase Auth is not available' };
 
@@ -244,6 +244,11 @@ export async function signInAdminWithGoogle(): Promise<{ success: boolean; email
       return { success: false, error: 'অননুমোদিত একাউন্ট: শুধুমাত্র joydas.21071997@gmail.com অনুমোদিত।' };
     }
   } catch (err: unknown) {
+    const error = err as { code?: string; message?: string };
+    if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request') {
+      console.info('[AdminAuth] Google sign-in popup was closed by user.');
+      return { success: false, cancelled: true };
+    }
     const msg = err instanceof Error ? err.message : String(err);
     return { success: false, error: msg };
   }

@@ -12,7 +12,8 @@ import {
   ShieldCheck,
   Building,
   ChevronRight,
-  Scale
+  Scale,
+  Layers
 } from 'lucide-react';
 import { AdminTab } from '../types';
 
@@ -54,6 +55,11 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
       id: 'stories',
       label: 'অডিও গল্প আপলোড ও তালিকা',
       icon: <Music className="w-4 h-4" />,
+    },
+    {
+      id: 'series',
+      label: 'ধারাবাহিক সিরিজ ও এপিসোড',
+      icon: <Layers className="w-4 h-4 text-purple-400" />,
     },
     {
       id: 'podcasts',

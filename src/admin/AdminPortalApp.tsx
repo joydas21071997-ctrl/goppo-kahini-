@@ -7,6 +7,7 @@ import { AdminHeader } from './components/AdminHeader';
 import { AdminSidebar } from './components/AdminSidebar';
 import { AdminOverviewStats } from './components/AdminOverviewStats';
 import { AdminStoryUploader } from './components/AdminStoryUploader';
+import { AdminSeriesManager } from './components/AdminSeriesManager';
 import { AdminPodcastUploader } from './components/AdminPodcastUploader';
 import { AdminSubscriberCRM } from './components/AdminSubscriberCRM';
 import { AdminNarratorApprovals } from './components/AdminNarratorApprovals';
@@ -215,6 +216,10 @@ export const AdminPortalApp: React.FC<AdminPortalProps> = ({
               onAddStory={onAddStory}
               onDeleteStory={onDeleteStory}
             />
+          )}
+
+          {activeTab === 'series' && (
+            <AdminSeriesManager themeMode={adminTheme} />
           )}
 
           {activeTab === 'podcasts' && (

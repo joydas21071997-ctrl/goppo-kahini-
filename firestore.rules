@@ -51,6 +51,24 @@ service cloud.firestore {
       }
     }
 
+    // ২(খ). ধারাবাহিক অডিও সিরিজ ও এপিসোড (Series & Episodes)
+    // Public read, Admin write only
+    match /series/{seriesId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+
+      match /episodes/{episodeId} {
+        allow read: if true;
+        allow create, update, delete: if isAdmin();
+      }
+    }
+
+    // সিস্টেম নোটিফিকেশন লগ (System Notifications)
+    match /system_notifications/{notifId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     // ৩. ব্যবহারকারীদের প্রোফাইল ও ডেটা (Users, Bookmarks, History)
     // User can read/write their own profile; Admin can read/manage user profiles
     match /users/{userId} {

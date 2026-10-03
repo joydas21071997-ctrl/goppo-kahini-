@@ -97,6 +97,9 @@ export const CreatorLoginModal: React.FC<CreatorLoginModalProps> = ({
         };
         onLoginSuccess(session);
         onClose();
+      } else if (res.cancelled) {
+        // User closed the popup, silently reset state
+        return;
       } else {
         setError(res.error || 'Google সাইন-ইন সম্পন্ন হয়নি। শুধুমাত্র joydas.21071997@gmail.com অনুমোদিত।');
       }

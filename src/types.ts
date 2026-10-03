@@ -128,6 +128,8 @@ export interface PaymentTransaction {
   subscriptionStartDate?: string;
   subscriptionExpiryDate?: string;
   targetStoryId?: string;
+  targetEpisodeId?: string;
+  targetSeriesId?: string;
   rejectionReason?: string;
   
   // Refund Fields
@@ -195,6 +197,7 @@ export interface UserSubscription {
   nextBillingDate: string;
   subscriptionExpiryDate?: string;
   unlockedStoryIds?: string[]; // IDs of single mega stories unlocked
+  unlockedEpisodeIds?: string[]; // IDs of single series episodes unlocked
   customerEmail?: string;
   customerName?: string;
   customerPhone?: string;
@@ -363,4 +366,51 @@ export interface AboutMissionData {
   youtubeAudienceNote: string;
   keyCommitments: string[];
   teamMembers: TeamMember[];
+}
+
+// =========================================================================
+// SERIES & EPISODE SYSTEM (ADD-ONLY EXTENSIONS)
+// =========================================================================
+
+export type SeriesStatus = 'draft' | 'published' | 'archived';
+
+export interface Series {
+  id: string;
+  title: string;
+  description: string;
+  thumbnail: string;
+  category: string;
+  genre: string;
+  author: string;
+  status: SeriesStatus;
+  featured?: boolean;
+  sortOrder?: number;
+  episodesCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type EpisodeAccessType = 'free' | 'paid' | 'trailer';
+export type EpisodeStatus = 'draft' | 'scheduled' | 'published' | 'archived';
+
+export interface Episode {
+  id: string;
+  seriesId: string;
+  episodeNumber: number;
+  title: string;
+  description: string;
+  audioUrl: string;
+  thumbnail: string;
+  duration: number; // in seconds
+  accessType: EpisodeAccessType;
+  price?: number; // e.g. ₹5, ₹2
+  currency?: string; // e.g. 'INR'
+  status: EpisodeStatus;
+  publishedAt?: string;
+  scheduledAt?: string;
+  notificationEnabled?: boolean;
+  notificationSent?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  sortOrder?: number;
 }

@@ -47,9 +47,16 @@ import {
   AdminActivityLog,
   UpiConfig,
   ListeningHistoryItem,
-  ItemReview
+  ItemReview,
+  Series,
+  Episode
 } from './types';
 import { INITIAL_STORIES, AMBIENT_SOUND_TRACKS } from './data/stories';
+import { INITIAL_SERIES, INITIAL_SERIES_EPISODES } from './data/seriesData';
+import { subscribeSeriesFromFirestore, subscribeEpisodesForSeries } from './services/firestoreSeries';
+import { evaluateEpisodeAccess } from './utils/episodeAccess';
+import { SeriesSection } from './components/series/SeriesSection';
+import { SeriesDetailModal } from './components/series/SeriesDetailModal';
 import { INITIAL_LIFE_STORIES, INITIAL_LIFE_SUBMISSIONS } from './data/lifeStories';
 import {
   INITIAL_PAYMENT_TRANSACTIONS,
@@ -369,6 +376,15 @@ export default function App() {
     return INITIAL_LIFE_SUBMISSIONS;
   });
 
+  // --- Series & Episodes State (ADD-ONLY) ---
+  const [seriesList, setSeriesList] = useState<Series[]>(INITIAL_SERIES);
+  const [activeSeries, setActiveSeries] = useState<Series | null>(null);
+  const [seriesEpisodes, setSeriesEpisodes] = useState<Episode[]>([]);
+  const [isSeriesModalOpen, setIsSeriesModalOpen] = useState(false);
+  const [activePlayingEpisode, setActivePlayingEpisode] = useState<Episode | null>(null);
+  const [targetPaywallEpisode, setTargetPaywallEpisode] = useState<Episode | null>(null);
+  const [targetPaywallSeries, setTargetPaywallSeries] = useState<Series | null>(null);
+
   // --- Audio Player State ---
   // Starts as null so bottom screen stays 100% clean until user taps play on a story
   const [currentStory, setCurrentStory] = useState<Story | null>(null);
@@ -506,7 +522,7 @@ export default function App() {
     if (targetKey && targetKey in OLD_POLICY_REDIRECTS) {
       const canonicalSlug = OLD_POLICY_REDIRECTS[targetKey];
       try {
-        if (path && path !== canonicalSlug && typeof window !== 'undefined') {
+        if (path && path !== canonicalSlug && path !== 'delete-account' && typeof window !== 'undefined') {
           window.history.replaceState({ policy: canonicalSlug }, '', `/${canonicalSlug}`);
         }
       } catch {
@@ -586,6 +602,28 @@ export default function App() {
       if (typeof unsubscribe === 'function') unsubscribe();
     };
   }, []);
+
+  // Listen to Firestore Series real-time synchronization (ADD-ONLY)
+  useEffect(() => {
+    const unsub = subscribeSeriesFromFirestore((firestoreSeries) => {
+      if (firestoreSeries && firestoreSeries.length > 0) {
+        setSeriesList(firestoreSeries);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // Listen to Episodes for currently active Series
+  useEffect(() => {
+    if (!activeSeries) {
+      setSeriesEpisodes([]);
+      return;
+    }
+    const unsub = subscribeEpisodesForSeries(activeSeries.id, (eps) => {
+      setSeriesEpisodes(eps);
+    });
+    return () => unsub();
+  }, [activeSeries?.id]);
 
   // Listen to Firestore Transactions real-time synchronization (Admin reads all; authenticated user reads only own)
   useEffect(() => {
@@ -934,12 +972,25 @@ export default function App() {
         setIsPlaying(false);
         setCurrentTime(0);
         setCurrentLineIndex(0);
+
+        // Next Episode Check (Rule 23)
+        if (activePlayingEpisode && activeSeries) {
+          const nextEp = seriesEpisodes.find(
+            (e) => e.episodeNumber === activePlayingEpisode.episodeNumber + 1
+          );
+          if (nextEp) {
+            const nextAccess = evaluateEpisodeAccess(nextEp, subscription);
+            if (nextAccess.unlocked) {
+              handlePlayEpisode(activeSeries, nextEp);
+            }
+          }
+        }
       },
       (playing) => {
         setIsPlaying(playing);
       }
     );
-  }, [currentStory, subscription]);
+  }, [currentStory, subscription, activePlayingEpisode, activeSeries, seriesEpisodes]);
 
   // Sleep Timer Countdown Tick
   useEffect(() => {
@@ -1023,6 +1074,7 @@ export default function App() {
     audioEngine.pause();
     setIsPlaying(false);
     setCurrentStory(null);
+    setActivePlayingEpisode(null);
   };
 
   // Play a story directly from listening history
@@ -1093,6 +1145,101 @@ export default function App() {
 
     handlePlayStory(episodeAsStory);
   };
+
+  // Play a Series Episode seamlessly reusing the existing audio player architecture
+  const handlePlayEpisode = (series: Series, episode: Episode) => {
+    // 1. User login check
+    if (!currentUser) {
+      handleOpenUserAuth(
+        'play_story',
+        t('auth_prompt_listen', 'গল্প শুনতে অনুগ্রহ করে প্রথমে আপনার অ্যাকাউন্টে লগইন করুন বা রেজিস্টার করুন।')
+      );
+      return;
+    }
+
+    // 2. Evaluate Episode Access (Rules 4, 6, 7, 8, 9)
+    const access = evaluateEpisodeAccess(episode, subscription);
+    if (!access.unlocked) {
+      if (access.reason === 'needs_pass') {
+        // Previously purchased, but Main Pass expired -> Prompt to renew ₹20 pass
+        handleOpenSubscriptionFlow(null);
+        return;
+      }
+      // Needs individual episode ticket (e.g. ₹5)
+      setTargetPaywallEpisode(episode);
+      setTargetPaywallSeries(series);
+      setTargetPaywallStory(null);
+      setIsSubscriptionModalOpen(true);
+      return;
+    }
+
+    // 3. Adapt Episode into Story for audio player
+    setActiveSeries(series);
+    setActivePlayingEpisode(episode);
+
+    const episodeAsStory: Story = {
+      id: episode.id,
+      title: episode.title,
+      tagline: `${series.title} • পর্ব ${episode.episodeNumber}`,
+      description: episode.description || series.description,
+      author: series.author || 'জয় (Joy)',
+      narrator: series.author || 'কথক',
+      voiceStyle: 'mysterious',
+      genre: (series.genre as StoryGenre) || 'রোমাঞ্চ ও থ্রিলার',
+      lengthCategory: 'medium',
+      duration: episode.duration,
+      isLittlePassOnly: episode.accessType === 'paid',
+      pricingType: episode.accessType === 'paid' ? 'single_pay' : 'free',
+      singlePurchasePrice: episode.price || 0,
+      audioUrl: episode.audioUrl,
+      coverImage: episode.thumbnail || series.thumbnail,
+      colorGradient: 'from-purple-900 via-pink-950 to-black',
+      releaseDate: episode.publishedAt || episode.createdAt,
+      rating: 4.95,
+      listenCount: 1,
+      chapters: [],
+      transcript: [],
+      fullStoryText: episode.description,
+      storyType: 'series_episode',
+    };
+
+    handlePlayStoryDirect(episodeAsStory);
+  };
+
+  // Series / Episode Deep-linking handler (Rules 18, 19)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const pathname = window.location.pathname;
+    const searchParams = new URLSearchParams(window.location.search);
+
+    let targetSeriesId: string | null = null;
+    let targetEpId: string | null = null;
+
+    const seriesMatch = pathname.match(/^\/series\/([^/]+)(?:\/episode\/([^/]+))?/);
+    if (seriesMatch) {
+      targetSeriesId = seriesMatch[1];
+      targetEpId = seriesMatch[2] || null;
+    } else if (searchParams.has('series')) {
+      targetSeriesId = searchParams.get('series');
+      targetEpId = searchParams.get('episode');
+    }
+
+    if (targetSeriesId) {
+      const foundSeries = seriesList.find((s) => s.id === targetSeriesId);
+      if (foundSeries) {
+        setActiveSeries(foundSeries);
+        setIsSeriesModalOpen(true);
+
+        if (targetEpId) {
+          const epList = INITIAL_SERIES_EPISODES[targetSeriesId] || [];
+          const foundEp = epList.find((e) => e.id === targetEpId);
+          if (foundEp) {
+            handlePlayEpisode(foundSeries, foundEp);
+          }
+        }
+      }
+    }
+  }, [seriesList]);
 
   const handlePauseStory = () => {
     audioEngine.pause();
@@ -1261,7 +1408,12 @@ export default function App() {
       startDate: txData.paymentDate,
       subscriptionExpiryDate: expiryStr,
       nextBillingDate: expiryStr,
-      unlockedStoryIds: txData.targetStoryId ? [txData.targetStoryId] : [],
+      unlockedStoryIds: txData.targetStoryId
+        ? Array.from(new Set([...(subscription?.unlockedStoryIds || []), txData.targetStoryId]))
+        : subscription?.unlockedStoryIds || [],
+      unlockedEpisodeIds: txData.targetEpisodeId
+        ? Array.from(new Set([...(subscription?.unlockedEpisodeIds || []), txData.targetEpisodeId]))
+        : subscription?.unlockedEpisodeIds || [],
       autoRenew: false,
       pendingTransactionId: newTxId,
       pendingUtr: txData.utrTransactionId,
@@ -1297,6 +1449,13 @@ export default function App() {
       timestamp: timeString,
     };
     setAdminActivityLogs((prev) => [newLog, ...prev]);
+
+    // If user unlocked an episode, start playback
+    if (targetPaywallEpisode && targetPaywallSeries) {
+      handlePlayEpisode(targetPaywallSeries, targetPaywallEpisode);
+      setTargetPaywallEpisode(null);
+      setTargetPaywallSeries(null);
+    }
   };
 
   // 2. Admin approves payment
@@ -1380,6 +1539,9 @@ export default function App() {
         unlockedStoryIds: tx.targetStoryId
           ? Array.from(new Set([...(prev.unlockedStoryIds || []), tx.targetStoryId]))
           : prev.unlockedStoryIds || [],
+        unlockedEpisodeIds: tx.targetEpisodeId
+          ? Array.from(new Set([...(prev.unlockedEpisodeIds || []), tx.targetEpisodeId]))
+          : prev.unlockedEpisodeIds || [],
       }));
 
       // Log in Activity Log
@@ -1393,10 +1555,14 @@ export default function App() {
       };
       setAdminActivityLogs((prev) => [log, ...prev]);
 
-      // If user was waiting for paywalled story, start playback
+      // If user was waiting for paywalled story or episode, start playback
       if (targetPaywallStory) {
         handlePlayStory(targetPaywallStory);
         setTargetPaywallStory(null);
+      } else if (targetPaywallEpisode && targetPaywallSeries) {
+        handlePlayEpisode(targetPaywallSeries, targetPaywallEpisode);
+        setTargetPaywallEpisode(null);
+        setTargetPaywallSeries(null);
       }
     }
   };
@@ -2236,8 +2402,18 @@ export default function App() {
           </section>
 
           {/* Main Catalog */}
-          <main className="mx-auto max-w-7xl w-full flex-1 px-3 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <main className="mx-auto max-w-7xl w-full flex-1 px-3 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
             
+            {/* New Series Section (ADD-ONLY, Rule 21) */}
+            <SeriesSection
+              seriesList={seriesList}
+              onSelectSeries={(series) => {
+                setActiveSeries(series);
+                setIsSeriesModalOpen(true);
+              }}
+              theme={theme}
+            />
+
             {/* Clean, Premium Filter & Explore Section */}
             <FilterExploreSection
               selectedGenre={selectedGenre}
@@ -2872,14 +3048,45 @@ export default function App() {
       {/* Direct Bank UPI Subscription & Pass Modal */}
       <SubscriptionModal
         isOpen={isSubscriptionModalOpen}
-        onClose={() => setIsSubscriptionModalOpen(false)}
+        onClose={() => {
+          setIsSubscriptionModalOpen(false);
+          setTargetPaywallEpisode(null);
+          setTargetPaywallSeries(null);
+        }}
         upiConfig={upiConfig}
         onSubmitPayment={handleSubmitPayment}
         existingTransactions={paymentTransactions}
         targetStory={targetPaywallStory}
+        targetEpisode={targetPaywallEpisode}
+        targetSeries={targetPaywallSeries}
         currentSubscription={subscription}
         currentUser={currentUser}
         onOpenUserAuth={() => handleOpenUserAuth('take_pass')}
+      />
+
+      {/* Series Detail Modal (ADD-ONLY, Rule 20) */}
+      <SeriesDetailModal
+        isOpen={isSeriesModalOpen}
+        onClose={() => setIsSeriesModalOpen(false)}
+        series={activeSeries}
+        episodes={seriesEpisodes}
+        subscription={subscription}
+        currentPlayingEpisodeId={activePlayingEpisode?.id}
+        isPlaying={isPlaying}
+        onPlayEpisode={handlePlayEpisode}
+        onUnlockEpisode={(series, ep) => {
+          setTargetPaywallEpisode(ep);
+          setTargetPaywallSeries(series);
+          setTargetPaywallStory(null);
+          setIsSubscriptionModalOpen(true);
+        }}
+        onRenewMainPass={() => {
+          setTargetPaywallStory(null);
+          setTargetPaywallEpisode(null);
+          setTargetPaywallSeries(null);
+          handleOpenSubscriptionFlow(null);
+        }}
+        theme={theme}
       />
 
       {/* Subscription Manager Modal with Refund & Cancellation Flows */}

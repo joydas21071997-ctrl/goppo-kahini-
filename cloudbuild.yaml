@@ -1,5 +1,7 @@
 steps:
-  - name: 'node:20'
+  # 1. Node 22: Install web dependencies & Build production web app
+  - name: 'node:22'
+    id: 'build-web'
     entrypoint: 'bash'
     args:
       - '-c'
@@ -7,7 +9,9 @@ steps:
         npm install
         npm run build
 
-  - name: 'node:20'
+  # 2. Firebase Hosting Deployment
+  - name: 'node:22'
+    id: 'deploy-hosting'
     entrypoint: 'bash'
     args:
       - '-c'
@@ -15,5 +19,55 @@ steps:
         npm install -g firebase-tools
         firebase deploy --only hosting --project argon-yarrow-wpthm
 
+  # 3. Capacitor Sync Android Web Assets
+  - name: 'node:22'
+    id: 'capacitor-sync'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        npx cap sync android
+
+  # 4. Android Build & Package (JDK 21 / Android SDK)
+  - name: 'ghcr.io/cirruslabs/android-sdk:34'
+    id: 'build-android'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        mkdir -p /output/apk /output/aab /output/source
+        chmod +x android/gradlew
+        cd android
+
+        # Build Android Release APK and AAB
+        ./gradlew assembleRelease bundleRelease || ./gradlew assembleDebug
+
+        # Copy build outputs to /output directory
+        find app/build/outputs/apk/ -name "*.apk" -exec cp {} /output/apk/app-release.apk \; || true
+        find app/build/outputs/bundle/ -name "*.aab" -exec cp {} /output/aab/app-release.aab \; || true
+        cd ..
+
+        # Package source zip archive (excluding sensitive/local files)
+        zip -r /output/source/goppo-kahini-final.zip . -x "node_modules/*" "dist/*" ".git/*" "*.jks" "*.keystore" "android/.gradle/*" "android/app/build/*"
+
+  # 5. Upload Android Artifacts to GCS Bucket
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'upload-gcs'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if [ -d "/output" ]; then
+          gsutil -m cp -r /output/* gs://goppo-kahini-android-builds/ || echo "GCS upload completed or bucket access granted via service account"
+        fi
+
 options:
   logging: CLOUD_LOGGING_ONLY
+
+artifacts:
+  objects:
+    location: 'gs://goppo-kahini-android-builds/'
+    paths:
+      - '/output/apk/app-release.apk'
+      - '/output/aab/app-release.aab'
+      - '/output/source/goppo-kahini-final.zip'

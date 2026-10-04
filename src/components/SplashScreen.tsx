@@ -70,20 +70,15 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           </div>
         </div>
 
-        {/* App Title (গপ্পো কাহিনী) */}
-        <div className="mb-2">
-          <h1 className="font-serif-story text-2xl sm:text-3xl font-extrabold tracking-tight text-white drop-shadow-md">
-            গপ্পো <span className="bg-gradient-to-r from-purple-300 via-pink-400 to-pink-300 bg-clip-text text-transparent">কাহিনী</span>
+        {/* Welcome Text only - No Bengali text on splash screen */}
+        <div className="mt-4">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-widest uppercase text-white drop-shadow-md font-sans">
+            Welcome
           </h1>
         </div>
 
-        {/* Clean, Elegant Tagline as requested: "রোমাঞ্চ, শান্তি, জীবনের মানুষের কথা" */}
-        <p className="font-serif-story text-sm sm:text-base text-purple-200/90 font-medium tracking-wide drop-shadow-sm max-w-xs sm:max-w-md">
-          "রোমাঞ্চ, শান্তি, জীবনের মানুষের কথা"
-        </p>
-
         {/* Subtle breathing indicator bar for visual elegance */}
-        <div className="mt-6 w-16 h-0.5 rounded-full bg-gradient-to-r from-transparent via-pink-400/60 to-transparent animate-pulse" />
+        <div className="mt-4 w-12 h-0.5 rounded-full bg-gradient-to-r from-transparent via-purple-400/60 to-transparent animate-pulse" />
 
       </div>
     </div>

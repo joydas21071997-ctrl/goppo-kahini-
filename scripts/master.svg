@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Purple Squircle Background -->
+  <rect width="1024" height="1024" rx="225" ry="225" fill="#6028ea"/>
+
+  <!-- Green 'G' with Arrow Crossbar -->
+  <path d="
+    M 651.2 357.4
+    A 62 62 0 0 0 734.2 265.3
+    A 332 332 0 1 0 844 512
+    L 588 512
+    L 678.1 637.2
+    A 208 208 0 1 1 651.2 357.4
+    Z" fill="#3fe574"/>
+
+  <!-- 5 White Audio Waveform Bars -->
+  <rect x="373" y="477" width="38" height="70" rx="19" fill="#ffffff"/>
+  <rect x="433" y="412" width="38" height="200" rx="19" fill="#ffffff"/>
+  <rect x="493" y="372" width="38" height="280" rx="19" fill="#ffffff"/>
+  <rect x="553" y="412" width="38" height="200" rx="19" fill="#ffffff"/>
+  <rect x="613" y="477" width="38" height="70" rx="19" fill="#ffffff"/>
+</svg>

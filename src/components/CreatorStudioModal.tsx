@@ -66,6 +66,7 @@ import {
   TeamMember
 } from '../types';
 import { INITIAL_ABOUT_MISSION_DATA } from '../data/aboutMission';
+import { saveAboutMissionToFirestore } from '../services/firestoreAdminData';
 import { AdminPaymentManagement } from './AdminPaymentManagement';
 
 interface CreatorStudioModalProps {
@@ -2663,6 +2664,7 @@ export const CreatorStudioModal: React.FC<CreatorStudioModalProps> = ({
                     setAboutMissionData(updated);
                     localStorage.setItem('goppo_about_mission_data', JSON.stringify(updated));
                     window.dispatchEvent(new Event('goppo_about_mission_updated'));
+                    saveAboutMissionToFirestore(updated).catch(() => {});
                     setAboutSaveSuccess(true);
                     setTimeout(() => setAboutSaveSuccess(false), 3000);
                   }}
@@ -2786,6 +2788,7 @@ export const CreatorStudioModal: React.FC<CreatorStudioModalProps> = ({
                     setAboutMissionData(updated);
                     localStorage.setItem('goppo_about_mission_data', JSON.stringify(updated));
                     window.dispatchEvent(new Event('goppo_about_mission_updated'));
+                    saveAboutMissionToFirestore(updated).catch(() => {});
 
                     setNewMemberName('');
                     setNewMemberRole('');
@@ -2847,6 +2850,7 @@ export const CreatorStudioModal: React.FC<CreatorStudioModalProps> = ({
                               setAboutMissionData(updated);
                               localStorage.setItem('goppo_about_mission_data', JSON.stringify(updated));
                               window.dispatchEvent(new Event('goppo_about_mission_updated'));
+                              saveAboutMissionToFirestore(updated).catch(() => {});
                             }
                           }}
                           className="text-zinc-500 hover:text-rose-400 p-1 transition-colors"

@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   setDoc,
   deleteDoc,
@@ -11,6 +12,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { getGoppoFirestore } from './firestoreUser';
+import { ensureAdminFirebaseAuth } from './adminAuth';
 import {
   PaymentTransaction,
   SubscriberLead,
@@ -19,6 +21,7 @@ import {
   LifeStoryEpisode,
   UpiConfig,
   AdminActivityLog,
+  AboutMissionData,
 } from '../types';
 
 export enum OperationType {
@@ -593,6 +596,7 @@ export function subscribeUpiConfigFromFirestore(
 }
 
 export async function saveUpiConfigToFirestore(config: UpiConfig): Promise<boolean> {
+  await ensureAdminFirebaseAuth().catch(() => {});
   const db = getGoppoFirestore();
   if (!db) return false;
 
@@ -666,6 +670,7 @@ export function subscribeAdminLogsFromFirestore(
 }
 
 export async function saveAdminLogToFirestore(log: AdminActivityLog): Promise<boolean> {
+  await ensureAdminFirebaseAuth().catch(() => {});
   const db = getGoppoFirestore();
   if (!db || !log.id) return false;
 
@@ -678,3 +683,92 @@ export async function saveAdminLogToFirestore(log: AdminActivityLog): Promise<bo
     return false;
   }
 }
+
+// ==========================================
+// 8. ABOUT & MISSION (system_settings/about_mission)
+// ==========================================
+
+export async function getAboutMissionFromFirestore(): Promise<AboutMissionData | null> {
+  const db = getGoppoFirestore();
+  if (!db) return null;
+
+  try {
+    const docRef = doc(db, 'system_settings', 'about_mission');
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const d = snap.data();
+      return {
+        missionTitle: d.missionTitle || '',
+        missionStatement: d.missionStatement || '',
+        youtubeAudienceNote: d.youtubeAudienceNote || '',
+        keyCommitments: Array.isArray(d.keyCommitments) ? d.keyCommitments : [],
+        teamMembers: Array.isArray(d.teamMembers) ? d.teamMembers : [],
+      };
+    }
+    return null;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, 'system_settings/about_mission');
+    return null;
+  }
+}
+
+export function subscribeAboutMissionFromFirestore(
+  onUpdate: (data: AboutMissionData) => void,
+  onError?: (error: unknown) => void
+): () => void {
+  const db = getGoppoFirestore();
+  if (!db) {
+    return () => {};
+  }
+
+  try {
+    const docRef = doc(db, 'system_settings', 'about_mission');
+    const unsubscribe = onSnapshot(
+      docRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const d = snapshot.data();
+          onUpdate({
+            missionTitle: d.missionTitle || '',
+            missionStatement: d.missionStatement || '',
+            youtubeAudienceNote: d.youtubeAudienceNote || '',
+            keyCommitments: Array.isArray(d.keyCommitments) ? d.keyCommitments : [],
+            teamMembers: Array.isArray(d.teamMembers) ? d.teamMembers : [],
+          });
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, 'system_settings/about_mission');
+        if (onError) onError(error);
+      }
+    );
+
+    return unsubscribe;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, 'system_settings/about_mission');
+    return () => {};
+  }
+}
+
+export async function saveAboutMissionToFirestore(data: AboutMissionData): Promise<boolean> {
+  await ensureAdminFirebaseAuth().catch(() => {});
+  const db = getGoppoFirestore();
+  if (!db) return false;
+
+  try {
+    const docRef = doc(db, 'system_settings', 'about_mission');
+    const cleanData: Record<string, any> = { ...data };
+    Object.keys(cleanData).forEach((key) => {
+      if (cleanData[key] === undefined) {
+        delete cleanData[key];
+      }
+    });
+
+    await setDoc(docRef, cleanData, { merge: true });
+    return true;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'system_settings/about_mission');
+    return false;
+  }
+}
+

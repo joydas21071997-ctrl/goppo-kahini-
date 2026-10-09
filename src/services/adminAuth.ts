@@ -161,6 +161,19 @@ export function isAuthorizedAdmin(
 }
 
 /**
+ * Checks if the current Firebase Auth instance has an actively signed-in admin user.
+ */
+export function isCurrentFirebaseUserAdmin(): boolean {
+  const auth = getGoppoAuth();
+  if (!auth?.currentUser) return false;
+  const user = auth.currentUser;
+  return (
+    user.uid === SOLE_AUTHORIZED_ADMIN_UID ||
+    isPrimarySuperAdminEmail(user.email)
+  );
+}
+
+/**
  * Ensures Firebase Auth is actively authenticated as the authorized Admin:
  * joydas.21071997@gmail.com (UID: XENByyR5dOY1i0NqI0ridlEmVc23)
  * Refreshes the ID token so Firebase Storage and Firestore security rules permit audio/cover uploads.
@@ -190,7 +203,7 @@ export async function ensureAdminFirebaseAuth(): Promise<boolean> {
         }
       } catch (err: unknown) {
         const error = err as { code?: string; message?: string };
-        if (error?.code === 'auth/user-not-found' || error?.code === 'auth/invalid-credential') {
+        if (error?.code === 'auth/user-not-found') {
           try {
             const newCred = await createUserWithEmailAndPassword(auth, adminEmail, adminPass);
             if (newCred.user) {

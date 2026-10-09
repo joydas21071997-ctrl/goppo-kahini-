@@ -30,13 +30,18 @@ export interface UploadProgressInfo {
  */
 export async function uploadAudioToFirebaseStorage(
   file: File,
-  onProgress?: (info: UploadProgressInfo) => void
+  onProgress?: (info: UploadProgressInfo) => void,
+  accessType: 'free' | 'trailer' | 'paid' = 'free'
 ): Promise<{ downloadUrl: string; fileName: string; isFirebaseStored: boolean; storagePath: string }> {
   // Ensure admin session is ready for Firebase rules if available
   await ensureAdminFirebaseAuth().catch(() => {});
 
   const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const storagePath = `stories/audio/${Date.now()}_${cleanName}`;
+  // Secure paid audio stored under secure_audio/** with strictly denied public read
+  const isPaid = accessType === 'paid';
+  const storagePath = isPaid
+    ? `secure_audio/${Date.now()}_${cleanName}`
+    : `stories/audio/${Date.now()}_${cleanName}`;
   const storage = getGoppoStorage();
   const storageRef = ref(storage, storagePath);
 
@@ -46,6 +51,7 @@ export async function uploadAudioToFirebaseStorage(
       originalName: file.name,
       uploadedAt: new Date().toISOString(),
       uploadedBy: 'Goppo Kahini Admin',
+      accessType,
     },
   };
 
@@ -81,7 +87,11 @@ export async function uploadAudioToFirebaseStorage(
       },
       async () => {
         try {
-          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+          let downloadUrl = '';
+          // For paid content: DO NOT generate or store permanent public getDownloadURL()
+          if (!isPaid) {
+            downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+          }
           if (onProgress) {
             onProgress({
               progress: 100,
@@ -176,7 +186,8 @@ export async function deleteStorageFileByUrl(urlOrPath?: string | null): Promise
     urlOrPath.includes('firebasestorage.googleapis.com') ||
     urlOrPath.includes('.firebasestorage.app') ||
     urlOrPath.startsWith('gs://') ||
-    urlOrPath.startsWith('stories/');
+    urlOrPath.startsWith('stories/') ||
+    urlOrPath.startsWith('secure_audio/');
 
   if (!isFirebaseStorage) {
     return true;

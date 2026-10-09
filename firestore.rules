@@ -70,13 +70,34 @@ service cloud.firestore {
     }
 
     // ৩. ব্যবহারকারীদের প্রোফাইল ও ডেটা (Users, Bookmarks, History)
-    // User can read/write their own profile; Admin can read/manage user profiles
+    // User can read their own profile; Admin can read/manage all user profiles
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create, update: if isOwner(userId) || isAdmin();
+      
+      // Prevent user privilege escalation on create
+      allow create: if isAdmin() || (
+        isOwner(userId)
+        && (!('role' in request.resource.data) || (request.resource.data.role != 'admin' && request.resource.data.role != 'super_admin'))
+        && (!('subscriptionStatus' in request.resource.data) || request.resource.data.subscriptionStatus == 'inactive')
+        && (!('hasTwentyTakaPass' in request.resource.data) || request.resource.data.hasTwentyTakaPass != true)
+      );
+
+      // Prevent user privilege escalation on update (cannot self-grant pass, admin role, or unlocked IDs)
+      allow update: if isAdmin() || (
+        isOwner(userId)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'role',
+          'subscriptionStatus',
+          'subscriptionExpiry',
+          'hasTwentyTakaPass',
+          'unlockedStoryIds',
+          'unlockedEpisodeIds'
+        ])
+      );
+
       allow delete: if isAdmin();
 
-      // ইউজার সাব-কালেকশন (বুকমার্কস, হিস্ট্রি, ফেভারিটস)
+      // ইউজার সাব-কালেকশন (বুকমার্কস, হিস্ট্রি, ফেভারিটস, পুশ টোকেন)
       match /{subcollection}/{docId} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
@@ -88,9 +109,11 @@ service cloud.firestore {
     }
 
     // ৫. শ্রোতাদের ইনবক্স ও যোগাযোগ বার্তা (Contact Messages)
-    // Public create, Admin read/update/delete
+    // Public create (cannot inject privileged status), Admin read/update/delete
     match /contact_messages/{messageId} {
-      allow create: if isValidId(messageId);
+      allow create: if isValidId(messageId)
+        && (!('status' in request.resource.data) || request.resource.data.status in ['unread', 'pending'])
+        && (!('role' in request.resource.data));
       allow read, update, delete: if isAdmin();
     }
 
@@ -105,23 +128,28 @@ service cloud.firestore {
     }
 
     // ৭. সাবস্ক্রাইবার ও সিআরএম লিড (Subscribers & Leads)
-    // Public/user creation allowed; normal users cannot read; Admin manages records
+    // Public/user creation allowed with pending status; normal users cannot read; Admin manages records
     match /subscribers/{subscriberId} {
-      allow create: if true;
+      allow create: if (!('verificationStatus' in request.resource.data) || request.resource.data.verificationStatus in ['pending_verification', 'pending'])
+        && (!('role' in request.resource.data))
+        && (!('admin' in request.resource.data));
       allow read, update, delete: if isAdmin();
     }
 
     // ৮. কথক অডিশন ও আবেদন (Narrator Applications)
-    // Public create, Admin read/update/delete
+    // Public create (strictly pending, no approval code injection), Admin read/update/delete
     match /narrator_applications/{appId} {
-      allow create: if isValidId(appId);
+      allow create: if isValidId(appId)
+        && (!('status' in request.resource.data) || request.resource.data.status == 'pending')
+        && (!('approvalCode' in request.resource.data));
       allow read, update, delete: if isAdmin();
     }
 
     // ৯. মানুষের জীবনের গল্প (Life Stories Submissions)
-    // Public create, Admin read/update/delete
+    // Public create (strictly new status), Admin read/update/delete
     match /life_stories/{storyId} {
-      allow create: if isValidId(storyId);
+      allow create: if isValidId(storyId)
+        && (!('status' in request.resource.data) || request.resource.data.status == 'new');
       allow read, update, delete: if isAdmin();
     }
 
@@ -132,9 +160,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // ১১. সিস্টেম ও ইউপিআই সেটিংস (System Settings): Admin-only
+    // ১১. সিস্টেম ও ইউপিআই সেটিংস (System Settings)
+    // about_mission is public read for the About & Team info; upi_config and others are Admin-only
     match /system_settings/{settingId} {
-      allow read, write: if isAdmin();
+      allow read: if settingId == 'about_mission' || isAdmin();
+      allow write: if isAdmin();
     }
 
     // ১২. অ্যাডমিন অ্যাক্টিভিটি লগ (Admin Activity Logs): Admin-only

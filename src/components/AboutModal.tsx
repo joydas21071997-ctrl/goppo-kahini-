@@ -21,6 +21,7 @@ import { GoppoKahiniLogo } from './GoppoKahiniLogo';
 import { UserContactMessage, AboutMissionData, TeamMember } from '../types';
 import { INITIAL_ABOUT_MISSION_DATA } from '../data/aboutMission';
 import { submitContactMessage } from '../services/firestoreInbox';
+import { subscribeAboutMissionFromFirestore } from '../services/firestoreAdminData';
 import { useLanguage } from '../context/LanguageContext';
 import { useCountry } from '../utils/country';
 
@@ -64,7 +65,18 @@ export const AboutModal: React.FC<AboutModalProps> = ({
       } catch {}
     };
     window.addEventListener('goppo_about_mission_updated', handleStorageUpdate);
-    return () => window.removeEventListener('goppo_about_mission_updated', handleStorageUpdate);
+
+    // Live Firestore subscription
+    const unsubscribeFirestore = subscribeAboutMissionFromFirestore((cloudData) => {
+      if (cloudData && cloudData.missionTitle) {
+        setAboutData(cloudData);
+      }
+    });
+
+    return () => {
+      window.removeEventListener('goppo_about_mission_updated', handleStorageUpdate);
+      if (typeof unsubscribeFirestore === 'function') unsubscribeFirestore();
+    };
   }, []);
 
   // Contact form state

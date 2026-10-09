@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Building,
   Save,
@@ -6,10 +6,16 @@ import {
   Users,
   Plus,
   Trash2,
-  Heart
+  Heart,
+  Loader2
 } from 'lucide-react';
 import { AboutMissionData, TeamMember } from '../../types';
 import { INITIAL_ABOUT_MISSION_DATA } from '../../data/aboutMission';
+import {
+  subscribeAboutMissionFromFirestore,
+  saveAboutMissionToFirestore,
+} from '../../services/firestoreAdminData';
+import { ensureAdminFirebaseAuth } from '../../services/adminAuth';
 
 export const AdminAboutMissionManager: React.FC = () => {
   const [data, setData] = useState<AboutMissionData>(() => {
@@ -21,15 +27,53 @@ export const AdminAboutMissionManager: React.FC = () => {
   });
 
   const [saved, setSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  // Subscribe to live Firestore document system_settings/about_mission
+  useEffect(() => {
+    ensureAdminFirebaseAuth().catch(() => {});
+    const unsubscribe = subscribeAboutMissionFromFirestore((cloudData) => {
+      if (cloudData && cloudData.missionTitle) {
+        setData(cloudData);
+        try {
+          const serialized = JSON.stringify(cloudData);
+          localStorage.setItem('goppo_about_mission', serialized);
+          localStorage.setItem('goppo_about_mission_data', serialized);
+          window.dispatchEvent(new Event('goppo_about_mission_updated'));
+        } catch {}
+      }
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const serialized = JSON.stringify(data);
-    localStorage.setItem('goppo_about_mission', serialized);
-    localStorage.setItem('goppo_about_mission_data', serialized);
-    window.dispatchEvent(new Event('goppo_about_mission_updated'));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setIsSaving(true);
+    setSaved(false);
+
+    try {
+      // 1. Primary Cloud Firestore Write
+      const success = await saveAboutMissionToFirestore(data);
+      if (!success) {
+        console.warn('Firestore write note: check admin privileges if not synced to cloud');
+      }
+
+      // 2. Offline / LocalStorage Cache Fallback
+      const serialized = JSON.stringify(data);
+      localStorage.setItem('goppo_about_mission', serialized);
+      localStorage.setItem('goppo_about_mission_data', serialized);
+      window.dispatchEvent(new Event('goppo_about_mission_updated'));
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error('Failed to save about mission to Firestore:', err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const addMember = () => {
@@ -180,10 +224,11 @@ export const AdminAboutMissionManager: React.FC = () => {
         <div className="flex justify-end pt-2">
           <button
             type="submit"
-            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-semibold text-xs sm:text-sm flex items-center gap-2 cursor-pointer shadow-md shadow-pink-600/30"
+            disabled={isSaving}
+            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 disabled:opacity-50 text-white font-semibold text-xs sm:text-sm flex items-center gap-2 cursor-pointer shadow-md shadow-pink-600/30"
           >
-            <Save className="w-4 h-4" />
-            <span>মিশন ও টিম তথ্য সেভ করুন</span>
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            <span>{isSaving ? 'সংরক্ষণ করা হচ্ছে...' : 'মিশন ও টিম তথ্য সেভ করুন'}</span>
           </button>
         </div>
       </form>

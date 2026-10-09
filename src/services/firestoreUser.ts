@@ -10,42 +10,18 @@ import {
   DocumentData
 } from 'firebase/firestore';
 import { getGoppoFirebaseApp } from './firebaseStorage';
-import { getFirebaseConfig } from './firebaseConfig';
+import { getFirebaseConfig, getFirestoreInstance } from './firebaseConfig';
 import { AudienceUser } from '../types';
 
-let cachedFirestore: Firestore | null = null;
-
 export function resetCachedFirestore(): void {
-  cachedFirestore = null;
+  // Single source of truth managed by getFirestoreInstance
 }
 
 /**
  * Returns the Cloud Firestore instance for the configured database in goppo-kahini-app.
  */
-export function getGoppoFirestore(): Firestore | null {
-  if (!cachedFirestore) {
-    try {
-      const app = getGoppoFirebaseApp();
-      const config = getFirebaseConfig();
-      const dbId =
-        config.firestoreDatabaseId && config.firestoreDatabaseId !== '(default)'
-          ? config.firestoreDatabaseId
-          : undefined;
-
-      try {
-        cachedFirestore = initializeFirestore(
-          app,
-          { experimentalAutoDetectLongPolling: true },
-          dbId
-        );
-      } catch {
-        cachedFirestore = dbId ? getFirestore(app, dbId) : getFirestore(app);
-      }
-    } catch (err) {
-      console.warn('Firestore initialization notice:', err);
-    }
-  }
-  return cachedFirestore;
+export function getGoppoFirestore(): Firestore {
+  return getFirestoreInstance();
 }
 
 export interface FirestoreUserProfile {

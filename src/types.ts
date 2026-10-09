@@ -399,7 +399,8 @@ export interface Episode {
   episodeNumber: number;
   title: string;
   description: string;
-  audioUrl: string;
+  audioUrl?: string;
+  storagePath?: string;
   thumbnail: string;
   duration: number; // in seconds
   accessType: EpisodeAccessType;

@@ -1481,10 +1481,19 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
   );
 };
 
+const defaultLanguageContext: LanguageContextProps = {
+  language: 'bn',
+  setLanguage: () => {},
+  t: (key: string, fallback?: string): string => {
+    const bnDict = TRANSLATIONS.bn;
+    if (bnDict && bnDict[key]) {
+      return bnDict[key];
+    }
+    return fallback || key;
+  },
+};
+
 export const useLanguage = (): LanguageContextProps => {
   const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
-  }
-  return context;
+  return context || defaultLanguageContext;
 };

@@ -35,17 +35,26 @@ export const OFFICIAL_GOPPO_FIREBASE_CONFIG: FirebaseAppConfig = {
 
 // Default configuration container - prioritizes provisioned appletConfig
 export const getFirebaseConfig = (): FirebaseAppConfig => {
+  const targetDbId =
+    appletConfig.firestoreDatabaseId && appletConfig.firestoreDatabaseId !== '(default)'
+      ? appletConfig.firestoreDatabaseId
+      : OFFICIAL_GOPPO_FIREBASE_CONFIG.firestoreDatabaseId;
+
   const localSaved = localStorage.getItem('goppo_firebase_config');
   if (localSaved) {
     try {
       const parsed = JSON.parse(localSaved);
       // Disconnect and purge any previous legacy configurations
-      if (parsed.projectId === 'jd-productions-app' || parsed.projectId === 'goppo-kahini-app') {
+      if (
+        parsed.projectId === 'jd-productions-app' ||
+        parsed.projectId === 'goppo-kahini-app' ||
+        parsed.firestoreDatabaseId === '(default)'
+      ) {
         localStorage.removeItem('goppo_firebase_config');
       } else if (parsed.projectId && parsed.apiKey) {
         return {
-          firestoreDatabaseId: appletConfig.firestoreDatabaseId || OFFICIAL_GOPPO_FIREBASE_CONFIG.firestoreDatabaseId,
           ...parsed,
+          firestoreDatabaseId: targetDbId,
         };
       }
     } catch {}
@@ -60,7 +69,7 @@ export const getFirebaseConfig = (): FirebaseAppConfig => {
   const storageBucket = metaEnv.VITE_FIREBASE_STORAGE_BUCKET || appletConfig.storageBucket || OFFICIAL_GOPPO_FIREBASE_CONFIG.storageBucket || `${projectId}.firebasestorage.app`;
   const messagingSenderId = metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || appletConfig.messagingSenderId || OFFICIAL_GOPPO_FIREBASE_CONFIG.messagingSenderId || '';
   const appId = metaEnv.VITE_FIREBASE_APP_ID || appletConfig.appId || OFFICIAL_GOPPO_FIREBASE_CONFIG.appId || '';
-  const firestoreDatabaseId = metaEnv.VITE_FIREBASE_DATABASE_ID || appletConfig.firestoreDatabaseId || OFFICIAL_GOPPO_FIREBASE_CONFIG.firestoreDatabaseId || 'ai-studio-8thsep5goppokahi-54c61b69-958f-49b7-97b1-8d4a3b90b263';
+  const firestoreDatabaseId = metaEnv.VITE_FIREBASE_DATABASE_ID || targetDbId;
 
   return {
     apiKey,
@@ -110,7 +119,7 @@ export function getFirestoreInstance(): Firestore {
     const dbId =
       appletConfig.firestoreDatabaseId && appletConfig.firestoreDatabaseId !== '(default)'
         ? appletConfig.firestoreDatabaseId
-        : undefined;
+        : OFFICIAL_GOPPO_FIREBASE_CONFIG.firestoreDatabaseId;
     try {
       _db = initializeFirestore(
         fbApp,

@@ -36,6 +36,8 @@ import {
 } from '../../services/firestoreSeries';
 import { uploadAudioToFirebaseStorage, uploadCoverToFirebaseStorage } from '../../services/firebaseStorage';
 import { notifyNewEpisode } from '../../services/notificationService';
+import { getSecureEpisodeStreamUrl } from '../../services/secureStream';
+import { ensureAdminFirebaseAuth } from '../../services/adminAuth';
 
 interface AdminSeriesManagerProps {
   themeMode?: 'slate' | 'light';
@@ -73,6 +75,7 @@ export const AdminSeriesManager: React.FC<AdminSeriesManagerProps> = ({
   const [epTitle, setEpTitle] = useState('');
   const [epDescription, setEpDescription] = useState('');
   const [epAudioUrl, setEpAudioUrl] = useState('');
+  const [epStoragePath, setEpStoragePath] = useState('');
   const [epThumbnail, setEpThumbnail] = useState('');
   const [epDurationSec, setEpDurationSec] = useState<number>(600);
   const [epAccessType, setEpAccessType] = useState<EpisodeAccessType>('free');
@@ -99,6 +102,7 @@ export const AdminSeriesManager: React.FC<AdminSeriesManagerProps> = ({
 
   // 1. Subscribe to Series from Firestore
   useEffect(() => {
+    ensureAdminFirebaseAuth().catch(() => {});
     const unsub = subscribeSeriesFromFirestore((list) => {
       setSeriesList(list);
       if (selectedSeries) {
@@ -227,6 +231,7 @@ export const AdminSeriesManager: React.FC<AdminSeriesManagerProps> = ({
     setEpTitle('');
     setEpDescription('');
     setEpAudioUrl('');
+    setEpStoragePath('');
     setAudioFileName('');
     setAudioFile(null);
     setEpThumbnail(selectedSeries.thumbnail);
@@ -245,8 +250,9 @@ export const AdminSeriesManager: React.FC<AdminSeriesManagerProps> = ({
     setEpNumber(ep.episodeNumber);
     setEpTitle(ep.title);
     setEpDescription(ep.description || '');
-    setEpAudioUrl(ep.audioUrl);
-    setAudioFileName(ep.audioUrl ? 'সংরক্ষিত ক্লাউড অডিও' : '');
+    setEpAudioUrl(ep.audioUrl || '');
+    setEpStoragePath(ep.storagePath || '');
+    setAudioFileName(ep.storagePath ? 'সুরক্ষিত ক্লাউড অডিও (Private Cloud Storage)' : (ep.audioUrl ? 'সংরক্ষিত ক্লাউড অডিও' : ''));
     setAudioFile(null);
     setEpThumbnail(ep.thumbnail || selectedSeries?.thumbnail || '');
     setEpDurationSec(ep.duration);
@@ -279,11 +285,20 @@ export const AdminSeriesManager: React.FC<AdminSeriesManagerProps> = ({
     } catch {}
 
     try {
-      const res = await uploadAudioToFirebaseStorage(file, (info) => {
-        setAudioUploadProgress(Math.round(info.progress));
-      });
-      setEpAudioUrl(res.downloadUrl);
-      showStatus('পর্বের অডিও সফলভাবে ফায়ারবেস ক্লাউড স্টোরেজে আপলোড হয়েছে!');
+      const res = await uploadAudioToFirebaseStorage(
+        file,
+        (info) => {
+          setAudioUploadProgress(Math.round(info.progress));
+        },
+        epAccessType
+      );
+      setEpAudioUrl(res.downloadUrl || '');
+      setEpStoragePath(res.storagePath || '');
+      showStatus(
+        epAccessType === 'paid'
+          ? 'পেইড পর্বের অডিও সুরক্ষিত ক্লাউড স্টোরেজে (secure_audio) আপলোড হয়েছে!'
+          : 'পর্বের অডিও সফলভাবে ফায়ারবেস ক্লাউড স্টোরেজে আপলোড হয়েছে!'
+      );
     } catch (err) {
       showStatus('অডিও আপলোড ব্যর্থ হয়েছে', 'error');
     } finally {
@@ -317,7 +332,8 @@ export const AdminSeriesManager: React.FC<AdminSeriesManagerProps> = ({
       episodeNumber: Number(epNumber),
       title: epTitle.trim(),
       description: epDescription.trim(),
-      audioUrl: epAudioUrl.trim(),
+      audioUrl: epAccessType === 'paid' ? '' : epAudioUrl.trim(),
+      storagePath: epStoragePath.trim(),
       thumbnail: epThumbnail.trim() || selectedSeries.thumbnail,
       duration: Math.round(Number(epDurationSec) || 0),
       accessType: epAccessType,
@@ -349,14 +365,29 @@ export const AdminSeriesManager: React.FC<AdminSeriesManagerProps> = ({
       return;
     }
     try {
-      await deleteEpisodeFromFirestore(selectedSeries.id, ep.id, ep.audioUrl, ep.thumbnail);
+      await deleteEpisodeFromFirestore(selectedSeries.id, ep.id, ep.audioUrl, ep.thumbnail, ep.storagePath);
       showStatus(`পর্ব ${ep.episodeNumber} ডিলিট করা হয়েছে।`);
     } catch (err) {
       showStatus('এপিসোড ডিলিট করতে সমস্যা হয়েছে', 'error');
     }
   };
 
-  const toggleAudioPreview = (url: string) => {
+  const toggleAudioPreview = async (targetEp: Episode) => {
+    let url = targetEp.audioUrl;
+    if (!url && targetEp.storagePath && selectedSeries) {
+      try {
+        url = await getSecureEpisodeStreamUrl(selectedSeries.id, targetEp.id);
+      } catch (err: any) {
+        showStatus('অডিও স্ট্রিম লিঙ্ক সংগ্রহ ব্যর্থ: ' + (err.message || ''), 'error');
+        return;
+      }
+    }
+
+    if (!url) {
+      showStatus('অডিও ফাইল পাওয়া যায়নি', 'error');
+      return;
+    }
+
     if (previewingAudioUrl === url && isPlayingPreview) {
       audioPreviewRef.current?.pause();
       setIsPlayingPreview(false);
@@ -575,12 +606,12 @@ export const AdminSeriesManager: React.FC<AdminSeriesManagerProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                      {ep.audioUrl && (
+                      {(ep.audioUrl || ep.storagePath) && (
                         <button
                           type="button"
-                          onClick={() => toggleAudioPreview(ep.audioUrl)}
+                          onClick={() => toggleAudioPreview(ep)}
                           className={`p-2 rounded-xl border text-xs transition-colors cursor-pointer ${
-                            previewingAudioUrl === ep.audioUrl && isPlayingPreview
+                            (previewingAudioUrl === ep.audioUrl || (previewingAudioUrl && isPlayingPreview))
                               ? 'bg-pink-600 border-pink-500 text-white'
                               : isLight
                               ? 'bg-purple-50 border-purple-200 text-purple-900 hover:bg-purple-100'
@@ -588,7 +619,7 @@ export const AdminSeriesManager: React.FC<AdminSeriesManagerProps> = ({
                           }`}
                           title="অডিও প্লে/পজ করুন"
                         >
-                          {previewingAudioUrl === ep.audioUrl && isPlayingPreview ? (
+                          {(previewingAudioUrl === ep.audioUrl || (previewingAudioUrl && isPlayingPreview)) ? (
                             <Pause className="w-3.5 h-3.5" />
                           ) : (
                             <Play className="w-3.5 h-3.5" />

@@ -55,6 +55,7 @@ import { INITIAL_STORIES, AMBIENT_SOUND_TRACKS } from './data/stories';
 import { INITIAL_SERIES, INITIAL_SERIES_EPISODES } from './data/seriesData';
 import { subscribeSeriesFromFirestore, subscribeEpisodesForSeries } from './services/firestoreSeries';
 import { evaluateEpisodeAccess } from './utils/episodeAccess';
+import { getSecureEpisodeStreamUrl } from './services/secureStream';
 import { SeriesSection } from './components/series/SeriesSection';
 import { SeriesDetailModal } from './components/series/SeriesDetailModal';
 import { INITIAL_LIFE_STORIES, INITIAL_LIFE_SUBMISSIONS } from './data/lifeStories';
@@ -581,6 +582,7 @@ export default function App() {
   const [userAuthMessage, setUserAuthMessage] = useState<string | undefined>(undefined);
   const [isUserAccountOpen, setIsUserAccountOpen] = useState(false);
   const [pendingPlayStory, setPendingPlayStory] = useState<Story | null>(null);
+  const [playbackNotice, setPlaybackNotice] = useState<string | null>(null);
 
   // Listen to Auth State Changes
   useEffect(() => {
@@ -1147,7 +1149,7 @@ export default function App() {
   };
 
   // Play a Series Episode seamlessly reusing the existing audio player architecture
-  const handlePlayEpisode = (series: Series, episode: Episode) => {
+  const handlePlayEpisode = async (series: Series, episode: Episode) => {
     // 1. User login check
     if (!currentUser) {
       handleOpenUserAuth(
@@ -1173,7 +1175,23 @@ export default function App() {
       return;
     }
 
-    // 3. Adapt Episode into Story for audio player
+    // 3. Resolve Playback Audio Stream URL:
+    // Free / Trailer: play existing public audioUrl directly
+    // Paid: call getEpisodeStreamUrl() backend authorization to obtain temporary signed stream URL
+    let resolvedAudioUrl = (episode.audioUrl || '').trim();
+    if (episode.accessType === 'paid') {
+      try {
+        resolvedAudioUrl = await getSecureEpisodeStreamUrl(series.id, episode.id);
+      } catch (err: any) {
+        console.error('Failed to get secure episode stream URL:', err);
+        const errorMsg = err?.message || 'অডিও স্ট্রিম লোড করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।';
+        setPlaybackNotice(errorMsg);
+        setTimeout(() => setPlaybackNotice(null), 4000);
+        return;
+      }
+    }
+
+    // 4. Adapt Episode into Story for audio player
     setActiveSeries(series);
     setActivePlayingEpisode(episode);
 
@@ -1191,7 +1209,7 @@ export default function App() {
       isLittlePassOnly: episode.accessType === 'paid',
       pricingType: episode.accessType === 'paid' ? 'single_pay' : 'free',
       singlePurchasePrice: episode.price || 0,
-      audioUrl: episode.audioUrl,
+      audioUrl: resolvedAudioUrl,
       coverImage: episode.thumbnail || series.thumbnail,
       colorGradient: 'from-purple-900 via-pink-950 to-black',
       releaseDate: episode.publishedAt || episode.createdAt,
@@ -3259,6 +3277,14 @@ export default function App() {
             );
           }}
         />
+      )}
+
+      {/* Playback Notice Toast Banner */}
+      {playbackNotice && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl bg-red-950/90 text-red-200 border border-red-800/80 shadow-2xl backdrop-blur-md text-sm font-medium animate-in fade-in slide-in-from-top-4 flex items-center gap-3 max-w-md mx-4">
+          <Info className="w-5 h-5 text-red-400 shrink-0" />
+          <span>{playbackNotice}</span>
+        </div>
       )}
 
       {/* Audience User Auth Modal (লগইন ও রেজিস্ট্রেশন) */}

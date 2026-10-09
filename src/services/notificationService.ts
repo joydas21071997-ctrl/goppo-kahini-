@@ -152,14 +152,7 @@ export async function notifyNewEpisode(
           updatedAt: serverTimestamp(),
         });
       } catch (epUpdateErr) {
-        // Fallback for top-level collection if used
-        try {
-          const topEpRef = doc(db, 'episodes', episode.id);
-          await updateDoc(topEpRef, {
-            notificationSent: true,
-            updatedAt: serverTimestamp(),
-          });
-        } catch {}
+        console.warn('Could not update episode notificationSent in Firestore:', epUpdateErr);
       }
     }
 

@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { CreatorSession, NarratorApplication } from '../types';
 import { ensureAdminFirebaseAuth, signInAdminWithGoogle } from '../services/adminAuth';
+import { getGoppoAuth } from '../services/firebaseAuth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 interface CreatorLoginModalProps {
   isOpen: boolean;
@@ -69,6 +71,9 @@ export const CreatorLoginModal: React.FC<CreatorLoginModalProps> = ({
       setError('ভুল সিক্রেট পিন! প্রতিষ্ঠাতা জয়-এর অনুমোদিত সঠিক সিক্রেট পিন বা পাসওয়ার্ড প্রদান করুন।');
       return;
     }
+
+    // Save entered credentials for Firebase Auth and Storage operations
+    localStorage.setItem('goppo_admin_secure_password', cleanPin);
 
     // Auto-authenticate with Firebase in background
     ensureAdminFirebaseAuth().catch(() => {});
@@ -135,6 +140,17 @@ export const CreatorLoginModal: React.FC<CreatorLoginModalProps> = ({
     if (!isPasswordCorrect) {
       setError('ভুল সিকিউরিটি পাসওয়ার্ড! সঠিক অ্যাডমিন পাসওয়ার্ড প্রদান করুন।');
       return;
+    }
+
+    // Save entered admin password for Firebase Auth operations
+    localStorage.setItem('goppo_admin_secure_password', cleanPassword);
+
+    // Actively establish Firebase Authentication state
+    const auth = getGoppoAuth();
+    if (auth) {
+      signInWithEmailAndPassword(auth, cleanEmail, cleanPassword).catch((fbErr) => {
+        console.warn('[AdminLogin] Firebase Auth sign-in note:', fbErr?.code || fbErr?.message);
+      });
     }
 
     const session: CreatorSession = {

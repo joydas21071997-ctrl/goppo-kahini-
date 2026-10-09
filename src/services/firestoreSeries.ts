@@ -86,8 +86,15 @@ export function validateEpisodeData(
 
   // Published audio requirement
   if (episode.status === 'published') {
-    if (!episode.audioUrl || !episode.audioUrl.trim()) {
-      errors.push('প্রকাশিত পর্বের জন্য অডিও ফাইল আবশ্যক (Published Episode without audio)।');
+    if (episode.accessType === 'paid') {
+      const hasAudio = (episode.storagePath && episode.storagePath.trim()) || (episode.audioUrl && episode.audioUrl.trim());
+      if (!hasAudio) {
+        errors.push('প্রকাশিত পেইড পর্বের জন্য সুরক্ষিত অডিও ফাইল আবশ্যক (Published Paid Episode without audio file)।');
+      }
+    } else {
+      if (!episode.audioUrl || !episode.audioUrl.trim()) {
+        errors.push('প্রকাশিত পর্বের জন্য অডিও ফাইল আবশ্যক (Published Episode without audio)।');
+      }
     }
     if (episode.audioUrl && episode.audioUrl.startsWith('blob:')) {
       errors.push('লোকাল ব্লব লিঙ্ক সার্ভারে সেভ করা যাবে না। অডিও সম্পূর্ণ আপলোড হওয়া পর্যন্ত অপেক্ষা করুন।');
@@ -195,8 +202,16 @@ export async function saveSeriesToFirestore(
     updatedAt: serverTimestamp(),
   };
 
-  await setDoc(seriesRef, payload, { merge: true });
-  return { success: true, id: series.id };
+  try {
+    await setDoc(seriesRef, payload, { merge: true });
+    return { success: true, id: series.id };
+  } catch (err: unknown) {
+    const error = err as { code?: string; message?: string };
+    if (error?.code === 'permission-denied') {
+      throw new Error('সিরিজ সংরক্ষণে অনুমতি নেই। অনুগ্রহ করে অ্যাডমিন অ্যাকাউন্ট হিসেবে লগইন নিশ্চিত করুন।');
+    }
+    throw new Error(`সিরিজ সংরক্ষণে ত্রুটি: ${error?.message || err}`);
+  }
 }
 
 /**
@@ -218,6 +233,7 @@ export async function deleteSeriesFromFirestore(
     for (const epDoc of epSnap.docs) {
       const data = epDoc.data();
       if (data.audioUrl) await deleteStorageFileByUrl(data.audioUrl).catch(() => {});
+      if (data.storagePath) await deleteStorageFileByUrl(data.storagePath).catch(() => {});
       if (data.thumbnail) await deleteStorageFileByUrl(data.thumbnail).catch(() => {});
       await deleteDoc(epDoc.ref).catch(() => {});
     }
@@ -225,8 +241,16 @@ export async function deleteSeriesFromFirestore(
     console.warn('Error clearing series episodes:', err);
   }
 
-  await deleteDoc(seriesRef);
-  return { success: true };
+  try {
+    await deleteDoc(seriesRef);
+    return { success: true };
+  } catch (err: unknown) {
+    const error = err as { code?: string; message?: string };
+    if (error?.code === 'permission-denied') {
+      throw new Error('সিরিজ মুছতে অনুমতি নেই। অনুগ্রহ করে অ্যাডমিন অ্যাকাউন্ট হিসেবে লগইন নিশ্চিত করুন।');
+    }
+    throw new Error(`সিরিজ মুছতে ত্রুটি: ${error?.message || err}`);
+  }
 }
 
 /**
@@ -263,6 +287,7 @@ export function subscribeEpisodesForSeries(
               title: data.title || '',
               description: data.description || '',
               audioUrl: data.audioUrl || '',
+              storagePath: data.storagePath || '',
               thumbnail: data.thumbnail || '',
               duration: Number(data.duration) || 0,
               accessType: data.accessType || 'free',
@@ -336,7 +361,8 @@ export async function saveEpisodeToFirestore(
     episodeNumber: Number(episode.episodeNumber),
     title: episode.title.trim(),
     description: (episode.description || '').trim(),
-    audioUrl: episode.audioUrl.trim(),
+    audioUrl: episode.accessType === 'paid' ? '' : (episode.audioUrl || '').trim(),
+    storagePath: (episode.storagePath || '').trim(),
     thumbnail: (episode.thumbnail || series.thumbnail || '').trim(),
     duration: Math.round(Number(episode.duration) || 0),
     accessType: episode.accessType || 'free',
@@ -352,7 +378,15 @@ export async function saveEpisodeToFirestore(
     sortOrder: Number(episode.sortOrder) || Number(episode.episodeNumber),
   };
 
-  await setDoc(epDocRef, payload, { merge: true });
+  try {
+    await setDoc(epDocRef, payload, { merge: true });
+  } catch (err: unknown) {
+    const error = err as { code?: string; message?: string };
+    if (error?.code === 'permission-denied') {
+      throw new Error('পর্ব সংরক্ষণে অনুমতি নেই। অনুগ্রহ করে অ্যাডমিন অ্যাকাউন্ট হিসেবে লগইন নিশ্চিত করুন।');
+    }
+    throw new Error(`পর্ব সংরক্ষণে ত্রুটি: ${error?.message || err}`);
+  }
 
   // Update Series episodesCount
   try {
@@ -382,7 +416,8 @@ export async function deleteEpisodeFromFirestore(
   seriesId: string,
   episodeId: string,
   audioUrl?: string,
-  thumbnail?: string
+  thumbnail?: string,
+  storagePath?: string
 ): Promise<{ success: boolean; error?: string }> {
   await ensureAdminFirebaseAuth().catch(() => {});
   const db = getGoppoFirestore();
@@ -392,10 +427,15 @@ export async function deleteEpisodeFromFirestore(
 
   try {
     if (audioUrl) await deleteStorageFileByUrl(audioUrl).catch(() => {});
+    if (storagePath) await deleteStorageFileByUrl(storagePath).catch(() => {});
     if (thumbnail) await deleteStorageFileByUrl(thumbnail).catch(() => {});
     await deleteDoc(epDocRef);
     return { success: true };
   } catch (err: unknown) {
+    const error = err as { code?: string; message?: string };
+    if (error?.code === 'permission-denied') {
+      throw new Error('পর্ব মুছতে অনুমতি নেই। অনুগ্রহ করে অ্যাডমিন অ্যাকাউন্ট হিসেবে লগইন নিশ্চিত করুন।');
+    }
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(`এপিসোড মুছে ফেলতে ত্রুটি: ${msg}`);
   }

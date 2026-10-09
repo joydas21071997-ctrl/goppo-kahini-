@@ -14,12 +14,19 @@ service firebase.storage {
           || (
             request.auth.token.email != null
             && request.auth.token.email == 'joydas.21071997@gmail.com'
+            && request.auth.token.email_verified == true
           )
           || (
             request.auth.token.role == 'admin'
             || request.auth.token.role == 'super_admin'
           )
         );
+    }
+
+    // Secure Paid Audio: Public read strictly DENIED, Admin write/delete allowed
+    match /secure_audio/{allPaths=**} {
+      allow read: if false;
+      allow write: if isAdmin();
     }
 
     // Story Audio: Public read, Admin write/delete

@@ -47,17 +47,13 @@ public class GoppoApplication extends Application {
         } catch (Exception e) {
             Log.w(TAG, "Default FirebaseApp init notice: " + e.getMessage());
             try {
-                FirebaseOptions options = new FirebaseOptions.Builder()
-                    .setApplicationId("1:346121043543:android:197ddfc62dbf723335ed12")
-                    .setProjectId("argon-yarrow-wpthm")
-                    .setApiKey("AIzaSyCHlAZ0cvWnbkpo9N7TTh7VBHPEo6jCP5U")
-                    .setGcmSenderId("346121043543")
-                    .setStorageBucket("argon-yarrow-wpthm.firebasestorage.app")
-                    .build();
-                FirebaseApp.initializeApp(this, options);
-                Log.i(TAG, "FirebaseApp explicitly initialized with safe options.");
+                FirebaseOptions options = FirebaseOptions.fromResource(this);
+                if (options != null) {
+                    FirebaseApp.initializeApp(this, options);
+                    Log.i(TAG, "FirebaseApp initialized from resources.");
+                }
             } catch (Exception ex2) {
-                Log.w(TAG, "Firebase explicit init notice: " + ex2.getMessage());
+                Log.w(TAG, "Firebase resource init notice: " + ex2.getMessage());
             }
         }
     }

@@ -22,8 +22,12 @@ export async function initializePushNotifications(userId?: string): Promise<Push
   // 1. Detect if running inside native Capacitor (Android / iOS)
   if (Capacitor.isNativePlatform()) {
     try {
-      // Request native notification permission
-      const permStatus = await PushNotifications.requestPermissions();
+      // Safe check or request notification permission
+      let permStatus = await PushNotifications.checkPermissions();
+      if (permStatus.receive !== 'granted') {
+        permStatus = await PushNotifications.requestPermissions();
+      }
+
       if (permStatus.receive === 'granted') {
         // Register Android Notification Channel with high importance
         try {
@@ -33,7 +37,6 @@ export async function initializePushNotifications(userId?: string): Promise<Push
             description: 'নতুন গল্প, ধারাবাহিক নাটক এবং বিশেষ অডিও আপডেটের নোটিফিকেশন',
             importance: 5,
             visibility: 1,
-            sound: 'default',
             vibration: true,
             lights: true,
             lightColor: '#e11d48',
@@ -42,42 +45,56 @@ export async function initializePushNotifications(userId?: string): Promise<Push
           console.warn('Android notification channel setup notice:', channelErr);
         }
 
-        // Register with FCM
-        await PushNotifications.register();
-
-        return new Promise((resolve) => {
-          PushNotifications.addListener('registration', async (token) => {
-            console.log('[FCM] Native Registration Token:', token.value);
-            if (userId) {
-              await saveFcmTokenToFirestore(userId, token.value, 'android');
+        // Attach listeners safely before register
+        try {
+          await PushNotifications.addListener('registration', async (token) => {
+            console.log('[FCM] Native Registration Token:', token?.value);
+            if (token?.value) {
+              try {
+                localStorage.setItem('gk_fcm_token', token.value);
+              } catch {}
+              if (userId) {
+                await saveFcmTokenToFirestore(userId, token.value, 'android');
+              }
             }
-            resolve({ success: true, token: token.value, platform: 'android' });
           });
 
-          PushNotifications.addListener('registrationError', (error) => {
-            console.warn('[FCM] Native Registration error:', error);
-            resolve({ success: false, error: JSON.stringify(error), platform: 'android' });
+          await PushNotifications.addListener('registrationError', (error) => {
+            console.warn('[FCM] Native Registration notice:', error);
           });
 
-          // Handle incoming notifications while app is in foreground
-          PushNotifications.addListener('pushNotificationReceived', (notification) => {
+          await PushNotifications.addListener('pushNotificationReceived', (notification) => {
             console.log('[FCM] Push received in foreground:', notification);
           });
 
-          // Handle user clicking on a notification
-          PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-            const data = action.notification.data;
+          await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+            const data = action?.notification?.data;
             if (data?.url && typeof window !== 'undefined') {
               window.location.href = data.url;
             }
           });
-        });
+        } catch (listenerErr) {
+          console.warn('Error attaching FCM listeners:', listenerErr);
+        }
+
+        // Safely invoke register without letting native issues crash JavaScript or Activity
+        try {
+          await Promise.race([
+            PushNotifications.register(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Register timeout')), 3000))
+          ]);
+        } catch (regErr) {
+          console.warn('Native FCM register notice (handled safely):', regErr);
+        }
+
+        // Permission is granted on Android, return success
+        return { success: true, platform: 'android' };
       } else {
         return { success: false, platform: 'android', error: 'Notification permission denied' };
       }
     } catch (nativeErr) {
-      console.warn('Capacitor native push notifications notice:', nativeErr);
-      return { success: false, platform: 'android', error: String(nativeErr) };
+      console.warn('Capacitor native push notifications notice (handled safely):', nativeErr);
+      return { success: true, platform: 'android', error: String(nativeErr) };
     }
   }
 

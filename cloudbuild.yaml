@@ -35,20 +35,20 @@ steps:
     args:
       - '-c'
       - |
-        mkdir -p /output/apk /output/aab /output/source
+        mkdir -p output/apk output/aab output/source
         chmod +x android/gradlew
         cd android
 
         # Build Android Release APK and AAB
         ./gradlew assembleRelease bundleRelease || ./gradlew assembleDebug
 
-        # Copy build outputs to /output directory
-        find app/build/outputs/apk/ -name "*.apk" -exec cp {} /output/apk/app-release.apk \; || true
-        find app/build/outputs/bundle/ -name "*.aab" -exec cp {} /output/aab/app-release.aab \; || true
+        # Copy build outputs to workspace output directory
+        find app/build/outputs/apk/ -name "*.apk" -exec cp {} ../output/apk/app-release.apk \; || true
+        find app/build/outputs/bundle/ -name "*.aab" -exec cp {} ../output/aab/app-release.aab \; || true
         cd ..
 
         # Package source zip archive (excluding sensitive/local files)
-        zip -r /output/source/goppo-kahini-final.zip . -x "node_modules/*" "dist/*" ".git/*" "*.jks" "*.keystore" "android/.gradle/*" "android/app/build/*"
+        zip -r output/source/goppo-kahini-final.zip . -x "node_modules/*" "dist/*" ".git/*" "*.jks" "*.keystore" "android/.gradle/*" "android/app/build/*"
 
   # 5. Upload Android Artifacts to GCS Bucket
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -57,8 +57,8 @@ steps:
     args:
       - '-c'
       - |
-        if [ -d "/output" ]; then
-          gsutil -m cp -r /output/* gs://goppo-kahini-android-builds/ || echo "GCS upload completed or bucket access granted via service account"
+        if [ -d "output" ]; then
+          gsutil -m cp -r output/* gs://goppo-kahini-android-builds/ || echo "GCS upload completed or bucket access granted via service account"
         fi
 
 options:
@@ -68,6 +68,6 @@ artifacts:
   objects:
     location: 'gs://goppo-kahini-android-builds/'
     paths:
-      - '/output/apk/app-release.apk'
-      - '/output/aab/app-release.aab'
-      - '/output/source/goppo-kahini-final.zip'
+      - 'output/apk/app-release.apk'
+      - 'output/aab/app-release.aab'
+      - 'output/source/goppo-kahini-final.zip'

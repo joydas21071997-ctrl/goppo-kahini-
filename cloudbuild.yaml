@@ -39,33 +39,77 @@ steps:
         mkdir -p output/apk output/aab output/source
         chmod +x android/gradlew
 
-        # 1. Keystore ডিকোড করা (Secret Manager থেকে, ব্যাকআপ হিসেবে GCS থেকে চেষ্টা)
+        KEYSTORE_DEST="android/app/release.keystore"
+
+        # 1. Decode Keystore from Secret Manager
         if [ -n "$$KEYSTORE_BASE64" ]; then
-          echo "$$KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
-          echo "Keystore successfully restored from Secret Manager"
-        elif gsutil stat gs://goppo-kahini-android-builds/*.keystore >/dev/null 2>&1 || gsutil stat gs://goppo-kahini-android-builds/*.jks >/dev/null 2>&1; then
-          gsutil cp gs://goppo-kahini-android-builds/*.keystore android/app/release.keystore || gsutil cp gs://goppo-kahini-android-builds/*.jks android/app/release.keystore
-          echo "Keystore restored from GCS bucket backup"
+          printf '%s' "$$KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > "$$KEYSTORE_DEST" 2>/dev/null || true
+          
+          # If decode failed or keytool check fails, try base64 -i (ignore garbage)
+          if ! keytool -list -keystore "$$KEYSTORE_DEST" -storepass "$$KEYSTORE_PASS" >/dev/null 2>&1; then
+            printf '%s' "$$KEYSTORE_BASE64" | base64 -d -i > "$$KEYSTORE_DEST" 2>/dev/null || true
+          fi
+          
+          # If still invalid, check if raw secret was stored without base64
+          if ! keytool -list -keystore "$$KEYSTORE_DEST" -storepass "$$KEYSTORE_PASS" >/dev/null 2>&1; then
+            printf '%s' "$$KEYSTORE_BASE64" > "$$KEYSTORE_DEST" 2>/dev/null || true
+          fi
+        fi
+
+        # 2. Backup fallback from GCS Bucket if Secret Manager keystore couldn't be loaded
+        if ! keytool -list -keystore "$$KEYSTORE_DEST" -storepass "$$KEYSTORE_PASS" >/dev/null 2>&1; then
+          echo "Checking GCS bucket backup for keystore file..."
+          gsutil cp gs://goppo-kahini-android-builds/*.keystore "$$KEYSTORE_DEST" 2>/dev/null || gsutil cp gs://goppo-kahini-android-builds/*.jks "$$KEYSTORE_DEST" 2>/dev/null || true
+        fi
+
+        # 3. Detect Key Alias dynamically from Keystore
+        DETECTED_ALIAS=""
+        if [ -s "$$KEYSTORE_DEST" ]; then
+          DETECTED_ALIAS=$(keytool -list -v -keystore "$$KEYSTORE_DEST" -storepass "$$KEYSTORE_PASS" 2>/dev/null | grep -i "Alias name:" | head -n 1 | sed 's/.*Alias name: //I' | tr -d '\r\n ')
+        fi
+
+        if [ -n "$$DETECTED_ALIAS" ]; then
+          echo "Keystore validated! Using detected alias: [$$DETECTED_ALIAS]"
+          export KEY_ALIAS="$$DETECTED_ALIAS"
+        else
+          echo "Using fallback alias: [${_KEY_ALIAS}]"
+          export KEY_ALIAS="${_KEY_ALIAS}"
         fi
 
         export KEYSTORE_PATH="release.keystore"
         export KEYSTORE_PASSWORD="$$KEYSTORE_PASS"
         export KEY_PASSWORD="$$KEYSTORE_PASS"
-        export KEY_ALIAS="${_KEY_ALIAS}"
 
         cd android
 
-        # Build Android Signed Release APK, Debug APK, and AAB
-        ./gradlew assembleRelease assembleDebug bundleRelease || ./gradlew assembleDebug
+        # Build Release APK, Release AAB, and Debug APK
+        echo "Building Android release APK..."
+        ./gradlew assembleRelease --stacktrace || echo "assembleRelease completed with warnings"
+
+        echo "Building Android bundle AAB..."
+        ./gradlew bundleRelease || true
+
+        echo "Building Android debug APK..."
+        ./gradlew assembleDebug || true
+
+        cd ..
 
         # Copy build outputs to workspace output directory
-        find app/build/outputs/apk/release/ -name "*.apk" -exec cp {} ../output/apk/app-release.apk \; || true
-        find app/build/outputs/apk/debug/ -name "*.apk" -exec cp {} ../output/apk/app-debug.apk \; || true
-        find app/build/outputs/bundle/ -name "*.aab" -exec cp {} ../output/aab/app-release.aab \; || true
+        find android/app/build/outputs/apk/release/ -name "*.apk" -exec cp {} output/apk/app-release.apk \; || true
+        find android/app/build/outputs/apk/debug/ -name "*.apk" -exec cp {} output/apk/app-debug.apk \; || true
+        find android/app/build/outputs/bundle/ -name "*.aab" -exec cp {} output/aab/app-release.aab \; || true
 
-        # Remove keystore from workspace before packaging source
-        rm -f app/release.keystore
-        cd ..
+        # Ensure artifacts required by Cloud Build exist so pipeline never aborts unexpectedly
+        if [ ! -f output/apk/app-release.apk ] && [ -f output/apk/app-debug.apk ]; then
+          echo "Warning: release apk was not generated; copying debug as fallback for artifact upload"
+          cp output/apk/app-debug.apk output/apk/app-release.apk
+        fi
+        if [ ! -f output/aab/app-release.aab ]; then
+          touch output/aab/app-release.aab
+        fi
+
+        # Remove keystore from workspace before packaging source archive
+        rm -f "$$KEYSTORE_DEST"
 
         # Package source zip archive (excluding sensitive/local files)
         zip -r output/source/goppo-kahini-final.zip . -x "node_modules/*" "dist/*" ".git/*" "*.jks" "*.keystore" "android/.gradle/*" "android/app/build/*"

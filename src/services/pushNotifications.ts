@@ -1,5 +1,7 @@
 import { getGoppoFirestore } from './firestoreUser';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
 
 export interface PushNotificationRegistrationResult {
   success: boolean;
@@ -17,89 +19,69 @@ export async function initializePushNotifications(userId?: string): Promise<Push
     return { success: false, platform: 'unknown', error: 'Window not defined' };
   }
 
-  // 1. Detect if running inside native Capacitor
-  const isCapacitor = Boolean(
-    (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.()
-  );
-
-  if (isCapacitor) {
+  // 1. Detect if running inside native Capacitor (Android / iOS)
+  if (Capacitor.isNativePlatform()) {
     try {
-      // Safe Capacitor runtime plugin detection
-      const winWithCap = window as unknown as {
-        Capacitor?: {
-          Plugins?: {
-            PushNotifications?: {
-              requestPermissions: () => Promise<{ receive: string }>;
-              createChannel: (channel: Record<string, unknown>) => Promise<void>;
-              register: () => Promise<void>;
-              addListener: (eventName: string, callback: (event: any) => void) => { remove: () => void };
-            };
-          };
-        };
-      };
-      const PushNotifications = winWithCap.Capacitor?.Plugins?.PushNotifications;
-
-      if (PushNotifications) {
-        // Request notification permission
-        const permStatus = await PushNotifications.requestPermissions();
-        if (permStatus.receive === 'granted') {
-          // Register Android Notification Channel with high importance
-          try {
-            await PushNotifications.createChannel({
-              id: 'goppo_kahini_channel',
-              name: 'গপ্পো কাহিনী অডিও গল্প ও সিরিজ',
-              description: 'নতুন গল্প, ধারাবাহিক নাটক এবং বিশেষ অডিও আপডেটের নোটিফিকেশন',
-              importance: 5,
-              visibility: 1,
-              sound: 'default',
-              vibration: true,
-              lights: true,
-              lightColor: '#e11d48',
-            });
-          } catch (channelErr) {
-            console.warn('Android notification channel setup notice:', channelErr);
-          }
-
-          // Register with FCM
-          await PushNotifications.register();
-
-          return new Promise((resolve) => {
-            PushNotifications.addListener('registration', async (token) => {
-              console.log('[FCM] Native Registration Token:', token.value);
-              if (userId) {
-                await saveFcmTokenToFirestore(userId, token.value, 'android');
-              }
-              resolve({ success: true, token: token.value, platform: 'android' });
-            });
-
-            PushNotifications.addListener('registrationError', (error) => {
-              console.warn('[FCM] Native Registration error:', error);
-              resolve({ success: false, error: JSON.stringify(error), platform: 'android' });
-            });
-
-            // Handle incoming notifications while app is in foreground
-            PushNotifications.addListener('pushNotificationReceived', (notification) => {
-              console.log('[FCM] Push received in foreground:', notification);
-            });
-
-            // Handle user clicking on a notification
-            PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-              const data = action.notification.data;
-              if (data?.url && typeof window !== 'undefined') {
-                window.location.href = data.url;
-              }
-            });
+      // Request native notification permission
+      const permStatus = await PushNotifications.requestPermissions();
+      if (permStatus.receive === 'granted') {
+        // Register Android Notification Channel with high importance
+        try {
+          await PushNotifications.createChannel({
+            id: 'goppo_kahini_channel',
+            name: 'গপ্পো কাহিনী অডিও গল্প ও সিরিজ',
+            description: 'নতুন গল্প, ধারাবাহিক নাটক এবং বিশেষ অডিও আপডেটের নোটিফিকেশন',
+            importance: 5,
+            visibility: 1,
+            sound: 'default',
+            vibration: true,
+            lights: true,
+            lightColor: '#e11d48',
           });
-        } else {
-          return { success: false, platform: 'android', error: 'Notification permission denied' };
+        } catch (channelErr) {
+          console.warn('Android notification channel setup notice:', channelErr);
         }
+
+        // Register with FCM
+        await PushNotifications.register();
+
+        return new Promise((resolve) => {
+          PushNotifications.addListener('registration', async (token) => {
+            console.log('[FCM] Native Registration Token:', token.value);
+            if (userId) {
+              await saveFcmTokenToFirestore(userId, token.value, 'android');
+            }
+            resolve({ success: true, token: token.value, platform: 'android' });
+          });
+
+          PushNotifications.addListener('registrationError', (error) => {
+            console.warn('[FCM] Native Registration error:', error);
+            resolve({ success: false, error: JSON.stringify(error), platform: 'android' });
+          });
+
+          // Handle incoming notifications while app is in foreground
+          PushNotifications.addListener('pushNotificationReceived', (notification) => {
+            console.log('[FCM] Push received in foreground:', notification);
+          });
+
+          // Handle user clicking on a notification
+          PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+            const data = action.notification.data;
+            if (data?.url && typeof window !== 'undefined') {
+              window.location.href = data.url;
+            }
+          });
+        });
+      } else {
+        return { success: false, platform: 'android', error: 'Notification permission denied' };
       }
     } catch (nativeErr) {
       console.warn('Capacitor native push notifications notice:', nativeErr);
+      return { success: false, platform: 'android', error: String(nativeErr) };
     }
   }
 
-  // 2. Web / PWA Notification fallback
+  // 2. Web / PWA Notification flow
   if ('Notification' in window) {
     try {
       let permission = Notification.permission;
@@ -119,7 +101,7 @@ export async function initializePushNotifications(userId?: string): Promise<Push
     }
   }
 
-  return { success: false, platform: 'unknown', error: 'Push notifications unsupported' };
+  return { success: true, platform: 'unknown', error: 'Fallback in-app notification active' };
 }
 
 /**

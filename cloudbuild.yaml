@@ -32,19 +32,39 @@ steps:
   - name: 'ghcr.io/cirruslabs/android-sdk:34'
     id: 'build-android'
     entrypoint: 'bash'
+    secretEnv: ['KEYSTORE_BASE64', 'KEYSTORE_PASS']
     args:
       - '-c'
       - |
         mkdir -p output/apk output/aab output/source
         chmod +x android/gradlew
+
+        # 1. Keystore ডিকোড করা (Secret Manager থেকে, ব্যাকআপ হিসেবে GCS থেকে চেষ্টা)
+        if [ -n "$$KEYSTORE_BASE64" ]; then
+          echo "$$KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+          echo "Keystore successfully restored from Secret Manager"
+        elif gsutil stat gs://goppo-kahini-android-builds/*.keystore >/dev/null 2>&1 || gsutil stat gs://goppo-kahini-android-builds/*.jks >/dev/null 2>&1; then
+          gsutil cp gs://goppo-kahini-android-builds/*.keystore android/app/release.keystore || gsutil cp gs://goppo-kahini-android-builds/*.jks android/app/release.keystore
+          echo "Keystore restored from GCS bucket backup"
+        fi
+
+        export KEYSTORE_PATH="release.keystore"
+        export KEYSTORE_PASSWORD="$$KEYSTORE_PASS"
+        export KEY_PASSWORD="$$KEYSTORE_PASS"
+        export KEY_ALIAS="${_KEY_ALIAS}"
+
         cd android
 
-        # Build Android Release APK and AAB
-        ./gradlew assembleRelease bundleRelease || ./gradlew assembleDebug
+        # Build Android Signed Release APK, Debug APK, and AAB
+        ./gradlew assembleRelease assembleDebug bundleRelease || ./gradlew assembleDebug
 
         # Copy build outputs to workspace output directory
-        find app/build/outputs/apk/ -name "*.apk" -exec cp {} ../output/apk/app-release.apk \; || true
+        find app/build/outputs/apk/release/ -name "*.apk" -exec cp {} ../output/apk/app-release.apk \; || true
+        find app/build/outputs/apk/debug/ -name "*.apk" -exec cp {} ../output/apk/app-debug.apk \; || true
         find app/build/outputs/bundle/ -name "*.aab" -exec cp {} ../output/aab/app-release.aab \; || true
+
+        # Remove keystore from workspace before packaging source
+        rm -f app/release.keystore
         cd ..
 
         # Package source zip archive (excluding sensitive/local files)
@@ -61,6 +81,16 @@ steps:
           gsutil -m cp -r output/* gs://goppo-kahini-android-builds/ || echo "GCS upload completed or bucket access granted via service account"
         fi
 
+substitutions:
+  _KEY_ALIAS: 'key0'
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/goppo-kahini-upload-keystore-b64/versions/latest
+      env: 'KEYSTORE_BASE64'
+    - versionName: projects/$PROJECT_ID/secrets/goppo-kahini-keystore-password/versions/latest
+      env: 'KEYSTORE_PASS'
+
 options:
   logging: CLOUD_LOGGING_ONLY
 
@@ -69,5 +99,6 @@ artifacts:
     location: 'gs://goppo-kahini-android-builds/'
     paths:
       - 'output/apk/app-release.apk'
+      - 'output/apk/app-debug.apk'
       - 'output/aab/app-release.aab'
       - 'output/source/goppo-kahini-final.zip'

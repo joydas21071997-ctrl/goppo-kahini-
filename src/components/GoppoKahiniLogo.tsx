@@ -10,6 +10,7 @@ interface LogoProps {
   theme?: ThemeMode;
   isLight?: boolean;
   hideTextOnMobile?: boolean;
+  showText?: boolean;
 }
 
 export const GoppoKahiniLogo: React.FC<LogoProps> = ({
@@ -20,6 +21,7 @@ export const GoppoKahiniLogo: React.FC<LogoProps> = ({
   theme,
   isLight: isLightProp,
   hideTextOnMobile = false,
+  showText = true,
 }) => {
   const { language } = useLanguage();
   const isLight = isLightProp ?? (theme ? theme === 'purple-light' || theme === 'calm-green' : false);
@@ -82,43 +84,45 @@ export const GoppoKahiniLogo: React.FC<LogoProps> = ({
       </div>
 
       {/* Brand Typography - Clean, uncluttered, premium */}
-      <div className={`flex-col leading-none shrink-0 ${hideTextOnMobile ? 'hidden sm:flex' : 'flex'}`}>
-        <div className="flex items-center">
-          {isLight ? (
-            /* Light Mode: Crisp contrasting tones */
-            <span
-              className={`font-serif-story font-black tracking-tight text-zinc-950 ${titleSizes[size]}`}
-              style={{
-                textShadow: '0 0 1px rgba(0, 0, 0, 0.9), 0 1px 2px rgba(255, 255, 255, 0.8)',
-                WebkitTextStroke: '0.4px rgba(15, 8, 29, 0.85)',
-              }}
-            >
-              {brandPart1}{' '}
+      {showText && (
+        <div className={`flex-col leading-none shrink-0 ${hideTextOnMobile ? 'hidden sm:flex' : 'flex'}`}>
+          <div className="flex items-center">
+            {isLight ? (
+              /* Light Mode: Crisp contrasting tones */
               <span
-                className="bg-gradient-to-r from-purple-800 via-pink-600 to-purple-900 bg-clip-text text-transparent font-black"
+                className={`font-serif-story font-black tracking-tight text-zinc-950 ${titleSizes[size]}`}
                 style={{
-                  WebkitTextStroke: '0.2px rgba(120, 20, 100, 0.5)',
+                  textShadow: '0 0 1px rgba(0, 0, 0, 0.9), 0 1px 2px rgba(255, 255, 255, 0.8)',
+                  WebkitTextStroke: '0.4px rgba(15, 8, 29, 0.85)',
                 }}
               >
-                {brandPart2}
+                {brandPart1}{' '}
+                <span
+                  className="bg-gradient-to-r from-purple-800 via-pink-600 to-purple-900 bg-clip-text text-transparent font-black"
+                  style={{
+                    WebkitTextStroke: '0.2px rgba(120, 20, 100, 0.5)',
+                  }}
+                >
+                  {brandPart2}
+                </span>
               </span>
-            </span>
-          ) : (
-            /* Dark Mode: Luminescent text with soft aura */
-            <span
-              className={`font-serif-story font-extrabold tracking-tight text-white ${titleSizes[size]}`}
-              style={{
-                textShadow: '0 0 8px rgba(255, 255, 255, 0.35), 0 1px 3px rgba(0, 0, 0, 0.9)',
-              }}
-            >
-              {brandPart1}{' '}
-              <span className="bg-gradient-to-r from-purple-300 via-pink-400 to-pink-300 bg-clip-text text-transparent font-bold">
-                {brandPart2}
+            ) : (
+              /* Dark Mode: Luminescent text with soft aura */
+              <span
+                className={`font-serif-story font-extrabold tracking-tight text-white ${titleSizes[size]}`}
+                style={{
+                  textShadow: '0 0 8px rgba(255, 255, 255, 0.35), 0 1px 3px rgba(0, 0, 0, 0.9)',
+                }}
+              >
+                {brandPart1}{' '}
+                <span className="bg-gradient-to-r from-purple-300 via-pink-400 to-pink-300 bg-clip-text text-transparent font-bold">
+                  {brandPart2}
+                </span>
               </span>
-            </span>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

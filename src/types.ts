@@ -58,6 +58,7 @@ export interface Story {
   accessSetting?: string;
   podcastAccessSetting?: string;
   storyType?: string;
+  language?: 'bn' | 'hi' | 'en';
 }
 
 export interface UserContactMessage {
@@ -386,6 +387,7 @@ export interface Series {
   featured?: boolean;
   sortOrder?: number;
   episodesCount?: number;
+  language?: 'bn' | 'hi' | 'en';
   createdAt: string;
   updatedAt: string;
 }

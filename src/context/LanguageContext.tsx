@@ -483,6 +483,27 @@ export const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
     policy_legal_info: 'আইনি সত্ত্বা ও বিচারিক এখতিয়ার',
     policy_contact: 'যোগাযোগ ও সাপোর্ট',
     policy_badge_count: '৪টি পলিসি',
+
+    // Language Onboarding & Filtering
+    language_onboarding_title: 'আপনার পছন্দের ভাষা নির্বাচন করুন',
+    language_onboarding_subtitle: 'গপ্পো কাহিনীতে স্বাগতম! আপনার পছন্দের ভাষা বেছে নিন, সেই ভাষার অডিও গল্পগুলি আপনাকে আগে দেখানো হবে।',
+    language_onboarding_bengali_desc: 'বাংলার সেরা রহস্য, ভৌতিক ও রোমাঞ্চকর অডিও কাহিনি',
+    language_onboarding_hindi_desc: 'हिन्दी की रोंगटे खड़े कर देने वाली रहस्यमयी और सुकूनदायक कहानियाँ',
+    language_onboarding_english_desc: 'Classic Victorian thrillers, deep relaxations & global tales',
+    language_onboarding_confirm: 'পছন্দ নিশ্চিত করে শুরু করুন',
+    language_filter_all: 'সব ভাষার গল্প',
+    language_filter_bn: 'বাংলা গল্প',
+    language_filter_hi: 'हिन्दी कहानियाँ',
+    language_filter_en: 'English Stories',
+    language_filter_title: 'গল্পের ভাষা',
+
+    // Notification Permission Prompt
+    notification_prompt_title: 'নতুন গল্পের নোটিফিকেশন অন করুন',
+    notification_prompt_subtitle: 'নতুন রোমাঞ্চকর ভৌতিক ও রহস্য গল্প, বিশেষ ছাড় এবং মেগা অডিও পর্বের রিলিজ সবার আগে জানতে নোটিফিকেশন সক্রিয় করুন।',
+    notification_prompt_enable: '🔔 নোটিফিকেশন অন করুন',
+    notification_prompt_later: 'পরে করব',
+    notification_enabled_toast: '✅ নোটিফিকেশন সফলভাবে চালু করা হয়েছে! নতুন গল্প এলেই আপনাকে জানানো হবে।',
+    notification_blocked_toast: '⚠️ ব্রাউজার বা ডিভাইসে নোটিফিকেশন ব্লক করা রয়েছে। সেটিংস থেকে অনুমতি দিন।',
   },
 
   hi: {
@@ -953,6 +974,27 @@ export const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
     policy_legal_info: 'कानूनी जानकारी और क्षेत्राधिकार',
     policy_contact: 'संपर्क और सहायता',
     policy_badge_count: '4 नीतियां',
+
+    // Language Onboarding & Filtering
+    language_onboarding_title: 'अपनी पसंदीदा भाषा चुनें',
+    language_onboarding_subtitle: 'गप्पो कहानी में आपका स्वागत है! अपनी पसंदीदा भाषा चुनें, ताकि उस भाषा की ऑडियो कहानियां आपको सबसे पहले दिखाई दें।',
+    language_onboarding_bengali_desc: 'बंगाली रहस्य, हॉरर और क्लासिक ऑडियो कहानियां',
+    language_onboarding_hindi_desc: 'हिन्दी की रोंगटे खड़े कर देने वाली रहस्यमयी और सुकूनदायक कहानियाँ',
+    language_onboarding_english_desc: 'Classic Victorian thrillers, deep relaxations & global tales',
+    language_onboarding_confirm: 'पसंद सहेजें और शुरू करें',
+    language_filter_all: 'सभी कहानियाँ',
+    language_filter_bn: 'বাংলা গল্প',
+    language_filter_hi: 'हिन्दी कहानियाँ',
+    language_filter_en: 'English Stories',
+    language_filter_title: 'कहानियों की भाषा',
+
+    // Notification Permission Prompt
+    notification_prompt_title: 'नई कहानियों के नोटिफिकेशन ऑन करें',
+    notification_prompt_subtitle: 'हर नई रोमांचक कहानी, विशेष छूट और नए एपिसोड की ताज़ा जानकारी सबसे पहले पाने के लिए नोटिफिकेशन चालू करें।',
+    notification_prompt_enable: '🔔 नोटिफिकेशन ऑन करें',
+    notification_prompt_later: 'बाद में',
+    notification_enabled_toast: '✅ नोटिफिकेशन सफलतापूर्वक चालू हो गया है! नई कहानी आते ही सूचित किया जाएगा।',
+    notification_blocked_toast: '⚠️ डिवाइस या ब्राउज़र में नोटिफिकेशन अनुमति बंद है। कृपया सेटिंग्स से अनुमति दें।',
   },
 
   en: {
@@ -1423,6 +1465,27 @@ export const TRANSLATIONS: Record<AppLanguage, Record<string, string>> = {
     policy_legal_info: 'Legal Information & Jurisdiction',
     policy_contact: 'Contact & Support',
     policy_badge_count: '4 Policies',
+
+    // Language Onboarding & Filtering
+    language_onboarding_title: 'Choose Your Preferred Language',
+    language_onboarding_subtitle: 'Welcome to Goppo Kahini! Select your language so audio stories and navigation can be tailored to you.',
+    language_onboarding_bengali_desc: 'Authentic Bengali thrillers, horror & folk audio classics',
+    language_onboarding_hindi_desc: 'Thrilling Hindi mysteries, folklore & soothing sleep audios',
+    language_onboarding_english_desc: 'Classic Victorian thrillers, deep relaxations & global tales',
+    language_onboarding_confirm: 'Confirm & Start Listening',
+    language_filter_all: 'All Stories',
+    language_filter_bn: 'বাংলা গল্প',
+    language_filter_hi: 'हिन्दी कहानियाँ',
+    language_filter_en: 'English Stories',
+    language_filter_title: 'Story Language',
+
+    // Notification Permission Prompt
+    notification_prompt_title: 'Enable Story Notifications',
+    notification_prompt_subtitle: 'Get instant alerts whenever new horror thrillers, mega episodes, and special subscriber discounts are released.',
+    notification_prompt_enable: '🔔 Enable Notifications',
+    notification_prompt_later: 'Maybe Later',
+    notification_enabled_toast: '✅ Notifications successfully enabled! You will be alerted when new stories arrive.',
+    notification_blocked_toast: '⚠️ Notification permission is blocked in browser/device settings. Please allow in system settings.',
   },
 };
 

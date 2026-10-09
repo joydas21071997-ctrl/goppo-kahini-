@@ -39,6 +39,8 @@ interface FilterExploreSectionProps {
   isLight: boolean;
   totalStoryCount: number;
   matchingStoryCount: number;
+  selectedLanguageFilter?: 'all' | 'bn' | 'hi' | 'en';
+  onSelectLanguageFilter?: (lang: 'all' | 'bn' | 'hi' | 'en') => void;
   onQuickTabSelect?: (tabKey: string) => void;
   activeQuickTab?: string;
 }
@@ -61,6 +63,8 @@ export const FilterExploreSection: React.FC<FilterExploreSectionProps> = ({
   isLight,
   totalStoryCount,
   matchingStoryCount,
+  selectedLanguageFilter = 'all',
+  onSelectLanguageFilter,
 }) => {
   const { t } = useLanguage();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -139,6 +143,45 @@ export const FilterExploreSection: React.FC<FilterExploreSectionProps> = ({
     <div className="mb-4">
       {/* Sleek Minimalist Exploration Bar */}
       <div className="flex items-center justify-between gap-2">
+        {/* Language Quick Filter Pills */}
+        {onSelectLanguageFilter && (
+          <div className={`flex items-center gap-0.5 shrink-0 p-1 rounded-full border transition-all ${
+            isLight
+              ? 'bg-purple-50 border-purple-200'
+              : 'bg-[#150d22] border-purple-900/50'
+          }`}>
+            {(
+              [
+                { id: 'all', label: 'All', title: t('language_filter_all', 'সব ভাষার গল্প') },
+                { id: 'bn', label: 'বাংলা', title: t('language_filter_bn', 'বাংলা গল্প') },
+                { id: 'hi', label: 'हिन्दी', title: t('language_filter_hi', 'हिन्दी कहानियाँ') },
+                { id: 'en', label: 'EN', title: t('language_filter_en', 'English Stories') },
+              ] as const
+            ).map((l) => {
+              const active = selectedLanguageFilter === l.id;
+              return (
+                <button
+                  key={l.id}
+                  type="button"
+                  onClick={() => onSelectLanguageFilter(l.id)}
+                  title={l.title}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all active:scale-95 ${
+                    active
+                      ? isLight
+                        ? 'bg-purple-900 text-white shadow-xs'
+                        : 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-xs'
+                      : isLight
+                      ? 'text-zinc-600 hover:text-zinc-900 hover:bg-purple-100/60'
+                      : 'text-zinc-400 hover:text-white hover:bg-purple-900/30'
+                  }`}
+                >
+                  {l.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Quick Horizon Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none flex-1">
           {quickTabs.map((tab) => {
@@ -268,6 +311,46 @@ export const FilterExploreSection: React.FC<FilterExploreSectionProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* 0. Story Language */}
+            {onSelectLanguageFilter && (
+              <div className="sm:col-span-2 lg:col-span-4 pb-3 border-b border-purple-500/20">
+                <span
+                  className={`block text-[11px] font-bold uppercase tracking-wider mb-2 ${
+                    isLight ? 'text-purple-900' : 'text-purple-300'
+                  }`}
+                >
+                  {t('language_filter_title', 'গল্পের ভাষা')}
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      { id: 'all', label: t('language_filter_all', 'সব ভাষার গল্প'), flag: '🌐' },
+                      { id: 'bn', label: 'বাংলা গল্প (Bengali)', flag: '🎭' },
+                      { id: 'hi', label: 'हिन्दी कहानियाँ (Hindi)', flag: '🪔' },
+                      { id: 'en', label: 'English Stories', flag: '🎙️' },
+                    ] as const
+                  ).map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => onSelectLanguageFilter(item.id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                        selectedLanguageFilter === item.id
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md'
+                          : isLight
+                          ? 'bg-purple-50 text-zinc-700 hover:bg-purple-100'
+                          : 'bg-[#1e152d] text-zinc-300 hover:text-white'
+                      }`}
+                    >
+                      <span>{item.flag}</span>
+                      <span>{item.label}</span>
+                      {selectedLanguageFilter === item.id && <Check className="h-3 w-3 ml-1" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* 1. Genre / Category */}
             <div>
               <span

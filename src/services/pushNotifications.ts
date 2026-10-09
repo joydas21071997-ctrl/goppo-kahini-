@@ -24,8 +24,20 @@ export async function initializePushNotifications(userId?: string): Promise<Push
 
   if (isCapacitor) {
     try {
-      // Dynamic import to avoid build errors if @capacitor/push-notifications is conditionally bundled
-      const { PushNotifications } = await import('@capacitor/push-notifications' as string).catch(() => ({ PushNotifications: null }));
+      // Safe Capacitor runtime plugin detection
+      const winWithCap = window as unknown as {
+        Capacitor?: {
+          Plugins?: {
+            PushNotifications?: {
+              requestPermissions: () => Promise<{ receive: string }>;
+              createChannel: (channel: Record<string, unknown>) => Promise<void>;
+              register: () => Promise<void>;
+              addListener: (eventName: string, callback: (event: any) => void) => { remove: () => void };
+            };
+          };
+        };
+      };
+      const PushNotifications = winWithCap.Capacitor?.Plugins?.PushNotifications;
 
       if (PushNotifications) {
         // Request notification permission

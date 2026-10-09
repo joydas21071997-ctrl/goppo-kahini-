@@ -148,6 +148,17 @@ export const StoryCard: React.FC<StoryCardProps> = ({
                 <span>#{rankingNumber}</span>
               </span>
             )}
+            {story.language && (
+              <span className={`flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[8.5px] sm:text-[9.5px] font-bold ${
+                story.language === 'hi'
+                  ? 'bg-amber-500/30 text-amber-200 border border-amber-400/50'
+                  : story.language === 'en'
+                  ? 'bg-blue-500/30 text-blue-200 border border-blue-400/50'
+                  : 'bg-purple-500/30 text-purple-200 border border-purple-400/50'
+              }`}>
+                {story.language === 'hi' ? 'हिन्दी' : story.language === 'en' ? 'EN' : 'বাংলা'}
+              </span>
+            )}
             {isNew && (
               <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-white shadow-sm ring-1 ring-white/20">
                 <Sparkles className="h-2.5 w-2.5 fill-white" />
@@ -255,7 +266,13 @@ export const StoryCard: React.FC<StoryCardProps> = ({
             </span>
           </div>
 
-          <h3 className={`font-serif-story text-xs sm:text-sm font-bold transition-colors line-clamp-1 ${
+          <h3 className={`text-xs sm:text-sm font-bold transition-colors line-clamp-1 ${
+            story.language === 'hi'
+              ? 'font-hindi-title tracking-normal'
+              : story.language === 'en'
+              ? 'font-english-epic tracking-wide'
+              : 'font-bengali-title'
+          } ${
             isLight
               ? 'text-zinc-950 group-hover:text-purple-700'
               : 'text-white group-hover:text-pink-300'

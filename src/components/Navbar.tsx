@@ -24,7 +24,9 @@ import {
   FileText,
   Clock,
   LogIn,
-  Globe
+  Globe,
+  Bell,
+  BellRing
 } from 'lucide-react';
 import { GoppoKahiniLogo } from './GoppoKahiniLogo';
 import { ThemeMode, CreatorSession, AudienceUser } from '../types';
@@ -60,6 +62,9 @@ interface NavbarProps {
   onOpenUserAccount: () => void;
   onLogoutUser: () => void;
   onSelectPolicy?: (slug: LegalPolicySlug) => void;
+  onOpenNotificationModal?: () => void;
+  onOpenLanguageModal?: () => void;
+  onGoHome?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -89,9 +94,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenUserAccount,
   onLogoutUser,
   onSelectPolicy,
+  onOpenNotificationModal,
+  onOpenLanguageModal,
+  onGoHome,
 }) => {
   const { t } = useLanguage();
-  const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Accordion state for "লাইব্রেরি ও অডিও ফিচার" (default collapsed to keep screen compact)
@@ -122,34 +129,41 @@ export const Navbar: React.FC<NavbarProps> = ({
           ? 'border-purple-200/90 bg-white/95 text-zinc-900 shadow-xs'
           : 'border-purple-900/30 bg-[#120a1c]/95 text-white'
       }`}>
-        <div className="mx-auto flex h-[52px] sm:h-16 max-w-7xl items-center justify-between px-2.5 sm:px-6 gap-1.5 sm:gap-4">
+        <div className="mx-auto flex h-14 sm:h-16 max-w-7xl items-center justify-between px-3 sm:px-6 gap-2 sm:gap-4">
           
-          {/* Brand & Logo (গপ্পো কাহিনী) - Small logo only on mobile to keep header clean and spacious */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
-            <GoppoKahiniLogo size="md" showSubtitle={true} isLight={isLight} theme={theme} hideTextOnMobile={true} />
+          {/* Brand & Logo Emblem Only (যুক্ত হোম পেজের সাথে) */}
+          <div className="flex items-center gap-2 shrink-0">
+            <GoppoKahiniLogo
+              size="md"
+              showText={false}
+              isLight={isLight}
+              theme={theme}
+              onClick={onGoHome}
+              className="cursor-pointer active:scale-95 transition-transform"
+            />
           </div>
 
-          {/* Desktop Search Bar (খুঁজুন...) */}
-          <div className="hidden md:flex flex-1 max-w-sm mx-3">
+          {/* Desktop Elongated Search Bar (খুঁজুন...) */}
+          <div className="hidden md:flex flex-1 max-w-md lg:max-w-xl mx-3 lg:mx-6">
             <div className="relative w-full">
               <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 ${
-                isLight ? 'text-purple-600' : 'text-purple-300'
+                isLight ? 'text-purple-600' : 'text-pink-400'
               }`} />
               <input
                 type="text"
                 placeholder={t('search_placeholder', 'গল্প, কথক বা লেখক খুঁজুন...')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className={`w-full rounded-full border py-1.5 pl-9 pr-8 text-xs transition-all focus:outline-none ${
+                className={`w-full rounded-full border py-2 pl-9 pr-8 text-xs transition-all focus:outline-none shadow-xs ${
                   isLight
-                    ? 'border-purple-200 bg-purple-50/50 text-zinc-900 placeholder-zinc-400 focus:border-purple-500 focus:bg-white'
-                    : 'border-purple-900/40 bg-[#181224] text-white placeholder-zinc-500 focus:border-pink-400'
+                    ? 'border-purple-200 bg-purple-50/60 text-zinc-900 placeholder-zinc-400 focus:border-purple-500 focus:bg-white'
+                    : 'border-purple-900/40 bg-[#181224] text-white placeholder-zinc-400 focus:border-pink-500/80 focus:bg-[#1e132e]'
                 }`}
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className={`absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 ${
+                  className={`absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-full ${
                     isLight ? 'text-zinc-500 hover:text-zinc-900' : 'text-zinc-400 hover:text-white'
                   }`}
                 >
@@ -159,28 +173,32 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Action Header: Search (Mobile) + User Account / Login Chip + Desktop Language Selector + Single Theme Toggle + 3-Line Menu Button */}
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            
-            {/* Mobile Search Button */}
-            <button
-              onClick={() => setShowMobileSearch(!showMobileSearch)}
-              className={`md:hidden flex h-8 w-8 items-center justify-center rounded-lg border transition-all shrink-0 active:scale-95 ${
-                isLight
-                  ? 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100'
-                  : 'bg-[#181224] border-purple-900/40 text-zinc-300 hover:text-white hover:border-pink-400'
-              }`}
-              title={t('search_aria', 'অনুসন্ধান')}
-              aria-label={t('search_aria', 'অনুসন্ধান')}
-            >
-              <Search className={`h-3.5 w-3.5 ${isLight ? 'text-purple-600' : 'text-purple-300'}`} />
-            </button>
+          {/* Clean Action Header: Notification Bell + User Login/Account + 3-Line Menu */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+
+            {/* Notification Alert Bell Button (ওটা থাকুক) */}
+            {onOpenNotificationModal && (
+              <button
+                type="button"
+                onClick={onOpenNotificationModal}
+                title={t('notification_prompt_title', 'নতুন গল্পের নোটিফিকেশন')}
+                aria-label={t('notification_prompt_title', 'নতুন গল্পের নোটিফিকেশন')}
+                className={`relative flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-xl border transition-all active:scale-95 shrink-0 touch-manipulation ${
+                  isLight
+                    ? 'border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-900 shadow-xs'
+                    : 'border-purple-900/40 bg-[#181224] hover:bg-[#201830] text-pink-300 hover:border-pink-500/40'
+                }`}
+              >
+                <Bell className="h-4 w-4" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-pink-500 animate-pulse ring-1 ring-white/30" />
+              </button>
+            )}
 
             {/* User Account / Login Button */}
             {currentUser ? (
               <button
                 onClick={onOpenUserAccount}
-                className={`flex items-center gap-1 sm:gap-2 rounded-full border px-1.5 sm:px-2.5 py-1 sm:py-1.5 text-xs transition-all shadow-sm shrink-0 active:scale-95 ${
+                className={`flex items-center gap-1.5 rounded-full border px-2 sm:px-3 py-1 sm:py-1.5 text-xs transition-all shadow-xs shrink-0 active:scale-95 ${
                   isLight
                     ? 'border-purple-200 bg-purple-50/80 text-zinc-900 hover:bg-purple-100'
                     : 'border-purple-500/40 bg-[#1e132e] text-white hover:bg-[#28183c] hover:border-pink-400'
@@ -210,105 +228,77 @@ export const Navbar: React.FC<NavbarProps> = ({
             ) : (
               <button
                 onClick={() => onOpenUserAuth('general')}
-                className={`flex items-center gap-1 sm:gap-1.5 rounded-full border px-2 sm:px-3 py-1 sm:py-1.5 text-xs font-medium transition-all shrink-0 active:scale-95 ${
+                className={`flex items-center gap-1 sm:gap-1.5 rounded-full border px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-xs font-semibold transition-all shrink-0 active:scale-95 ${
                   isLight
                     ? 'border-purple-200 bg-white text-purple-800 hover:bg-purple-50 shadow-xs'
                     : 'border-purple-900/50 bg-[#181224] hover:bg-[#221634] hover:border-pink-500/50 text-purple-200'
                 }`}
               >
-                <LogIn className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-pink-400 shrink-0" />
-                <span className="text-[11px] sm:text-xs font-semibold">{t('login', 'লগইন')}</span>
+                <LogIn className="h-3.5 w-3.5 text-pink-400 shrink-0" />
+                <span className="text-[11px] sm:text-xs">{t('login', 'লগইন')}</span>
               </button>
             )}
 
-            {/* Language Selector (Pill Dropdown) - Shown on Desktop only; on Mobile it is accessible inside the 3-line Menu */}
-            <div className="hidden sm:block">
-              <LanguageSelector isLight={isLight} variant="compact-pill" />
-            </div>
-
-            {/* Single Unified Theme Toggle Button (ডার্ক মোড চালু করুন / লাইট মোড চালু করুন) */}
-            <button
-              id="navbar-theme-toggle-btn"
-              type="button"
-              onClick={() => onToggleTheme(isLight ? 'purple-dark' : 'purple-light')}
-              title={isLight ? t('theme_dark', 'ডার্ক মোড চালু করুন') : t('theme_light', 'লাইট মোড চালু করুন')}
-              aria-label={isLight ? t('theme_dark', 'ডার্ক মোড চালু করুন') : t('theme_light', 'লাইট মোড চালু করুন')}
-              className={`flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-lg sm:rounded-xl border transition-all active:scale-95 shrink-0 touch-manipulation ${
-                isLight
-                  ? 'border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-800 shadow-xs'
-                  : 'border-purple-900/40 bg-[#181224] hover:bg-[#201830] text-amber-300'
-              }`}
-            >
-              {isLight ? (
-                <Moon className="h-4 w-4" />
-              ) : (
-                <Sun className="h-4 w-4 text-amber-300" />
-              )}
-            </button>
-
-            {/* 3-Line Hamburger Menu Button (তিন লাইনের মেনু বার) */}
+            {/* 3-Line Hamburger Menu Button (তিন লাইনের মেনু বার - ভাষা ও ডার্ক মোড সহ অন্যান্য সেটিংস ভেতরে) */}
             <button
               id="main-hamburger-menu-btn"
               onClick={() => setIsMenuOpen(true)}
               aria-label={t('menu', 'মেনু')}
-              className={`flex items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border px-2 sm:px-3.5 py-1 sm:py-2 text-xs font-bold transition-all shadow-sm active:scale-95 shrink-0 touch-manipulation ${
+              className={`flex items-center gap-1.5 rounded-xl border px-2.5 sm:px-3.5 py-1.5 text-xs font-bold transition-all shadow-xs active:scale-95 shrink-0 touch-manipulation ${
                 isLight
                   ? 'border-purple-200 bg-white hover:bg-purple-50 hover:border-purple-300 text-zinc-800'
                   : 'border-purple-500/30 bg-[#181224] hover:bg-[#201830] hover:border-pink-400 text-white'
               }`}
             >
               {/* Distinctive 3-Line Bars */}
-              <div className="flex flex-col justify-between w-3.5 h-3 sm:w-4 sm:h-3.5 py-0.5 shrink-0">
+              <div className="flex flex-col justify-between w-3.5 h-3 py-0.5 shrink-0">
                 <span className={`h-0.5 w-full rounded-full ${isLight ? 'bg-purple-700' : 'bg-purple-300'}`} />
                 <span className="h-0.5 w-3/4 bg-pink-500 rounded-full" />
                 <span className={`h-0.5 w-full rounded-full ${isLight ? 'bg-purple-700' : 'bg-purple-300'}`} />
               </div>
-              <span className={`text-[11px] sm:text-xs font-medium ${isLight ? 'text-zinc-800' : 'text-zinc-200'}`}>
+              <span className={`text-[11px] sm:text-xs font-semibold ${isLight ? 'text-zinc-800' : 'text-zinc-200'}`}>
                 {t('menu', 'মেনু')}
               </span>
 
               {(bookmarkCount > 0 || activeAmbientCount > 0) ? (
-                <span className="h-1.5 w-1.5 rounded-full bg-purple-500 shrink-0" />
+                <span className="h-1.5 w-1.5 rounded-full bg-pink-500 shrink-0" />
               ) : null}
             </button>
 
           </div>
         </div>
 
-        {/* Mobile Search Overlay Input */}
-        {showMobileSearch && (
-          <div className={`md:hidden border-t px-4 py-2.5 animate-fadeIn ${
-            isLight ? 'border-purple-200 bg-white' : 'border-purple-900/40 bg-[#120a1c]'
-          }`}>
-            <div className="relative">
-              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${
-                isLight ? 'text-purple-600' : 'text-pink-400'
-              }`} />
-              <input
-                type="text"
-                autoFocus
-                placeholder={t('search_placeholder', 'গল্প, কথক বা লেখক খুঁজুন...')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={`w-full rounded-full border py-2 pl-9 pr-8 text-xs focus:outline-none ${
-                  isLight
-                    ? 'border-purple-200 bg-purple-50/70 text-zinc-900 placeholder-zinc-400 focus:border-purple-400 focus:bg-white'
-                    : 'border-purple-900/40 bg-[#181224] text-white placeholder-zinc-500'
+        {/* Mobile Search Bar - এলংগেটেড ও লম্বা টাইপের সার্চ বার উপরটায় বিস্তৃত */}
+        <div className={`md:hidden border-t px-3 py-2 ${
+          isLight ? 'border-purple-100 bg-purple-50/40' : 'border-purple-900/30 bg-[#140c1e]/90'
+        }`}>
+          <div className="relative w-full">
+            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${
+              isLight ? 'text-purple-600' : 'text-pink-400'
+            }`} />
+            <input
+              type="text"
+              placeholder={t('search_placeholder', 'গল্প, কথক বা লেখক খুঁজুন...')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={`w-full rounded-full border py-2 pl-9 pr-9 text-xs transition-all focus:outline-none shadow-xs ${
+                isLight
+                  ? 'border-purple-200 bg-white text-zinc-900 placeholder-zinc-400 focus:border-purple-400'
+                  : 'border-purple-900/50 bg-[#181224] text-white placeholder-zinc-400 focus:border-pink-500/80'
+              }`}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full ${
+                  isLight ? 'text-zinc-500 hover:text-zinc-900' : 'text-zinc-400 hover:text-white'
                 }`}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className={`absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 ${
-                    isLight ? 'text-zinc-500 hover:text-zinc-900' : 'text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
-        )}
+        </div>
       </header>
 
       {/* SLIDING SIDE DRAWER (তিন লাইনের মেনুর পরিমার্জিত প্যানেল) */}
@@ -336,20 +326,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ? 'border-purple-200 bg-white/95 text-zinc-900'
                 : 'border-purple-900/30 bg-[#130b1e]/95 text-white'
             }`}>
-              <div className="flex items-center gap-2">
-                <GoppoKahiniLogo size="sm" showSubtitle={false} />
-                <div>
-                  <h3 className={`text-sm font-bold font-serif-story leading-none ${
-                    isLight ? 'text-zinc-900' : 'text-white'
-                  }`}>
-                    {t('menu_title', 'গপ্পো কাহিনী মেনু')}
-                  </h3>
-                  <p className={`text-[10px] mt-0.5 ${
-                    isLight ? 'text-zinc-500' : 'text-zinc-400'
-                  }`}>
-                    {t('app_subtitle', 'রোমাঞ্চ • শান্তি • মানুষের জীবন কথা')}
-                  </p>
-                </div>
+              <div className="flex items-center gap-2.5">
+                <GoppoKahiniLogo
+                  size="sm"
+                  showText={false}
+                  isLight={isLight}
+                  theme={theme}
+                  onClick={() => {
+                    closeDrawer();
+                    onGoHome?.();
+                  }}
+                  className="cursor-pointer active:scale-95 transition-transform"
+                />
+                <span className={`text-sm font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>
+                  {t('menu', 'মেনু')}
+                </span>
               </div>
 
               <button
@@ -368,34 +359,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Drawer Body Items */}
             <div className="flex-1 p-5 space-y-4">
 
-              {/* 1. Language Selector Card in Menu (ভাষা নির্বাচন) */}
-              <div className={`rounded-2xl border p-3.5 space-y-2.5 ${
-                isLight
-                  ? 'border-purple-200 bg-white shadow-sm'
-                  : 'border-purple-900/40 bg-[#1a1129]'
-              }`}>
-                <div className="flex items-center gap-2">
-                  <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${
-                    isLight ? 'bg-purple-100 text-purple-700' : 'bg-purple-500/20 text-purple-300'
-                  }`}>
-                    <Globe className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h4 className={`text-xs font-bold ${isLight ? 'text-zinc-900' : 'text-white'}`}>
-                      {t('select_language', 'ভাষা নির্বাচন')}
-                    </h4>
-                    <p className={`text-[10px] ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>
-                      {t('select_language_sub', 'অ্যাপ ইন্টারফেসের ভাষা পরিবর্তন করুন')}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="pt-1">
-                  <LanguageSelector variant="buttons" isLight={isLight} />
-                </div>
-              </div>
-
-              {/* 2. Theme Selector Card in Menu (থিম ও রঙ নির্বাচন) */}
+              {/* 1. Theme Selector Card in Menu (থিম ও রঙ নির্বাচন) */}
               <div className={`rounded-2xl border p-3.5 space-y-2.5 ${
                 isLight
                   ? 'border-purple-200 bg-white shadow-sm'
@@ -616,54 +580,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               </div>
 
-              {/* 4. Content Category Switcher (গল্পঘর vs মানুষের জীবন কথা) */}
-              {onSelectView && (
-                <div className="space-y-1.5">
-                  <span className={`text-[11px] font-semibold uppercase tracking-wider px-1 ${
-                    isLight ? 'text-zinc-500' : 'text-zinc-400'
-                  }`}>
-                    {t('content_sections', 'কন্টেন্ট বিভাগ')}
-                  </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => {
-                        onSelectView('stories');
-                        closeDrawer();
-                      }}
-                      className={`flex items-center justify-center gap-1.5 rounded-xl p-2.5 text-xs font-bold transition-all border ${
-                        activeView === 'stories'
-                          ? 'bg-purple-600 text-white border-purple-500 shadow-md'
-                          : isLight
-                            ? 'bg-white text-zinc-700 border-purple-200 hover:bg-purple-50'
-                            : 'bg-[#181124] text-zinc-300 border-purple-900/30 hover:bg-[#201730]'
-                      }`}
-                    >
-                      <Radio className="h-3.5 w-3.5" />
-                      <span>{t('nav_stories', 'গল্পঘর')}</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        onSelectView('lifestories');
-                        closeDrawer();
-                      }}
-                      className={`flex items-center justify-center gap-1.5 rounded-xl p-2.5 text-xs font-bold transition-all border relative ${
-                        activeView === 'lifestories'
-                          ? 'bg-pink-500 text-white border-pink-400 shadow-md font-bold'
-                          : isLight
-                            ? 'bg-white text-zinc-700 border-purple-200 hover:bg-purple-50'
-                            : 'bg-[#181124] text-zinc-300 border-purple-900/30 hover:bg-[#201730]'
-                      }`}
-                    >
-                      <Mic className="h-3.5 w-3.5" />
-                      <span>{t('nav_life_stories', 'জীবন কথা')}</span>
-                      <span className="flex h-1.5 w-1.5 rounded-full bg-pink-400" />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* 5. EXPANDABLE / COLLAPSIBLE ACCORDION: লাইব্রেরি ও অডিও ফিচার (USER-ONLY ACCESS) */}
+              {/* EXPANDABLE / COLLAPSIBLE ACCORDION: লাইব্রেরি ও অডিও ফিচার (USER-ONLY ACCESS) */}
               <div className={`rounded-2xl border overflow-hidden transition-all ${
                 isLight
                   ? 'border-purple-200 bg-white shadow-sm'
@@ -924,6 +841,62 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }}
                 />
               )}
+
+              {/* Notification & Language Quick Action in Drawer */}
+              <div className="space-y-2 pt-1">
+                {onOpenNotificationModal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      closeDrawer();
+                      onOpenNotificationModal();
+                    }}
+                    className={`w-full flex items-center justify-between p-3 rounded-2xl border text-xs font-semibold transition-all ${
+                      isLight
+                        ? 'border-purple-200 bg-purple-50/80 hover:bg-purple-100 text-purple-950'
+                        : 'border-purple-900/40 bg-[#1a1128] hover:bg-[#231737] text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-pink-500/20 text-pink-400">
+                        <Bell className="h-4 w-4" />
+                      </div>
+                      <div className="text-left">
+                        <span className="font-bold block">{t('notification_prompt_title', 'নতুন গল্পের নোটিফিকেশন')}</span>
+                        <span className={`text-[10px] block ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                          অ্যালার্ট ও আপডেট নিয়ন্ত্রণ করুন
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-zinc-400" />
+                  </button>
+                )}
+
+                {/* Language Switcher in Drawer */}
+                <div className={`p-3 rounded-2xl border ${
+                  isLight ? 'border-purple-200 bg-white' : 'border-purple-900/40 bg-[#160e22]'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold flex items-center gap-1.5">
+                      <Globe className="h-3.5 w-3.5 text-pink-500" />
+                      <span>{t('select_language', 'ভাষা নির্বাচন')}</span>
+                    </span>
+                    {onOpenLanguageModal && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          closeDrawer();
+                          onOpenLanguageModal();
+                        }}
+                        className="text-[10px] text-pink-500 font-bold hover:underline"
+                      >
+                        কাস্টমাইজ করুন
+                      </button>
+                    )}
+                  </div>
+                  <LanguageSelector variant="buttons" isLight={isLight} />
+                </div>
+              </div>
 
               {/* General App Footer in Drawer */}
               <div className={`pt-3 border-t flex items-center justify-between text-[11px] ${

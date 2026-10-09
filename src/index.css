@@ -2,10 +2,25 @@
 
 @layer base {
   html, body {
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Hind Siliguri', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
     transition: background-color 0.25s ease, color 0.25s ease;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Language-specific typographic refinements */
+  html[lang="bn"], html[lang="bn"] body {
+    font-family: 'Hind Siliguri', 'Anek Bangla', 'Plus Jakarta Sans', sans-serif;
+  }
+
+  html[lang="hi"], html[lang="hi"] body {
+    font-family: 'Noto Serif Devanagari', 'Hind Siliguri', 'Plus Jakarta Sans', sans-serif;
+  }
+
+  html[lang="en"], html[lang="en"] body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   }
 
   body.theme-light {
@@ -20,9 +35,57 @@
     color: #f3f4f6;
   }
 
-  h1, h2, h3, .font-serif-story {
-    font-family: 'Playfair Display', Georgia, serif;
+  /* Default heading font fallback */
+  h1, h2, h3, .font-serif-story, .font-literary {
+    font-family: 'Noto Serif Bengali', 'Anek Bangla', 'Playfair Display', Georgia, serif;
+    letter-spacing: -0.015em;
   }
+
+  html[lang="bn"] h1,
+  html[lang="bn"] h2,
+  html[lang="bn"] h3,
+  html[lang="bn"] .font-serif-story {
+    font-family: 'Noto Serif Bengali', 'Anek Bangla', 'Hind Siliguri', serif;
+    font-weight: 700;
+  }
+
+  html[lang="hi"] h1,
+  html[lang="hi"] h2,
+  html[lang="hi"] h3,
+  html[lang="hi"] .font-serif-story {
+    font-family: 'Rozha One', 'Noto Serif Devanagari', serif;
+    letter-spacing: normal;
+  }
+
+  html[lang="en"] h1,
+  html[lang="en"] h2,
+  html[lang="en"] h3,
+  html[lang="en"] .font-serif-story {
+    font-family: 'Cinzel', 'Playfair Display', Georgia, serif;
+    letter-spacing: 0.02em;
+  }
+}
+
+/* Distinctive typography utility classes */
+.font-bengali-title {
+  font-family: 'Noto Serif Bengali', 'Anek Bangla', serif;
+}
+
+.font-bengali-modern {
+  font-family: 'Anek Bangla', 'Hind Siliguri', sans-serif;
+}
+
+.font-hindi-title {
+  font-family: 'Rozha One', 'Noto Serif Devanagari', serif;
+}
+
+.font-english-epic {
+  font-family: 'Cinzel', 'Playfair Display', serif;
+}
+
+.font-literary-body {
+  font-family: 'Hind Siliguri', 'Plus Jakarta Sans', sans-serif;
+  line-height: 1.68;
 }
 
 body.theme-light ::selection {

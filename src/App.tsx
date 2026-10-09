@@ -86,9 +86,11 @@ import { ItemReviewsModal } from './components/ItemReviewsModal';
 import { UserAccountModal } from './components/UserAccountModal';
 import { UserAuthModal } from './components/UserAuthModal';
 import { SplashScreen } from './components/SplashScreen';
+import { LanguageOnboardingModal } from './components/LanguageOnboardingModal';
+import { NotificationPermissionModal } from './components/NotificationPermissionModal';
 import { FilterExploreSection, SortOption } from './components/FilterExploreSection';
 import { detectUserCountry, getPassPriceConfig } from './utils/country';
-import { useLanguage } from './context/LanguageContext';
+import { useLanguage, AppLanguage } from './context/LanguageContext';
 import { AudienceUser } from './types';
 import {
   onAudienceAuthStateChanged,
@@ -498,6 +500,60 @@ export default function App() {
   const [isNarratorAppModalOpen, setIsNarratorAppModalOpen] = useState(false);
   const [isCreatorLoginModalOpen, setIsCreatorLoginModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+
+  // --- Audience Language Preference & Story Language Filtering ---
+  const [selectedStoryLanguage, setSelectedStoryLanguage] = useState<'all' | 'bn' | 'hi' | 'en'>(() => {
+    if (typeof window !== 'undefined') {
+      const savedLang = localStorage.getItem('gk_app_language');
+      if (savedLang === 'hi') return 'hi';
+      if (savedLang === 'en') return 'all';
+      if (savedLang === 'bn') return 'bn';
+    }
+    return 'bn';
+  });
+
+  // --- Modals for Language Onboarding & Notification Prompt ---
+  const [isLanguageOnboardingOpen, setIsLanguageOnboardingOpen] = useState(false);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+
+  const triggerNotificationCheck = () => {
+    try {
+      if (typeof window !== 'undefined') {
+        const pref = localStorage.getItem('gk_notification_preference');
+        if (!pref) {
+          setTimeout(() => {
+            setIsNotificationModalOpen(true);
+          }, 600);
+        }
+      }
+    } catch {}
+  };
+
+  const handleSplashFinish = () => {
+    setShowSplash(false);
+    try {
+      if (typeof window !== 'undefined') {
+        const hasSelected = localStorage.getItem('gk_has_selected_language_onboarding');
+        if (!hasSelected) {
+          setIsLanguageOnboardingOpen(true);
+        } else {
+          triggerNotificationCheck();
+        }
+      }
+    } catch {
+      triggerNotificationCheck();
+    }
+  };
+
+  const handleSelectOnboardingLanguage = (lang: AppLanguage) => {
+    if (lang === 'bn') setSelectedStoryLanguage('bn');
+    else if (lang === 'hi') setSelectedStoryLanguage('hi');
+    else setSelectedStoryLanguage('all');
+
+    setTimeout(() => {
+      triggerNotificationCheck();
+    }, 450);
+  };
 
   // --- Legal & Support Public Page Routing State ---
   const getPolicySlugFromUrl = (): LegalPolicySlug | null => {
@@ -2069,6 +2125,16 @@ export default function App() {
       if (accessFilter === 'free' && story.isLittlePassOnly) return false;
       if (accessFilter === 'little_pass' && !story.isLittlePassOnly) return false;
 
+      // Language filter
+      if (selectedStoryLanguage === 'bn') {
+        const isBn = !story.language || story.language === 'bn';
+        if (!isBn) return false;
+      } else if (selectedStoryLanguage === 'hi') {
+        if (story.language !== 'hi') return false;
+      } else if (selectedStoryLanguage === 'en') {
+        if (story.language !== 'en') return false;
+      }
+
       return true;
     })
     .sort((a, b) => {
@@ -2084,11 +2150,26 @@ export default function App() {
       return 0; // Default/trending maintains curated story order
     });
 
+  // Base stories prioritized by audience language
+  const storiesForSelectedLanguage = useMemo(() => {
+    if (selectedStoryLanguage === 'all') return stories;
+    if (selectedStoryLanguage === 'bn') {
+      return stories.filter((s) => !s.language || s.language === 'bn');
+    }
+    if (selectedStoryLanguage === 'hi') {
+      return stories.filter((s) => s.language === 'hi');
+    }
+    if (selectedStoryLanguage === 'en') {
+      return stories.filter((s) => s.language === 'en');
+    }
+    return stories;
+  }, [stories, selectedStoryLanguage]);
+
   // --- 5 Streamlined Story Collections for Home Flow ---
 
   // 1. New Releases (নতুন প্রকাশিত গল্প) - sorted by newest release date first
   const newReleaseStories = useMemo(() => {
-    return [...stories].sort((a, b) => {
+    return [...storiesForSelectedLanguage].sort((a, b) => {
       const getTimestamp = (s: Story) => {
         if (s.releaseDate) {
           const t = new Date(s.releaseDate).getTime();
@@ -2103,19 +2184,19 @@ export default function App() {
       };
       return getTimestamp(b) - getTimestamp(a);
     });
-  }, [stories]);
+  }, [storiesForSelectedLanguage]);
 
   // 2. Popular & Trending (জনপ্রিয় ও ট্রেন্ডিং গল্প) - ONE combined section using real listenCount & rating
   const popularTrendingStories = useMemo(() => {
-    return [...stories]
+    return [...storiesForSelectedLanguage]
       .filter((s) => s.listenCount > 0 || (s.rating && s.rating > 0))
       .sort((a, b) => (b.listenCount * (b.rating || 4.5)) - (a.listenCount * (a.rating || 4.5)));
-  }, [stories]);
+  }, [storiesForSelectedLanguage]);
 
   // 3. Free Stories (ফ্রি গল্প) - currently available free stories
   const freeStories = useMemo(() => {
-    return stories.filter((s) => !s.isLittlePassOnly);
-  }, [stories]);
+    return storiesForSelectedLanguage.filter((s) => !s.isLittlePassOnly);
+  }, [storiesForSelectedLanguage]);
 
   // 4. This Month's Stories (এই মাসের গল্প) - published during current calendar month (dynamic)
   const thisMonthStories = useMemo(() => {
@@ -2123,7 +2204,7 @@ export default function App() {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
 
-    return stories.filter((story) => {
+    return storiesForSelectedLanguage.filter((story) => {
       let d: Date | null = null;
       if (story.releaseDate) {
         d = new Date(story.releaseDate);
@@ -2137,14 +2218,14 @@ export default function App() {
       const dateB = b.releaseDate ? new Date(b.releaseDate).getTime() : 0;
       return dateB - dateA;
     });
-  }, [stories]);
+  }, [storiesForSelectedLanguage]);
 
   // 5. Mega Premium Series (মেগা প্রিমিয়াম সিরিজ) - only if content exists
   const megaSeriesStories = useMemo(() => {
-    return stories.filter(
+    return storiesForSelectedLanguage.filter(
       (s) => s.lengthCategory === 'mega' || s.pricingType === 'mega_exclusive'
     );
-  }, [stories]);
+  }, [storiesForSelectedLanguage]);
 
   const isFilterActive =
     searchQuery.trim() !== '' ||
@@ -2283,6 +2364,17 @@ export default function App() {
         onOpenUserAccount={() => setIsUserAccountOpen(true)}
         onLogoutUser={handleLogoutUser}
         onSelectPolicy={handleSelectPolicy}
+        onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
+        onOpenLanguageModal={() => setIsLanguageOnboardingOpen(true)}
+        onGoHome={() => {
+          setActiveMainView('stories');
+          setCurrentPolicyPage(null);
+          setSearchQuery('');
+          if (typeof window !== 'undefined') {
+            window.history.pushState(null, '', '/');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        }}
       />
 
       {/* CONDITIONAL MAIN VIEW: 1. LEGAL & SUPPORT PAGE OR 2. LIFE STORIES OR 3. STORIES */}
@@ -2451,6 +2543,8 @@ export default function App() {
               isLight={isLight}
               totalStoryCount={stories.length}
               matchingStoryCount={filteredStories.length}
+              selectedLanguageFilter={selectedStoryLanguage}
+              onSelectLanguageFilter={setSelectedStoryLanguage}
             />
 
             {/* Stories Display Area */}
@@ -3299,10 +3393,25 @@ export default function App() {
       {/* Opening / Splash Screen (App Launch: Existing Logo + "রোমাঞ্চ, শান্তি, জীবনের মানুষের কথা" for 2.5s) */}
       {showSplash && (
         <SplashScreen
-          onFinish={() => setShowSplash(false)}
+          onFinish={handleSplashFinish}
           durationMs={2500}
         />
       )}
+
+      {/* Audience Language Selection Onboarding Modal (বাংলা, हिन्दी, English) */}
+      <LanguageOnboardingModal
+        isOpen={isLanguageOnboardingOpen}
+        onClose={() => setIsLanguageOnboardingOpen(false)}
+        onSelectLanguage={handleSelectOnboardingLanguage}
+        isLight={isLight}
+      />
+
+      {/* Notification Permission Request Modal */}
+      <NotificationPermissionModal
+        isOpen={isNotificationModalOpen}
+        onClose={() => setIsNotificationModalOpen(false)}
+        isLight={isLight}
+      />
 
     </div>
   );
